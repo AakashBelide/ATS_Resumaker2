@@ -24,6 +24,25 @@ FONT = "Calibri"
 BODY_PT = 10.5
 RIGHT_TAB = Inches(7.5)   # US Letter 8.5in - 2*0.5in margins
 
+# ATS-safe ASCII normalization (blueprint §4/§10, career-ops lesson): non-ASCII
+# glyphs corrupt PDF text extraction AND em-dashes read as an AI tell to recruiters.
+_ASCII_MAP = {
+    "—": "-", "–": "-", "‒": "-", "‐": "-", "‑": "-",
+    "‘": "'", "’": "'", "“": '"', "”": '"',
+    "…": "...", "•": "-", "·": "-", "→": " to ", "←": " ",
+    " ": " ", "​": "", "﻿": "", "‑": "-",
+}
+
+
+def _ascii(text: str) -> str:
+    if not text:
+        return text
+    for bad, good in _ASCII_MAP.items():
+        text = text.replace(bad, good)
+    # "->" reads awkwardly in prose; make it "to" (keeps it ASCII + readable)
+    text = re.sub(r"\s*->\s*", " to ", text)
+    return text
+
 
 def _set_margins(section):
     section.page_width = Inches(8.5)      # US Letter
@@ -78,8 +97,9 @@ def _section_header(doc, title):
 
 
 def _add_markdown(paragraph, text):
-    """Render **bold** spans as real bold runs; rest plain."""
-    for i, part in enumerate(re.split(r"(\*\*.*?\*\*)", text)):
+    """Render **bold** spans as real bold runs; rest plain. ASCII-normalized."""
+    text = _ascii(text)
+    for part in re.split(r"(\*\*.*?\*\*)", text):
         if not part:
             continue
         run = paragraph.add_run(part[2:-2] if part.startswith("**") else part)
@@ -100,13 +120,23 @@ def _heading_row(doc, left_bold, left_rest, right):
     return p
 
 
+def _as_text(b) -> str:
+    """Coerce a bullet to a string (LLMs sometimes emit {'text': ...} objects)."""
+    if isinstance(b, dict):
+        return str(b.get("text") or b.get("bullet") or b.get("content") or "")
+    return str(b)
+
+
 def _bullets(doc, items):
     for b in items:
+        text = _as_text(b)
+        if not text.strip():
+            continue
         bp = doc.add_paragraph(style="List Bullet")
         bp.paragraph_format.left_indent = Inches(0.25)
         bp.paragraph_format.first_line_indent = Inches(-0.25)
         bp.paragraph_format.space_after = Pt(1)
-        _add_markdown(bp, b)
+        _add_markdown(bp, text)
 
 
 def render_docx(content: ResumeContent, out_path: str,
@@ -126,7 +156,7 @@ def render_docx(content: ResumeContent, out_path: str,
 
     if content.headline:
         hp = doc.add_paragraph(); hp.alignment = 1
-        hp.add_run(content.headline).font.size = Pt(BODY_PT + 0.5)
+        hp.add_run(_ascii(content.headline)).font.size = Pt(BODY_PT + 0.5)
 
     contact_p = doc.add_paragraph(); contact_p.alignment = 1
     bits = [contact.get("location", ""), contact.get("phone", ""), contact.get("email", "")]
@@ -151,27 +181,31 @@ def render_docx(content: ResumeContent, out_path: str,
             if not items:
                 continue
             sp = doc.add_paragraph(); sp.paragraph_format.space_after = Pt(1)
-            r = sp.add_run(f"{cat}: "); r.bold = True
-            sp.add_run(" | ".join(items))
+            r = sp.add_run(_ascii(f"{cat}: ")); r.bold = True
+            sp.add_run(_ascii(" | ".join(items)))
 
-    # --- Experience ---
+    # --- Experience: clean 2-line block (company+dates line, then title+location).
+    #     Avoids ugly wrap for long titles; location shares the title line (no
+    #     wasted line); company gets a clean dated header row. ---
     if content.experiences:
         _section_header(doc, "Experience")
         for e in content.experiences:
-            org = e.get("organization", "")
-            title = e.get("title", "")
-            _heading_row(doc, org, f"  —  {title}" if title else "", e.get("dates", ""))
-            loc = e.get("location", "")
+            org = _ascii(e.get("organization", ""))
+            title = _ascii(e.get("title", ""))
+            loc = _ascii(e.get("location", ""))
+            _heading_row(doc, org, "", e.get("dates", ""))          # line 1: company | dates
+            sub = doc.add_paragraph()                                # line 2: title | location
+            sub.paragraph_format.space_after = Pt(1)
+            r = sub.add_run(title); r.italic = True
             if loc:
-                lp = doc.add_paragraph(); lp.add_run(loc).italic = True
-                lp.paragraph_format.space_after = Pt(0)
+                sub.add_run(f"  |  {loc}").italic = True
             _bullets(doc, e.get("bullets", []))
 
     # --- Projects ---
     if content.projects:
         _section_header(doc, "Projects")
         for pr in content.projects:
-            _heading_row(doc, pr.get("title", ""), "", pr.get("dates", ""))
+            _heading_row(doc, _ascii(pr.get("title", "")), "", pr.get("dates", ""))
             _bullets(doc, pr.get("bullets", []))
 
     # --- Education ---
@@ -179,8 +213,8 @@ def render_docx(content: ResumeContent, out_path: str,
     if edu:
         _section_header(doc, "Education")
         for ed in edu:
-            _heading_row(doc, ed.get("organization", ""),
-                         f"  —  {ed.get('title','')}", ed.get("dates", ""))
+            _heading_row(doc, _ascii(ed.get("organization", "")),
+                         f"  |  {_ascii(ed.get('title',''))}", ed.get("dates", ""))
             extra = []
             if ed.get("gpa"):
                 extra.append(f"GPA: {ed['gpa']}")
@@ -192,7 +226,7 @@ def render_docx(content: ResumeContent, out_path: str,
     if certs:
         _section_header(doc, "Certifications")
         cp = doc.add_paragraph()
-        cp.add_run(" | ".join(c.get("title", "") for c in certs if c.get("title")))
+        cp.add_run(_ascii(" | ".join(c.get("title", "") for c in certs if c.get("title"))))
 
     Path(out_path).parent.mkdir(parents=True, exist_ok=True)
     doc.save(out_path)

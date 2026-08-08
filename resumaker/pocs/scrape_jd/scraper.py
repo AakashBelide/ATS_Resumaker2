@@ -117,6 +117,33 @@ def _ashby(url: str) -> RawJD | None:
     )
 
 
+# --------------------------------------------------------------- Workday (CXS JSON)
+def _workday(url: str) -> RawJD | None:
+    # https://{tenant}.wdN.myworkdayjobs.com/{site}/job/{externalPath}
+    m = re.search(r"https?://([\w-]+)\.(wd\d+)\.myworkdayjobs\.com/([^/]+)/job/(.+?)(?:\?|$)", url)
+    if not m:
+        return None
+    tenant, wd, site, ext = m.group(1), m.group(2), m.group(3), m.group(4)
+    host = f"{tenant}.{wd}.myworkdayjobs.com"
+    cxs = f"https://{host}/wday/cxs/{tenant}/{site}/job/{ext}"
+    # Workday is behind Akamai (TLS/JA3 fingerprinting) -> curl_cffi impersonation.
+    from curl_cffi import requests as cffi
+    r = cffi.get(cxs, impersonate="chrome", timeout=30,
+                 headers={"Accept": "application/json"})
+    if r.status_code != 200:
+        return None
+    info = (r.json() or {}).get("jobPostingInfo", {})
+    if not info:
+        return None
+    return RawJD(
+        raw_text=_html_to_text(info.get("jobDescription", "")),
+        source_type="workday", source_url=url,
+        title=info.get("title", ""), company=tenant,
+        location=info.get("location", ""),
+        extra={"job_req_id": info.get("jobReqId", "")},
+    )
+
+
 # --------------------------------------------------------------- Playwright
 def _playwright(url: str) -> RawJD:
     from playwright.sync_api import sync_playwright
@@ -133,7 +160,7 @@ def _playwright(url: str) -> RawJD:
                  source_url=url)
 
 
-_API_HANDLERS = [_greenhouse, _lever, _ashby]
+_API_HANDLERS = [_greenhouse, _lever, _ashby, _workday]
 
 
 def scrape(url: str) -> RawJD:

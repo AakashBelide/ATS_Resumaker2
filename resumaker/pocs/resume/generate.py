@@ -28,34 +28,84 @@ def _skills_count(content: ResumeContent) -> int:
     return sum(len(v) for v in content.skills.values())
 
 
+def _combine_dates(newer: str, older: str) -> str:
+    """Merge 'start - end' ranges (list is newest-first): older.start - newer.end."""
+    def parts(d):
+        bits = [x.strip() for x in re.split(r"\s*[-–]\s*", d) if x.strip()]
+        return (bits[0], bits[-1]) if bits else ("", "")
+    n_start, n_end = parts(newer)
+    o_start, _ = parts(older)
+    return f"{o_start or n_start} - {n_end or ''}".strip(" -")
+
+
+def _merge_same_company(exps: list[dict]) -> list[dict]:
+    """Merge consecutive roles at the SAME company into one block showing the
+    promotion (oldest title -> newest title), the full date range, and merged
+    bullets. Recruiters read this as growth; it also saves header lines."""
+    if not exps:
+        return exps
+    groups: list[list[dict]] = [[dict(exps[0])]]
+    for e in exps[1:]:
+        same = e.get("organization", "").strip().lower() == \
+            groups[-1][-1].get("organization", "").strip().lower()
+        (groups[-1] if same else groups).append(dict(e)) if same else groups.append([dict(e)])
+    out: list[dict] = []
+    for g in groups:
+        if len(g) == 1:
+            out.append(g[0]); continue
+        newest, oldest = g[0], g[-1]
+        # Use the most senior (newest) title only; the full date range implies the
+        # progression. Chaining every title reads verbosely and wraps badly.
+        title = newest.get("title", "")
+        dates = _combine_dates(newest.get("dates", ""), oldest.get("dates", ""))
+        bullets: list[str] = []
+        for x in g:
+            for b in x.get("bullets", []):
+                if b not in bullets:
+                    bullets.append(b)
+        out.append({"title": title, "organization": newest.get("organization", ""),
+                    "location": newest.get("location", ""), "dates": dates,
+                    "bullets": bullets})
+    return out
+
+
 def _trim_one(content: ResumeContent) -> bool:
-    """Remove the single lowest-priority element to shrink the resume by one step,
-    least-relevant first. Returns True if something was trimmed."""
-    # 1) trim trailing project bullets, then drop projects entirely
-    if content.projects:
-        last = content.projects[-1]
-        if len(last.get("bullets", [])) > 1:
-            last["bullets"].pop()
-        else:
-            content.projects.pop()
-        return True
-    # 2) trim an oversized skills block (drop last item of the largest category)
-    if _skills_count(content) > 22:
+    """Shrink by one step, least-relevant first. PROJECTS are protected (tech
+    differentiator) - trimmed only as a near-last resort, after oldest experience."""
+    # 1) oversized skills -> drop last item of the largest category
+    if _skills_count(content) > 20:
         cat = max(content.skills, key=lambda k: len(content.skills[k]))
         if content.skills[cat]:
             content.skills[cat].pop()
             if not content.skills[cat]:
                 del content.skills[cat]
             return True
-    # 3) trim trailing bullet of the OLDEST experience that still has >=2 bullets
-    for e in reversed(content.experiences):
-        if len(e.get("bullets", [])) >= 2:
-            e["bullets"].pop()
+    # 2) trim OLDEST experiences first, PROTECTING the top-2 recent roles at >=2
+    #    bullets (their highest-impact wins must survive).
+    for i in range(len(content.experiences) - 1, -1, -1):
+        floor = 2 if i < 2 else 1
+        if len(content.experiences[i].get("bullets", [])) > floor:
+            content.experiences[i]["bullets"].pop()
             return True
-    # 4) drop the oldest experience if we still have several
+    # 3) drop the oldest experience if we still have >3 blocks
     if len(content.experiences) > 3:
         content.experiences.pop()
         return True
+    # 4) trim projects (keep at least one project with one bullet)
+    if content.projects:
+        last = content.projects[-1]
+        if len(last.get("bullets", [])) > 1:
+            last["bullets"].pop()
+        elif len(content.projects) > 1:
+            content.projects.pop()
+        else:
+            return False
+        return True
+    # 5) absolute last resort: let the top-2 roles drop to 1 bullet
+    for i in range(min(2, len(content.experiences))):
+        if len(content.experiences[i].get("bullets", [])) > 1:
+            content.experiences[i]["bullets"].pop()
+            return True
     return False
 
 
@@ -76,8 +126,8 @@ def _apply_budget(content: ResumeContent, target_pages: int) -> None:
     caps = [4, 4, 3, 2, 2]
     for e, cap in zip(content.experiences, caps):
         e["bullets"] = e.get("bullets", [])[:cap]
-    # at most 1 project, 2 bullets
-    content.projects = content.projects[:1]
+    # keep up to 2 projects (protected differentiator), 2 bullets each
+    content.projects = content.projects[:2]
     for pr in content.projects:
         pr["bullets"] = pr.get("bullets", [])[:2]
 
@@ -104,6 +154,8 @@ def generate_resume(job: JobPosting, *, keyword_set: KeywordSet | None = None,
     keyword_set = keyword_set or extract_keywords(job)
     gap = gap or analyze_gaps(job)
     content = tailor_resume(job, keyword_set, gap, model=tailor_model)
+    # combine consecutive same-company roles into one promotion block (space + growth)
+    content.experiences = _merge_same_company(content.experiences)
 
     slug = _slug(job.company, job.title)
     out = Path(out_dir) if out_dir else _OUT / slug

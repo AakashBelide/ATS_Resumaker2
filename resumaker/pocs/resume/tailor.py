@@ -47,15 +47,17 @@ CANDIDATE PROFILE (the ONLY source of truth):
 
 RULES:
 1. "headline": use the target job title if the candidate can honestly claim it; else the closest honest title.
-2. "summary": 3-4 lines mirroring what the role wants, weaving in top keywords the candidate genuinely has. Grounded, specific, no fluff/buzzwords, no em-dashes.
+2. "summary": STRICTLY 2-3 sentences (max ~55 words / 3 lines) mirroring what the role wants, weaving in top keywords the candidate genuinely has. Grounded, specific, no fluff/buzzwords, no em-dashes. Keep it tight - it must not crowd out experience bullets.
 3. "experiences": SELECT the most relevant roles (this candidate is early-career -> keep it to ONE PAGE: include the 4-5 most relevant roles, you may drop the least-relevant older internships). Keep organization/title/dates EXACTLY from the profile. Rewrite each role's bullets:
    - Reformulate the profile's REAL bullets using the job's vocabulary where accurate.
    - Keep ALL real metrics exactly (e.g. **$59.7 million**, **35%**). Bold key metrics and top matched keywords with **double asterisks**.
    - VARY structure: mix full "accomplished X by doing Y (metric)" bullets with shorter punch bullets. Do NOT make every bullet identical shape. About half the bullets should carry a metric - not all.
-   - 3-5 bullets for recent/relevant roles, fewer for older ones.
+   - Give the 2 MOST RECENT/RELEVANT roles 2-3 bullets each, and LEAD each with the highest-business-impact achievement (largest $ saved/prevented, biggest scale, e.g. the $1.19M graph engine, $6M fraud prevented, $59.7M). Older roles get 1 bullet.
    - NEVER invent a tool, metric, or outcome not in the source bullet.
-4. "projects": pick the 1-2 most relevant; rewrite bullets under the same rules.
+   - De-emphasize pre-2022 internships (keep at most one, 1 bullet) - they are old/low-signal for a targeted role.
+4. "projects": ALWAYS include the 1-2 MOST relevant projects (recent, GitHub-linked projects are differentiators for tech roles) - rewrite bullets under the same rules.
 5. "skills": reorder/filter to the JD. Lead with existing+supported skills in the JD's wording. You may add an equivalence bridge from the list above (format: "GCP Cloud Run (AWS Lambda-equivalent)"). Never add a skill the candidate does not have.
+6. Use ONLY plain ASCII characters. NO em-dashes (-) or en-dashes anywhere; no smart quotes; no arrows or fancy bullets.
 
 Return JSON:
 {{"headline": str, "summary": str,
@@ -94,10 +96,21 @@ def tailor_resume(job: JobPosting, keyword_set: KeywordSet, gap: GapReport,
             profile=_profile_for_prompt()),
         system=SYSTEM, temperature=0.1, max_tokens=4000, task="tailor_resume")
 
+    def _btext(b):
+        return str(b.get("text") or b.get("bullet") or "") if isinstance(b, dict) else str(b)
+
+    def _norm_entries(entries):
+        out = []
+        for e in entries or []:
+            e = dict(e)
+            e["bullets"] = [t for t in (_btext(b) for b in e.get("bullets", [])) if t.strip()]
+            out.append(e)
+        return out
+
     return ResumeContent(
         headline=data.get("headline", ""),
         summary=data.get("summary", ""),
-        experiences=data.get("experiences", []) or [],
-        projects=data.get("projects", []) or [],
+        experiences=_norm_entries(data.get("experiences", [])),
+        projects=_norm_entries(data.get("projects", [])),
         skills=data.get("skills", {}) or {},
     )
