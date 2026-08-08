@@ -5,6 +5,8 @@ FROM php:7.4-apache
 RUN apt-get update && apt-get install -y --no-install-recommends \
         libpng-dev libjpeg-dev libfreetype6-dev libzip-dev libicu-dev libonig-dev \
         unzip curl ca-certificates \
+        poppler-utils antiword html2text unrtf \
+
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install mysqli pdo_mysql gd zip intl mbstring \
     && a2enmod rewrite \

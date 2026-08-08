@@ -26,6 +26,19 @@ Run through the web installer. When it asks for the database, use:
 | user | `cats` |
 | password | `cats` |
 
+**Resume Indexing step** — the image ships the extractor binaries so uploaded
+resumes are text-indexed (required for content search). Enter these paths and
+"Test Configuration" (all green):
+
+| tool | path |
+|------|------|
+| Antiword (.doc) | `/usr/bin/antiword` |
+| PDFToText (.pdf) | `/usr/bin/pdftotext` |
+| Html2Text (.html) | `/usr/bin/html2text` |
+| UnRTF (.rtf) | `/usr/bin/unrtf` |
+
+(LDAP / SOAP warnings on the System Check are optional — proceed past them.)
+
 Create the admin login when prompted, then log in at `http://localhost:8090/`.
 
 ## 3. Generate the candidate files
