@@ -7,6 +7,7 @@ from pathlib import Path
 
 from pocs.apply_decision import decide_apply
 from pocs.ats import score_ats
+from pocs.ats_verify import verify_ats
 from pocs.fact_gate import verify_resume
 from pocs.gap import analyze_gaps
 from pocs.jd_structure import structure_jd
@@ -49,9 +50,14 @@ for r in decision.reasons:
 doc = generate_resume(job, keyword_set=ks, gap=gap)
 rep = verify_resume(doc.content)
 ats = score_ats(job, doc.content, keyword_set=ks)
+vrep = verify_ats(job, doc.content, pdf_path=doc.pdf_path)
 print(f"\nRESUME: {doc.pdf_path}")
 print(f"  pages={doc.page_count}  fact-gate={'PASS' if rep.passed else 'BLOCKED'} "
       f"blockers={rep.blockers}")
+print(f"  ATS-verify={'PASS' if vrep.passed else 'BLOCKED'} "
+      f"blockers={vrep.blockers}")
+for w in vrep.warnings:
+    print("   verify-warning:", w)
 print(f"  ATS(proxy) {ats.overall_0_100}/100 [{ats.band}]  kw={ats.keyword_coverage} "
       f"quant={ats.quantification} struct={ats.structure} "
       f"semantic={ats.semantic_coverage}% ({ats.semantic_method})")
@@ -72,6 +78,6 @@ out = Path(doc.pdf_path).parent
     "fit": fit.model_dump(), "sponsorship": verdict.__dict__,
     "decision": decision.model_dump(),
     "pages": doc.page_count, "fact_gate_passed": rep.passed,
-    "ats": ats.model_dump(),
+    "ats": ats.model_dump(), "ats_verify": vrep.model_dump(),
 }, indent=1, default=str))
 print("PIPELINE_DONE")
