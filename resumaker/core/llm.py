@@ -134,7 +134,7 @@ class ClaudeCLIProvider(LLMProvider):
     name = "claude"
 
     def __init__(self, model: str = "claude-haiku-4-5", timeout_s: int = 240,
-                 cwd: str | None = None, retries: int = 3):
+                 cwd: str | None = None, retries: int = 4):
         self.model = model
         self.timeout_s = timeout_s
         self.cwd = cwd or str(REPO_ROOT)

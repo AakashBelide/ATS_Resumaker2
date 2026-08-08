@@ -176,3 +176,26 @@ class ATSScore(BaseModel):
     missing_keywords: list[str] = Field(default_factory=list)     # hard keywords absent
     weak_requirements: list[str] = Field(default_factory=list)    # JD reqs under-evidenced
     detail: dict[str, Any] = Field(default_factory=dict)
+
+
+# ---------------------------------------------------------------- Pipeline (Phase 2)
+class PipelineResult(BaseModel):
+    """Phase-2 orchestrator output: every stage's result in one object. Defined last
+    so all referenced stage models already exist."""
+    url: str = ""
+    out_dir: str = ""
+    job: JobPosting | None = None
+    keyword_set: KeywordSet | None = None
+    gap: GapReport | None = None
+    fit: FitScore | None = None
+    sponsorship: dict[str, Any] = Field(default_factory=dict)   # SponsorshipVerdict.__dict__
+    decision: ApplyDecision | None = None
+    resume: ResumeDoc | None = None
+    fact_gate: VerifyReport | None = None
+    ats: ATSScore | None = None
+    ats_verify: VerifyReport | None = None
+    cover_letter: CoverLetter | None = None
+    gated_out: bool = False          # stopped early at the apply gate
+    timings: dict[str, float] = Field(default_factory=dict)
+    warnings: list[str] = Field(default_factory=list)   # non-fatal stage issues
+    error: str = ""                  # fatal: pipeline could not produce a resume
