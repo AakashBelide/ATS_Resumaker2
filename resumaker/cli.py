@@ -1,22 +1,29 @@
-"""Resumaker CLI (Phase 2).
+"""Resumaker CLI (Phase 2 + 2.5 live progress).
 
     uv run python -m cli run <jd_url> [--out DIR] [--pages N] [--gate]
                                       [--semantic lexical|gemini] [--no-parallel]
-                                      [--no-cover] [--json]
+                                      [--no-cover] [--json] [--plain]
+    uv run python -m cli watch <out_dir>     # live view of a running/finished run
     uv run python -m cli costs
 
-Streams stage progress, then prints a decision + resume + ATS + cover-letter summary.
+`run` shows a live per-stage table (rich); `watch` renders the same from a run's
+status.json so a detached/background run is observable from another terminal.
 """
 from __future__ import annotations
 
 import argparse
+import json
 import sys
+import time
+from pathlib import Path
 
 from core.cost_guard import summary as cost_summary
 from core.schemas import PipelineResult
 from orchestrator import run_pipeline
 
 _ICON = {"start": "*", "done": "OK", "skip": "--", "error": "XX"}
+_MARK = {"start": "[yellow]... [/]", "done": "[green]OK[/]",
+         "skip": "[dim]skip[/]", "error": "[red]XX[/]"}
 
 
 def _printer(stage: str, status: str, detail: str = "") -> None:
@@ -24,6 +31,50 @@ def _printer(stage: str, status: str, detail: str = "") -> None:
         print(f"  [ ..] {stage} ...", flush=True)
     else:
         print(f"  [{_ICON.get(status, '  '):>3}] {stage} {detail}".rstrip(), flush=True)
+
+
+def _stage_table(stages: list[dict], title: str):
+    """Render a rich table of stages -> status/elapsed."""
+    from rich.table import Table
+    t = Table(title=title, expand=False)
+    t.add_column("stage", style="cyan", no_wrap=True)
+    t.add_column("status")
+    t.add_column("elapsed", justify="right")
+    t.add_column("detail", style="dim", overflow="fold", max_width=60)
+    for s in stages:
+        el = f"{s['elapsed']}s" if s.get("elapsed") is not None else ""
+        t.add_row(s["stage"], _MARK.get(s["status"], s["status"]), el, s.get("detail", "") or "")
+    return t
+
+
+class _LiveProgress:
+    """Drives a rich Live table from orchestrator on_progress callbacks (foreground)."""
+    def __init__(self, title: str):
+        from rich.console import Console
+        from rich.live import Live
+        self.title = title
+        self.stages: dict[str, dict] = {}
+        self.order: list[str] = []
+        self._live = Live(console=Console(), refresh_per_second=8, transient=False)
+
+    def __enter__(self):
+        self._live.start()
+        return self
+
+    def __exit__(self, *exc):
+        self._live.stop()
+
+    def __call__(self, stage: str, status: str, detail: str = "") -> None:
+        if stage not in self.stages:
+            self.order.append(stage)
+        el = None
+        if status != "start" and detail.endswith("s") and detail[:-1].replace(".", "").isdigit():
+            el = float(detail[:-1])
+        prev = self.stages.get(stage, {})
+        self.stages[stage] = {"stage": stage, "status": status,
+                              "elapsed": el if el is not None else prev.get("elapsed"),
+                              "detail": detail if status != "done" else prev.get("detail", "")}
+        self._live.update(_stage_table([self.stages[s] for s in self.order], self.title))
 
 
 def _summary(res: PipelineResult) -> None:
@@ -72,12 +123,23 @@ def _summary(res: PipelineResult) -> None:
         print("Timings(s):", {k: v for k, v in res.timings.items()})
 
 
+def _run_kwargs(args):
+    return dict(out_dir=args.out, target_pages=args.pages, gate=args.gate,
+                parallel=not args.no_parallel, make_cover_letter=not args.no_cover,
+                semantic_method=args.semantic)
+
+
 def _cmd_run(args) -> int:
     print(f"Running pipeline for: {args.url}\n")
-    res = run_pipeline(
-        args.url, out_dir=args.out, target_pages=args.pages, gate=args.gate,
-        parallel=not args.no_parallel, make_cover_letter=not args.no_cover,
-        semantic_method=args.semantic, on_progress=_printer)
+    use_live = not args.plain and not args.json and sys.stdout.isatty()
+    if use_live:
+        try:
+            with _LiveProgress(f"pipeline: {args.url}") as live:
+                res = run_pipeline(args.url, on_progress=live, **_run_kwargs(args))
+        except Exception:  # noqa: BLE001 - rich unavailable/no tty -> fall back
+            res = run_pipeline(args.url, on_progress=_printer, **_run_kwargs(args))
+    else:
+        res = run_pipeline(args.url, on_progress=_printer, **_run_kwargs(args))
     if args.json:
         print(res.model_dump_json(indent=1, exclude={"resume": {"content"}}))
     else:
@@ -85,8 +147,24 @@ def _cmd_run(args) -> int:
     return 1 if res.error else 0
 
 
+def _cmd_watch(args) -> int:
+    """Poll a run's status.json and render a live table (for background runs)."""
+    from rich.live import Live
+    status = Path(args.dir) / "status.json"
+    print(f"Watching {status} (Ctrl-C to stop)\n")
+    with Live(refresh_per_second=4) as live:
+        for _ in range(args.timeout * 2):
+            if status.exists():
+                snap = json.loads(status.read_text())
+                title = f"{snap.get('url','') or args.dir}  ({snap.get('elapsed',0)}s)"
+                live.update(_stage_table(snap.get("stages", []), title))
+                if snap.get("done"):
+                    break
+            time.sleep(0.5)
+    return 0
+
+
 def _cmd_costs(_args) -> int:
-    import json
     print(json.dumps(cost_summary(), indent=1))
     return 0
 
@@ -104,7 +182,13 @@ def main(argv: list[str] | None = None) -> int:
     r.add_argument("--no-cover", action="store_true", help="skip the cover letter")
     r.add_argument("--semantic", choices=["lexical", "gemini"], default="lexical")
     r.add_argument("--json", action="store_true", help="print the full result as JSON")
+    r.add_argument("--plain", action="store_true", help="plain text progress (no live table)")
     r.set_defaults(func=_cmd_run)
+
+    w = sub.add_parser("watch", help="live-view a run's progress from its status.json")
+    w.add_argument("dir", help="the run's output directory (contains status.json)")
+    w.add_argument("--timeout", type=int, default=600, help="max seconds to watch")
+    w.set_defaults(func=_cmd_watch)
 
     c = sub.add_parser("costs", help="show LLM spend (Gemini budget + Claude usage)")
     c.set_defaults(func=_cmd_costs)

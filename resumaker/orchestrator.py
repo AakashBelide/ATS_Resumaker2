@@ -18,6 +18,7 @@ from pathlib import Path
 from typing import Callable
 
 from core import profile as prof
+from core.progress import ProgressReporter
 from core.schemas import PipelineResult
 from pocs.apply_decision import decide_apply
 from pocs.ats import score_ats
@@ -64,16 +65,23 @@ def run_pipeline(url: str | None = None, *, job=None, out_dir: str | None = None
     t = {}
     res = PipelineResult(url=url or "")
 
+    # Progress sink: forwards to the CLI callback AND persists status.json/progress.jsonl.
+    reporter = ProgressReporter(
+        url=url or "",
+        on_event=lambda ev: p(ev.stage, ev.status,
+                              ev.detail or (f"{ev.elapsed}s" if ev.elapsed else "")),
+        out_dir=out_dir)
+
     def timed(stage, fn):
-        p(stage, "start")
+        reporter.emit(stage, "start")
         t0 = time.time()
         try:
             out = fn()
         except Exception as e:  # noqa: BLE001
-            p(stage, "error", str(e))
+            reporter.emit(stage, "error", str(e))
             raise
         t[stage] = round(time.time() - t0, 2)
-        p(stage, "done", f"{t[stage]}s")
+        reporter.emit(stage, "done")
         return out
 
     try:
@@ -82,6 +90,12 @@ def run_pipeline(url: str | None = None, *, job=None, out_dir: str | None = None
             raw = timed("scrape", lambda: scrape(url))
             job = timed("structure", lambda: structure_jd(raw, model="sonnet"))
         res.job = job
+
+        # resolve the out-dir now so status.json + all artifacts land together
+        resolved_out = out_dir or str(_OUT / _slug(job.company, job.title))
+        out_dir = resolved_out
+        if reporter.out_dir is None:
+            reporter.set_out_dir(resolved_out)
 
         # 2) parallel fan-out: keywords | gap | sponsorship (independent)
         def _kw():
@@ -94,13 +108,13 @@ def run_pipeline(url: str | None = None, *, job=None, out_dir: str | None = None
             return sponsor_signal(job.company) if job.company else None
 
         if parallel:
-            p("analyze", "start", "keywords|gap|sponsorship (parallel)")
+            reporter.emit("analyze", "start", "keywords|gap|sponsorship (parallel)")
             t0 = time.time()
             with ThreadPoolExecutor(max_workers=3) as ex:
                 f_kw, f_gap, f_spon = ex.submit(_kw), ex.submit(_gap), ex.submit(_spon)
                 ks, gap, sig = f_kw.result(), f_gap.result(), f_spon.result()
             t["analyze"] = round(time.time() - t0, 2)
-            p("analyze", "done", f"{t['analyze']}s")
+            reporter.emit("analyze", "done")
         else:
             ks = timed("keywords", _kw)
             gap = timed("gap", _gap)
@@ -116,9 +130,10 @@ def run_pipeline(url: str | None = None, *, job=None, out_dir: str | None = None
         # 4) apply gate (optional): don't spend generation compute on a hard no
         if gate and not res.decision.recommend_apply:
             res.gated_out = True
-            p("gate", "skip", "apply-decision negative; skipping resume/cover")
+            reporter.emit("gate", "skip", "apply-decision negative; skipping resume/cover")
             res.timings = t
             _save(res, url, job)
+            reporter.finish()
             return res
 
         # 5) resume: tailor -> deterministic skills -> docx/pdf -> fact-gate/verify/score
@@ -142,10 +157,13 @@ def run_pipeline(url: str | None = None, *, job=None, out_dir: str | None = None
 
         res.timings = t
         _save(res, url, job)
+        reporter.finish()
         return res
     except Exception as e:  # noqa: BLE001
         res.error = f"{type(e).__name__}: {e}"
         res.timings = t
+        reporter.emit("pipeline", "error", res.error)
+        reporter.finish()
         return res
 
 
