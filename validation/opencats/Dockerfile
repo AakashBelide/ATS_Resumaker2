@@ -3,9 +3,10 @@
 FROM php:7.4-apache
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        libpng-dev libjpeg-dev libfreetype6-dev libzip-dev unzip curl ca-certificates \
+        libpng-dev libjpeg-dev libfreetype6-dev libzip-dev libicu-dev libonig-dev \
+        unzip curl ca-certificates \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
-    && docker-php-ext-install mysqli gd zip \
+    && docker-php-ext-install mysqli pdo_mysql gd zip intl mbstring \
     && a2enmod rewrite \
     && rm -rf /var/lib/apt/lists/*
 
@@ -17,9 +18,10 @@ RUN { \
       echo "memory_limit = 256M"; \
     } > /usr/local/etc/php/conf.d/opencats.ini
 
-ARG VER=0.9.4-2
+# 0.9.7.x uses mysqli (the legacy `mysql` ext was removed in PHP 7 - 0.9.4 fails its check).
+ARG VER=0.9.7.4
 RUN curl -fSL -o /tmp/oc.tar.gz \
-        "https://github.com/opencats/OpenCATS/releases/download/${VER}/OpenCATS-${VER}-full.tar.gz" \
+        "https://github.com/opencats/OpenCATS/releases/download/${VER}/opencats-${VER}-full.tar.gz" \
     && tar xzf /tmp/oc.tar.gz -C /var/www/html --strip-components=1 \
     && rm /tmp/oc.tar.gz \
     && chown -R www-data:www-data /var/www/html \

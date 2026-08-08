@@ -5,10 +5,13 @@ same category of engine real ATS use) and reports the fields it extracts, diffed
 against what we intended (the profile). This is the most credible answer to "does
 my resume actually parse into clean ATS fields?" - independent of our own parser.
 
-Setup (owner, one-time; free tier):
+Setup (owner, one-time; free tier). Affinda organizes uploads by WORKSPACE +
+document type (not "collections"):
   1. Sign up at https://app.affinda.com and create an API key.
-  2. Create a Collection using the "Resume Parser" extractor; copy its id.
-  3. In .env (gitignored):  AFFINDA_API_KEY=...   AFFINDA_COLLECTION=...
+  2. Use your workspace's identifier (shown in the Affinda UI/assistant).
+  3. In .env (gitignored):  AFFINDA_API_KEY=...   AFFINDA_WORKSPACE=<workspace id>
+     (optional AFFINDA_DOCUMENT_TYPE=<doc-type id> to force the Resume schema;
+      legacy AFFINDA_COLLECTION is still honored for older accounts.)
 
 Run:  uv run python -m pocs.ats_sim.affinda [path/to/resume.pdf]
 Cost: Affinda's free tier (no charge to this project; no Gemini budget impact).
@@ -42,11 +45,19 @@ def parse_with_affinda(pdf_path: str) -> dict:
     key = os.getenv("AFFINDA_API_KEY")
     if not key:
         raise RuntimeError(
-            "AFFINDA_API_KEY not set. Add it (and AFFINDA_COLLECTION) to .env - "
+            "AFFINDA_API_KEY not set. Add it (and AFFINDA_WORKSPACE) to .env - "
             "see .env.example / this module's docstring.")
+    # Affinda routes by workspace + document type (newer model) or collection (legacy).
     data = {"wait": "true"}
+    if os.getenv("AFFINDA_WORKSPACE"):
+        data["workspace"] = os.getenv("AFFINDA_WORKSPACE")
+    if os.getenv("AFFINDA_DOCUMENT_TYPE"):
+        data["documentType"] = os.getenv("AFFINDA_DOCUMENT_TYPE")
     if os.getenv("AFFINDA_COLLECTION"):
         data["collection"] = os.getenv("AFFINDA_COLLECTION")
+    if not any(k in data for k in ("workspace", "collection")):
+        raise RuntimeError(
+            "Set AFFINDA_WORKSPACE (recommended) or AFFINDA_COLLECTION in .env.")
     with open(pdf_path, "rb") as fh:
         r = httpx.post(_API, headers={"Authorization": f"Bearer {key}"},
                        files={"file": (Path(pdf_path).name, fh, "application/pdf")},
