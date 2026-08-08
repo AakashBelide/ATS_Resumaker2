@@ -141,10 +141,13 @@ def _bullets(doc, items):
 
 def render_docx(content: ResumeContent, out_path: str,
                 contact: dict | None = None, links: dict | None = None,
-                include_certs: bool = False) -> str:
+                include_certs: bool = False, location_override: str | None = None) -> str:
     p = prof.load_profile()
-    contact = contact or p["contact"]
+    contact = dict(contact or p["contact"])
     links = links or p["links"]
+    # JD-aware location line (Task 1.L). Falls back to the profile location.
+    if location_override:
+        contact["location"] = location_override
 
     doc = Document()
     _set_margins(doc.sections[0])

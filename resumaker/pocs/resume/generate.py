@@ -12,6 +12,7 @@ from pathlib import Path
 from core.schemas import GapReport, JobPosting, KeywordSet, ResumeContent, ResumeDoc
 from pocs.gap import analyze_gaps
 from pocs.keywords import extract_keywords
+from pocs.location import resolve_location
 from pocs.resume.render_docx import render_docx
 from pocs.resume.render_pdf import docx_to_pdf, page_count
 from pocs.resume.tailor import tailor_resume
@@ -152,16 +153,17 @@ def _apply_budget(content: ResumeContent, target_pages: int) -> None:
         pr["bullets"] = pr.get("bullets", [])[:2]
 
 
-def _fit_pages(content: ResumeContent, out: Path, slug: str,
-               target_pages: int, max_iter: int = 20) -> tuple[str, str, int]:
+def _fit_pages(content: ResumeContent, out: Path, slug: str, target_pages: int,
+               max_iter: int = 20, location_override: str | None = None
+               ) -> tuple[str, str, int]:
     """Budget-trim, render, then deterministically fine-trim until <= target_pages."""
     _apply_budget(content, target_pages)
-    docx = render_docx(content, str(out / f"{slug}.docx"))
+    docx = render_docx(content, str(out / f"{slug}.docx"), location_override=location_override)
     pdf = docx_to_pdf(docx)
     pages = page_count(pdf)
     it = 0
     while pages > target_pages and it < max_iter and _trim_one(content):
-        docx = render_docx(content, str(out / f"{slug}.docx"))
+        docx = render_docx(content, str(out / f"{slug}.docx"), location_override=location_override)
         pdf = docx_to_pdf(docx)
         pages = page_count(pdf)
         it += 1
@@ -177,9 +179,17 @@ def generate_resume(job: JobPosting, *, keyword_set: KeywordSet | None = None,
     # combine consecutive same-company roles, then enforce reverse-chronological order
     content.experiences = _sort_reverse_chron(_merge_same_company(content.experiences))
 
+    # JD-aware location presentation (Task 1.L, blueprint §6 + Appendix B1).
+    loc = resolve_location(job)
+    for w in loc.warnings:
+        print(f"[location] WARNING: {w}")
+    for n in loc.notes:
+        print(f"[location] note: {n}")
+
     slug = _slug(job.company, job.title)
     out = Path(out_dir) if out_dir else _OUT / slug
-    docx, pdf, pages = _fit_pages(content, out, slug, target_pages)
+    docx, pdf, pages = _fit_pages(content, out, slug, target_pages,
+                                  location_override=loc.display)
     return ResumeDoc(content=content, docx_path=docx, pdf_path=pdf, page_count=pages)
 
 
