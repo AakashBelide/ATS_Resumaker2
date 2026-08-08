@@ -140,7 +140,8 @@ def _bullets(doc, items):
 
 
 def render_docx(content: ResumeContent, out_path: str,
-                contact: dict | None = None, links: dict | None = None) -> str:
+                contact: dict | None = None, links: dict | None = None,
+                include_certs: bool = False) -> str:
     p = prof.load_profile()
     contact = contact or p["contact"]
     links = links or p["links"]
@@ -184,28 +185,35 @@ def render_docx(content: ResumeContent, out_path: str,
             r = sp.add_run(_ascii(f"{cat}: ")); r.bold = True
             sp.add_run(_ascii(" | ".join(items)))
 
-    # --- Experience: clean 2-line block (company+dates line, then title+location).
-    #     Avoids ugly wrap for long titles; location shares the title line (no
-    #     wasted line); company gets a clean dated header row. ---
+    # --- Experience: one clean line "Company - Title | Location .... Dates".
+    #     Concise (JD-aware) titles keep this on a single line. ---
     if content.experiences:
         _section_header(doc, "Experience")
         for e in content.experiences:
             org = _ascii(e.get("organization", ""))
             title = _ascii(e.get("title", ""))
             loc = _ascii(e.get("location", ""))
-            _heading_row(doc, org, "", e.get("dates", ""))          # line 1: company | dates
-            sub = doc.add_paragraph()                                # line 2: title | location
-            sub.paragraph_format.space_after = Pt(1)
-            r = sub.add_run(title); r.italic = True
-            if loc:
-                sub.add_run(f"  |  {loc}").italic = True
+            left_bold = " - ".join(x for x in (org, title) if x)
+            left_rest = f"  |  {loc}" if loc else ""
+            _heading_row(doc, left_bold, left_rest, e.get("dates", ""))
             _bullets(doc, e.get("bullets", []))
 
-    # --- Projects ---
+    # --- Projects (title rendered as a hyperlink when a url is present) ---
     if content.projects:
         _section_header(doc, "Projects")
         for pr in content.projects:
-            _heading_row(doc, _ascii(pr.get("title", "")), "", pr.get("dates", ""))
+            p_title = _ascii(pr.get("title", ""))
+            url = pr.get("url") or ""
+            para = doc.add_paragraph()
+            para.paragraph_format.space_before = Pt(4)
+            para.paragraph_format.tab_stops.add_tab_stop(
+                RIGHT_TAB, alignment=WD_TAB_ALIGNMENT.RIGHT)
+            if url:
+                _add_hyperlink(para, url, p_title)
+            else:
+                para.add_run(p_title).bold = True
+            if pr.get("dates"):
+                para.add_run(f"\t{pr['dates']}").bold = True
             _bullets(doc, pr.get("bullets", []))
 
     # --- Education ---
@@ -221,9 +229,10 @@ def render_docx(content: ResumeContent, out_path: str,
             if extra:
                 ep = doc.add_paragraph(); ep.add_run(" | ".join(extra)).italic = True
 
-    # --- Certifications ---
+    # --- Certifications (off by default: low-signal for general AI/eng roles;
+    #     the space is better used for impact bullets) ---
     certs = content.certifications or p.get("certifications", [])
-    if certs:
+    if include_certs and certs:
         _section_header(doc, "Certifications")
         cp = doc.add_paragraph()
         cp.add_run(_ascii(" | ".join(c.get("title", "") for c in certs if c.get("title"))))

@@ -38,6 +38,24 @@ def _combine_dates(newer: str, older: str) -> str:
     return f"{o_start or n_start} - {n_end or ''}".strip(" -")
 
 
+_MONTHS = {m: i for i, m in enumerate(
+    ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"], 1)}
+
+
+def _end_key(dates: str) -> tuple[int, int]:
+    """Sort key from the END of a 'start - end' range (reverse-chronological)."""
+    end = re.split(r"\s*[-–]\s*", dates or "")[-1].strip().lower()
+    if any(w in end for w in ("present", "current", "now")):
+        return (9999, 12)
+    mon = next((_MONTHS[k] for k in _MONTHS if k in end), 0)
+    ym = re.search(r"(19|20)\d{2}", end)
+    return (int(ym.group(0)) if ym else 0, mon)
+
+
+def _sort_reverse_chron(exps: list[dict]) -> list[dict]:
+    return sorted(exps, key=lambda e: _end_key(e.get("dates", "")), reverse=True)
+
+
 def _merge_same_company(exps: list[dict]) -> list[dict]:
     """Merge consecutive roles at the SAME company into one block showing the
     promotion (oldest title -> newest title), the full date range, and merged
@@ -54,9 +72,11 @@ def _merge_same_company(exps: list[dict]) -> list[dict]:
         if len(g) == 1:
             out.append(g[0]); continue
         newest, oldest = g[0], g[-1]
-        # Use the most senior (newest) title only; the full date range implies the
-        # progression. Chaining every title reads verbosely and wraps badly.
-        title = newest.get("title", "")
+        # Fallback title = the SHORTEST real title in the group (tends to be the
+        # clean core engineering title, avoiding verbose unit/management titles).
+        # The tailorer normally combines JD-aware already, so this rarely fires.
+        title = min((x.get("title", "") for x in g if x.get("title")),
+                    key=len, default=newest.get("title", ""))
         dates = _combine_dates(newest.get("dates", ""), oldest.get("dates", ""))
         bullets: list[str] = []
         for x in g:
@@ -73,7 +93,7 @@ def _trim_one(content: ResumeContent) -> bool:
     """Shrink by one step, least-relevant first. PROJECTS are protected (tech
     differentiator) - trimmed only as a near-last resort, after oldest experience."""
     # 1) oversized skills -> drop last item of the largest category
-    if _skills_count(content) > 20:
+    if _skills_count(content) > 26:
         cat = max(content.skills, key=lambda k: len(content.skills[k]))
         if content.skills[cat]:
             content.skills[cat].pop()
@@ -115,15 +135,15 @@ def _apply_budget(content: ResumeContent, target_pages: int) -> None:
     and bullets-per-role by recency."""
     if target_pages > 1:
         return
-    # cap total skills to ~20 by trimming the largest categories
-    while _skills_count(content) > 20 and content.skills:
+    # keep JD-relevant skills generous (only trim a truly oversized block)
+    while _skills_count(content) > 30 and content.skills:
         cat = max(content.skills, key=lambda k: len(content.skills[k]))
         content.skills[cat].pop()
         if not content.skills[cat]:
             del content.skills[cat]
-    # keep the 5 most recent roles; cap bullets by recency (newest gets more)
-    content.experiences = content.experiences[:5]
-    caps = [4, 4, 3, 2, 2]
+    # keep the 4 most relevant roles; fill with bullets (top roles get more depth)
+    content.experiences = content.experiences[:4]
+    caps = [4, 4, 3, 3]
     for e, cap in zip(content.experiences, caps):
         e["bullets"] = e.get("bullets", [])[:cap]
     # keep up to 2 projects (protected differentiator), 2 bullets each
@@ -154,8 +174,8 @@ def generate_resume(job: JobPosting, *, keyword_set: KeywordSet | None = None,
     keyword_set = keyword_set or extract_keywords(job)
     gap = gap or analyze_gaps(job)
     content = tailor_resume(job, keyword_set, gap, model=tailor_model)
-    # combine consecutive same-company roles into one promotion block (space + growth)
-    content.experiences = _merge_same_company(content.experiences)
+    # combine consecutive same-company roles, then enforce reverse-chronological order
+    content.experiences = _sort_reverse_chron(_merge_same_company(content.experiences))
 
     slug = _slug(job.company, job.title)
     out = Path(out_dir) if out_dir else _OUT / slug

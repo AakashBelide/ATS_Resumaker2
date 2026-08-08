@@ -47,22 +47,20 @@ CANDIDATE PROFILE (the ONLY source of truth):
 
 RULES:
 1. "headline": use the target job title if the candidate can honestly claim it; else the closest honest title.
-2. "summary": STRICTLY 2-3 sentences (max ~55 words / 3 lines) mirroring what the role wants, weaving in top keywords the candidate genuinely has. Grounded, specific, no fluff/buzzwords, no em-dashes. Keep it tight - it must not crowd out experience bullets.
-3. "experiences": SELECT the most relevant roles (this candidate is early-career -> keep it to ONE PAGE: include the 4-5 most relevant roles, you may drop the least-relevant older internships). Keep organization/title/dates EXACTLY from the profile. Rewrite each role's bullets:
-   - Reformulate the profile's REAL bullets using the job's vocabulary where accurate.
-   - Keep ALL real metrics exactly (e.g. **$59.7 million**, **35%**). Bold key metrics and top matched keywords with **double asterisks**.
-   - VARY structure: mix full "accomplished X by doing Y (metric)" bullets with shorter punch bullets. Do NOT make every bullet identical shape. About half the bullets should carry a metric - not all.
-   - Give the 2 MOST RECENT/RELEVANT roles 2-3 bullets each, and LEAD each with the highest-business-impact achievement (largest $ saved/prevented, biggest scale, e.g. the $1.19M graph engine, $6M fraud prevented, $59.7M). Older roles get 1 bullet.
-   - NEVER invent a tool, metric, or outcome not in the source bullet.
-   - De-emphasize pre-2022 internships (keep at most one, 1 bullet) - they are old/low-signal for a targeted role.
-4. "projects": ALWAYS include the 1-2 MOST relevant projects (recent, GitHub-linked projects are differentiators for tech roles) - rewrite bullets under the same rules.
-5. "skills": reorder/filter to the JD. Lead with existing+supported skills in the JD's wording. You may add an equivalence bridge from the list above (format: "GCP Cloud Run (AWS Lambda-equivalent)"). Never add a skill the candidate does not have.
-6. Use ONLY plain ASCII characters. NO em-dashes (-) or en-dashes anywhere; no smart quotes; no arrows or fancy bullets.
+2. "summary": STRICTLY 2-3 sentences (max ~55 words) mirroring what the role wants, weaving in top keywords the candidate genuinely has. Grounded and specific. Do NOT end with vague impact-claim filler ("work is measured in business impact...") - if you cite impact, make it concrete and quantified (e.g. "$6M+ fraud prevented, 30% lower deploy costs"). No buzzwords, no em-dashes.
+3. "experiences": SELECT BY RELEVANCE + IMPACT, not recency.
+   - EXCLUDE low-signal roles (e.g. teaching assistant, unrelated internships) unless they fill a genuine gap - their space is better used for impactful bullets.
+   - COMBINE consecutive roles at the SAME company into ONE entry: use the full date range and pick the MOST JD-RELEVANT, concise title from that company's real titles (for a non-risk/non-finance role prefer the core engineering title, e.g. "Data Science and AI Engineer", NOT a long unit/management title). Never invent a title.
+   - Keep organization and dates accurate. FILL the page: a 3+ year candidate should show real depth - give the top 2-3 roles 3-4 bullets each, LEADING with the highest business impact (largest $ saved/prevented, biggest scale: the $1.19M / 10B-edge graph engine, $6M fraud prevented, $59.7M, 30% cost cut, real-time fraud APIs).
+   - Reformulate REAL bullets into the job's vocabulary; keep ALL real metrics exactly; bold key metrics + matched keywords with **double asterisks**; VARY structure (~half carry a metric, not all). NEVER invent a tool, metric, or outcome.
+4. "projects": include the 1-2 MOST relevant projects; COPY the project's "url" from the profile into a "url" field (recruiters click them). Rewrite bullets under the same rules.
+5. "skills": be COMPREHENSIVE - include ALL of the candidate's skills that match or relate to the JD (existing + supported), in the JD's wording. Do NOT minimize: if the candidate has them and the JD wants them, include Snowflake, Airflow, Spark, LLMOps, AI observability, prompt engineering, data engineering, cloud, containers, etc. Group into 4-6 JD-aligned categories. You may add an equivalence bridge (format: "GCP Cloud Run (AWS Lambda-equivalent)"). Never add a skill the candidate does not have.
+6. Use ONLY plain ASCII characters. NO em-dashes or en-dashes anywhere; no smart quotes; no arrows or fancy bullets.
 
 Return JSON:
 {{"headline": str, "summary": str,
   "experiences": [{{"title": str, "organization": str, "location": str, "dates": str, "bullets": [str]}}],
-  "projects": [{{"title": str, "dates": str, "bullets": [str]}}],
+  "projects": [{{"title": str, "dates": str, "url": str, "bullets": [str]}}],
   "skills": {{category: [str]}}}}"""
 
 
@@ -73,6 +71,7 @@ def _profile_for_prompt() -> str:
             "dates": f"{e.get('start_date','')} - {e.get('end_date','')}",
             "bullets": [b["text"] for b in e["bullets"]]} for e in p["experience"]]
     proj = [{"title": pr["title"], "dates": pr.get("date", ""),
+             "url": pr.get("url") or "",
              "bullets": [b["text"] for b in pr["bullets"]]} for pr in p["projects"]]
     return json.dumps({"summary": p["summary"], "experience": exp,
                        "projects": proj, "skills": p["skills"]}, indent=1)
