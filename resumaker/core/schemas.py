@@ -150,10 +150,15 @@ class VerifyReport(BaseModel):
 
 
 class ATSScore(BaseModel):
-    """Task 1.11 output."""
-    keyword_coverage: float = 0.0        # 0-100
-    quantification: float = 0.0
-    structure: float = 0.0
-    semantic_coverage: float = 0.0       # cosine per-requirement
+    """Task 1.11 output. Transparent keyword/skill-overlap proxy (NOT a real ATS
+    score). overall = 0.5*keyword + 0.3*quantification + 0.2*structure."""
+    keyword_coverage: float = 0.0        # 0-100 (weighted; hard > soft)
+    quantification: float = 0.0          # 0-100 (rewards the ~50-60% band, not 100%)
+    structure: float = 0.0               # 0-100 (sections/headings/dates/contact)
+    semantic_coverage: float = 0.0       # 0-100 = % of JD requirements evidenced (per-req cosine)
     overall_0_100: float = 0.0
-    missing_keywords: list[str] = Field(default_factory=list)
+    band: Literal["good", "fair", "weak"] = "weak"
+    semantic_method: Literal["lexical", "gemini"] = "lexical"
+    missing_keywords: list[str] = Field(default_factory=list)     # hard keywords absent
+    weak_requirements: list[str] = Field(default_factory=list)    # JD reqs under-evidenced
+    detail: dict[str, Any] = Field(default_factory=dict)

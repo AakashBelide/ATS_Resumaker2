@@ -6,6 +6,7 @@ import sys
 from pathlib import Path
 
 from pocs.apply_decision import decide_apply
+from pocs.ats import score_ats
 from pocs.fact_gate import verify_resume
 from pocs.gap import analyze_gaps
 from pocs.jd_structure import structure_jd
@@ -47,9 +48,17 @@ for r in decision.reasons:
 # Generate the resume regardless (so we can inspect quality), reusing ks+gap.
 doc = generate_resume(job, keyword_set=ks, gap=gap)
 rep = verify_resume(doc.content)
+ats = score_ats(job, doc.content, keyword_set=ks)
 print(f"\nRESUME: {doc.pdf_path}")
 print(f"  pages={doc.page_count}  fact-gate={'PASS' if rep.passed else 'BLOCKED'} "
       f"blockers={rep.blockers}")
+print(f"  ATS(proxy) {ats.overall_0_100}/100 [{ats.band}]  kw={ats.keyword_coverage} "
+      f"quant={ats.quantification} struct={ats.structure} "
+      f"semantic={ats.semantic_coverage}% ({ats.semantic_method})")
+if ats.missing_keywords:
+    print("  missing keywords:", ", ".join(ats.missing_keywords))
+if ats.weak_requirements:
+    print("  under-evidenced reqs:", "; ".join(ats.weak_requirements[:3]))
 print("  experience blocks:", [e.get("title", "")[:40] for e in doc.content.experiences])
 print("  projects:", [p.get("title", "")[:30] for p in doc.content.projects])
 
@@ -63,5 +72,6 @@ out = Path(doc.pdf_path).parent
     "fit": fit.model_dump(), "sponsorship": verdict.__dict__,
     "decision": decision.model_dump(),
     "pages": doc.page_count, "fact_gate_passed": rep.passed,
+    "ats": ats.model_dump(),
 }, indent=1, default=str))
 print("PIPELINE_DONE")

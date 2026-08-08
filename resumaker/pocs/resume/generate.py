@@ -10,6 +10,7 @@ import re
 from pathlib import Path
 
 from core.schemas import GapReport, JobPosting, KeywordSet, ResumeContent, ResumeDoc
+from pocs.ats import rank_skills
 from pocs.gap import analyze_gaps
 from pocs.keywords import extract_keywords
 from pocs.location import resolve_location
@@ -172,12 +173,20 @@ def _fit_pages(content: ResumeContent, out: Path, slug: str, target_pages: int,
 
 def generate_resume(job: JobPosting, *, keyword_set: KeywordSet | None = None,
                     gap: GapReport | None = None, tailor_model: str = "opus",
-                    target_pages: int = 1, out_dir: str | None = None) -> ResumeDoc:
+                    target_pages: int = 1, out_dir: str | None = None,
+                    deterministic_skills: bool = True) -> ResumeDoc:
     keyword_set = keyword_set or extract_keywords(job)
     gap = gap or analyze_gaps(job)
     content = tailor_resume(job, keyword_set, gap, model=tailor_model)
     # combine consecutive same-company roles, then enforce reverse-chronological order
     content.experiences = _sort_reverse_chron(_merge_same_company(content.experiences))
+    # Deterministic, grounded skills (Task 1.11c): replace the LLM's skills with a
+    # reproducible JD-ranked selection from the profile so grounded, role-standard
+    # tools are never silently dropped (Docker/K8s/Terraform/Airflow/Snowflake...).
+    if deterministic_skills:
+        ranked = rank_skills(job, keyword_set=keyword_set)
+        if ranked:
+            content.skills = ranked
 
     # JD-aware location presentation (Task 1.L, blueprint §6 + Appendix B1).
     loc = resolve_location(job)
