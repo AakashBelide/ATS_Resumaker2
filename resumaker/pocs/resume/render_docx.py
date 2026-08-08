@@ -47,8 +47,13 @@ def _ascii(text: str) -> str:
 def _set_margins(section):
     section.page_width = Inches(8.5)      # US Letter
     section.page_height = Inches(11.0)
-    for side in ("top_margin", "bottom_margin", "left_margin", "right_margin"):
-        setattr(section, side, Inches(0.5))
+    # Slightly tighter top/bottom (0.42in) reclaims vertical space for one extra
+    # bullet per key role while staying well within ATS-safe/print-safe margins;
+    # keep left/right at 0.5in for comfortable line length.
+    section.top_margin = Inches(0.42)
+    section.bottom_margin = Inches(0.42)
+    section.left_margin = Inches(0.5)
+    section.right_margin = Inches(0.5)
 
 
 def _base_style(doc):
