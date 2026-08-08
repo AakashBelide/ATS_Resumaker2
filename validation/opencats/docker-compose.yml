@@ -1,0 +1,29 @@
+# OpenCATS real-ATS sandbox (Phase 3.1). Fully local; safe. NOT part of the pipeline.
+#   docker compose up -d --build       then open http://localhost:8090/install
+# Install wizard DB settings ->  host: db   database: cats   user: cats   pass: cats
+services:
+  db:
+    image: mariadb:10.6          # arm64-native drop-in for MySQL 5.7 (Apple Silicon)
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpw
+      MYSQL_DATABASE: cats
+      MYSQL_USER: cats
+      MYSQL_PASSWORD: cats
+    volumes:
+      - opencats_db:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-prootpw"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  web:
+    build: .
+    ports:
+      - "8090:80"
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  opencats_db:
