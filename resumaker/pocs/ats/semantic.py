@@ -27,9 +27,9 @@ _STOP = set(
 # similarity thresholds below which a requirement counts as "weakly covered".
 # lexical = idf-weighted token RECALL (fraction of the requirement's meaningful
 # content present in the best-matching bullet); gemini = embedding cosine.
-# NOTE: the gemini threshold is a starting default for gemini-embedding-001 and
-# should be calibrated on a labeled set; "lexical" is the reproducible ($0) default.
-_WEAK = {"lexical": 0.40, "gemini": 0.62}
+# gemini threshold calibrated for gemini-embedding-001 w/ task_type=SEMANTIC_SIMILARITY
+# (good matches land ~0.79-0.86); "lexical" is the reproducible ($0) default.
+_WEAK = {"lexical": 0.40, "gemini": 0.75}
 
 
 def tokenize(text: str) -> list[str]:
@@ -75,14 +75,22 @@ def cosine(a: dict[str, float] | list[float], b: dict[str, float] | list[float])
 
 
 def _gemini_embed(texts: list[str]) -> list[list[float]]:
-    """Real embeddings via google-genai, guarded by the Gemini budget."""
+    """Real embeddings via google-genai, guarded by the Gemini budget.
+
+    task_type=SEMANTIC_SIMILARITY is REQUIRED for good results: without it,
+    gemini-embedding-001 cosines are weak/poorly-separated (~0.59-0.71) and
+    under-count coverage; with it, related content lands at ~0.79-0.86 and
+    correctly bridges synonyms (OpenTelemetry/log-monitoring -> observability)."""
     from core.cost_guard import check_gemini, record
-    from core.llm import GeminiProvider  # noqa: F401  (ensures env/SDK present)
+    from core import llm  # noqa: F401  (module import loads .env / GEMINI_API_KEY)
     from google import genai
+    from google.genai import types
 
     check_gemini(0.001)
     client = genai.Client()
-    res = client.models.embed_content(model="gemini-embedding-001", contents=texts)
+    res = client.models.embed_content(
+        model="gemini-embedding-001", contents=texts,
+        config=types.EmbedContentConfig(task_type="SEMANTIC_SIMILARITY"))
     vecs = [list(e.values) for e in res.embeddings]
     approx_tok = sum(len(t) for t in texts) // 4
     record("gemini", "gemini-embedding-001", approx_tok, 0, cost_usd=approx_tok / 1e6 * 0.15)
