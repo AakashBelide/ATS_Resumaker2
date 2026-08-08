@@ -134,10 +134,11 @@ class ClaudeCLIProvider(LLMProvider):
     name = "claude"
 
     def __init__(self, model: str = "claude-haiku-4-5", timeout_s: int = 240,
-                 cwd: str | None = None):
+                 cwd: str | None = None, retries: int = 3):
         self.model = model
         self.timeout_s = timeout_s
         self.cwd = cwd or str(REPO_ROOT)
+        self.retries = retries
 
     def complete(self, prompt: str, *, system: str | None = None,
                  temperature: float = 0.0, max_tokens: int = 4096,
@@ -146,19 +147,33 @@ class ClaudeCLIProvider(LLMProvider):
                "--max-turns", "1", "--model", self.model]
         if system:
             cmd += ["--append-system-prompt", system]
+        # Retry transient CLI failures (rc!=0, empty stdout, JSON parse) with
+        # backoff -- headless invocations occasionally blip under concurrency.
+        last_err = ""
         t0 = time.time()
-        proc = subprocess.run(cmd, capture_output=True, text=True,
-                              timeout=self.timeout_s, cwd=self.cwd)
+        for attempt in range(self.retries):
+            try:
+                proc = subprocess.run(cmd, capture_output=True, text=True,
+                                      timeout=self.timeout_s, cwd=self.cwd)
+            except subprocess.TimeoutExpired as e:
+                last_err = f"timeout after {self.timeout_s}s"
+                time.sleep(1.5 * (attempt + 1))
+                continue
+            if proc.returncode != 0 or not proc.stdout.strip():
+                last_err = f"rc={proc.returncode}: {proc.stderr.strip()[:300]}"
+                time.sleep(1.5 * (attempt + 1))
+                continue
+            try:
+                obj = json.loads(proc.stdout.strip())
+            except json.JSONDecodeError as e:
+                last_err = f"JSON parse: {e}; stdout={proc.stdout[:200]!r}"
+                time.sleep(1.5 * (attempt + 1))
+                continue
+            break
+        else:
+            raise RuntimeError(
+                f"claude CLI failed after {self.retries} attempts: {last_err}")
         latency = time.time() - t0
-        if proc.returncode != 0:
-            raise RuntimeError(
-                f"claude CLI failed (rc={proc.returncode}): {proc.stderr.strip()[:400]}")
-        # stdout is the JSON result; stderr may carry trust/permission warnings.
-        try:
-            obj = json.loads(proc.stdout.strip())
-        except json.JSONDecodeError as e:
-            raise RuntimeError(
-                f"could not parse claude CLI JSON: {e}; stdout={proc.stdout[:300]!r}")
         if obj.get("is_error"):
             raise RuntimeError(f"claude CLI returned error: {obj.get('result', '')[:300]}")
         usage = obj.get("usage", {}) or {}
