@@ -30,8 +30,14 @@ Return a JSON object with EXACTLY these keys:
 - "preferred_quals": string[] (nice-to-haves)
 - "responsibilities": string[] (key responsibilities)
 - "salary_range": string ("" if none)
-- "work_auth_note": string (any stated stance on work authorization or visa
+- "work_auth_note": string (VERBATIM any stated text on work authorization or visa
   sponsorship, e.g. "must be authorized to work in the US without sponsorship"; "" if none)
+- "sponsorship_stance": one of "offers" | "no_sponsorship" | "case_by_case" | "unclear"
+  - "no_sponsorship": JD says it does NOT sponsor, or requires authorization to work
+    WITHOUT sponsorship now or in future
+  - "offers": JD says it sponsors / is open to / will provide visa sponsorship
+  - "case_by_case": conditional (e.g. "may consider sponsorship for exceptional candidates")
+  - "unclear": the JD does not mention sponsorship at all
 - "knockouts": array of objects {{"question": string, "kind": one of
   "work_auth"|"sponsorship"|"years_experience"|"location"|"relocation"|"salary"|
   "notice"|"education"|"license"|"clearance"|"other", "hard": boolean}} -- the hard
@@ -82,6 +88,10 @@ def structure_jd(raw, *, provider: str = "claude", model: str = "sonnet") -> Job
         responsibilities=data.get("responsibilities", []) or [],
         salary_range=data.get("salary_range", ""),
         work_auth_note=data.get("work_auth_note", ""),
+        sponsorship_stance=(data.get("sponsorship_stance", "unclear")
+                            if data.get("sponsorship_stance") in
+                            ("offers", "no_sponsorship", "case_by_case", "unclear")
+                            else "unclear"),
         knockouts=knockouts,
         raw_text=jd_text,
         source_url=meta.get("source_url", ""),

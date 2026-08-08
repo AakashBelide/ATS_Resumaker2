@@ -37,7 +37,15 @@ class JobPosting(BaseModel):
     preferred_quals: list[str] = Field(default_factory=list)
     responsibilities: list[str] = Field(default_factory=list)
     salary_range: str = ""
-    work_auth_note: str = ""              # sponsorship stance if stated
+    work_auth_note: str = ""              # verbatim work-auth/sponsorship text if stated
+    # Structured sponsorship stance parsed from the JD itself (the most
+    # authoritative, role-specific signal; overrides USCIS history in 1.7):
+    #   offers        -> JD says it sponsors / is open to sponsorship
+    #   no_sponsorship-> JD says no sponsorship / must be authorized w/o sponsorship
+    #   case_by_case  -> conditional / "may consider"
+    #   unclear       -> JD is silent on sponsorship
+    sponsorship_stance: Literal["offers", "no_sponsorship",
+                                "case_by_case", "unclear"] = "unclear"
     knockouts: list[Knockout] = Field(default_factory=list)
     raw_text: str = ""
     source_url: str = ""
