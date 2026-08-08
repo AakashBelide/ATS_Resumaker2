@@ -74,6 +74,30 @@ def all_skills() -> set[str]:
     return skills
 
 
+def needs_sponsorship() -> bool:
+    return bool(load_profile().get("work_authorization", {})
+               .get("needs_sponsorship_future", False))
+
+
+def candidate_years() -> float:
+    """Years of professional experience. Prefer the stated figure in the summary
+    ('3+ years'); else fall back to the span from earliest experience start."""
+    import datetime
+    import re as _re
+    p = load_profile()
+    m = _re.search(r"(\d+(?:\.\d+)?)\s*\+?\s*years", p.get("summary", "") or "")
+    if m:
+        return float(m.group(1))
+    years: list[int] = []
+    for e in p.get("experience", []):
+        m2 = _re.search(r"(19|20)\d{2}", e.get("start_date", "") or "")
+        if m2:
+            years.append(int(m2.group(0)))
+    if years:
+        return round(datetime.date.today().year - min(years), 1)
+    return 0.0
+
+
 def profile_text() -> str:
     """Flattened text blob of the whole profile, for LLM grounding prompts."""
     p = load_profile()
