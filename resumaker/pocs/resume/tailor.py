@@ -19,6 +19,7 @@ import json
 from core import profile as prof
 from core.llm import get_provider
 from core.schemas import GapReport, JobPosting, KeywordSet, ResumeContent
+from pocs.enrichment import house_rules_prompt
 
 SYSTEM = (
     "You are an expert resume writer who NEVER fabricates. You only reformulate the "
@@ -83,18 +84,19 @@ def tailor_resume(job: JobPosting, keyword_set: KeywordSet, gap: GapReport,
     safe = [it.requirement for it in gap.items
             if it.status in ("existing", "supportedByResume")]
     llm = get_provider("claude", model=model)
+    # Append the owner's learned house-rules (Task 1.13) so corrections apply every run.
+    prompt = PROMPT.format(
+        title=job.title, seniority=job.seniority or "(unspecified)",
+        required="; ".join(job.required_quals) or "(none)",
+        preferred="; ".join(job.preferred_quals) or "(none)",
+        responsibilities="; ".join(job.responsibilities) or "(none)",
+        keywords=", ".join(keyword_set.standardized),
+        safe="; ".join(safe) or "(none)",
+        gaps="; ".join(gap.gaps) or "(none)",
+        subs="; ".join(gap.substitutions) or "(none)",
+        profile=_profile_for_prompt()) + house_rules_prompt(("tailor", "skills"))
     data = llm.complete_json(
-        PROMPT.format(
-            title=job.title, seniority=job.seniority or "(unspecified)",
-            required="; ".join(job.required_quals) or "(none)",
-            preferred="; ".join(job.preferred_quals) or "(none)",
-            responsibilities="; ".join(job.responsibilities) or "(none)",
-            keywords=", ".join(keyword_set.standardized),
-            safe="; ".join(safe) or "(none)",
-            gaps="; ".join(gap.gaps) or "(none)",
-            subs="; ".join(gap.substitutions) or "(none)",
-            profile=_profile_for_prompt()),
-        system=SYSTEM, temperature=0.1, max_tokens=4000, task="tailor_resume")
+        prompt, system=SYSTEM, temperature=0.1, max_tokens=4000, task="tailor_resume")
 
     def _btext(b):
         return str(b.get("text") or b.get("bullet") or "") if isinstance(b, dict) else str(b)

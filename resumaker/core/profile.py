@@ -11,12 +11,30 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 PROFILE_PATH = REPO_ROOT / "data" / "profile" / "profile.json"
+PREFERENCES_PATH = REPO_ROOT / "data" / "profile" / "preferences.json"
 
 
 @functools.lru_cache(maxsize=1)
 def load_profile() -> dict:
     with PROFILE_PATH.open() as fh:
         return json.load(fh)
+
+
+@functools.lru_cache(maxsize=1)
+def load_preferences() -> dict:
+    """Job-search preferences (Task 1.13): target roles, comp, location,
+    work-model, seniority, sponsorship. Separate from the resume-fact profile.
+    Returns {} if not yet configured (pipeline then uses safe defaults)."""
+    if not PREFERENCES_PATH.exists():
+        return {}
+    with PREFERENCES_PATH.open() as fh:
+        return json.load(fh)
+
+
+def invalidate() -> None:
+    """Drop cached profile/preferences after an enrichment update writes to disk."""
+    load_profile.cache_clear()
+    load_preferences.cache_clear()
 
 
 def equivalence_map() -> dict[str, list[str]]:

@@ -231,9 +231,9 @@ def resolve_location(job: JobPosting, *, candidate_location: str | None = None,
 
 
 def load_prefs() -> LocationPrefs:
-    """Read preferences from profile['preferences']['location'] if present (Task
-    1.13 will populate this), else safe defaults for an F-1 CPT/OPT candidate."""
-    loc = (prof.load_profile().get("preferences", {}) or {}).get("location", {})
+    """Read location preferences from the Task 1.13 preferences store
+    (data/profile/preferences.json), else safe defaults for an F-1 CPT/OPT candidate."""
+    loc = (prof.load_preferences() or {}).get("location", {})
     return LocationPrefs(
         open_to_remote=loc.get("open_to_remote", True),
         willing_to_relocate=loc.get("willing_to_relocate", False),
