@@ -69,7 +69,10 @@ def normalize_name(name: str) -> str:
     s = _DBA_RE.sub("", s)                      # "acme dba foo" -> "acme "
     s = re.sub(r"&", " and ", s)
     s = re.sub(r"[^a-z0-9\s]", " ", s)          # strip punctuation
-    tokens = [t for t in s.split() if t and t not in _LEGAL_SUFFIXES]
+    # drop legal suffixes AND stray single-letter tokens (e.g. "joe's" -> "joe s";
+    # the bare "s" is noise that caused spurious prefix matches).
+    tokens = [t for t in s.split()
+              if t and t not in _LEGAL_SUFFIXES and (len(t) > 1 or t.isdigit())]
     if not tokens:                              # was ALL suffix words - keep raw
         tokens = [t for t in re.sub(r"[^a-z0-9\s]", " ", s).split() if t]
     return " ".join(tokens)
@@ -196,6 +199,7 @@ def build_index(years: list[int] | None = None) -> SponsorIndex:
 # Fuzzy-match threshold on the normalized names (0-100). Below this we treat the
 # company as not found in the index.
 _MATCH_THRESHOLD = 88
+_FUZZY_THRESHOLD = 92   # stricter bar for the typo fallback (avoid spurious matches)
 
 
 @dataclass
@@ -203,6 +207,7 @@ class Match:
     keys: list[str] = field(default_factory=list)  # entity family to aggregate
     score: float = 0.0                              # match confidence 0-100
     anchor: str = ""                                # highest-volume family member
+    confidence: str = "high"                        # high | low  (name-match certainty)
 
 
 def _family_volume(idx: SponsorIndex, key: str) -> int:
@@ -211,32 +216,57 @@ def _family_volume(idx: SponsorIndex, key: str) -> int:
 
 def match_employer(company: str, idx: SponsorIndex) -> Match:
     """Resolve a query company to the family of USCIS employer entities to
-    aggregate. Big employers file under many legal entities ("AMAZON.COM
-    SERVICES LLC", "AMAZON WEB SERVICES INC", ...), so a company-level signal
-    must sum the family, not pick one row.
+    aggregate, with a confidence tier to avoid false positives.
 
-    Rule: aggregate every normalized key whose token list has the query's
-    normalized tokens as a **leading prefix**. A bare brand query ("amazon")
-    pulls the whole "amazon *" family; a specific query ("amazon web") stays
-    narrow; "apple tree dental" does NOT merge into "apple". If no prefix family
-    exists, fall back to a single fuzzy match (token_set_ratio) for typos."""
+    Big employers file under many legal entities ("AMAZON.COM SERVICES LLC",
+    "AMAZON WEB SERVICES INC", ...), so a company-level signal sums the family.
+
+    Confidence:
+      - **high**: an EXACT normalized key equals the query (after suffix
+        stripping) -> we trust it and aggregate the query's prefix family.
+        (Most real brands collapse to an exact key: "Stripe Payments Inc" ->
+        "stripe"; "X Corp" -> "x".)
+      - **low**: no exact key, only longer entities START WITH the query token(s)
+        -> ambiguous ("linear" -> "linear financial"? "ramp" -> "ramp business"?).
+        We keep the best candidate but flag it needs_verification and never let
+        it score "high".
+      - **unknown** (empty Match): degenerate/too-short query, or fuzzy below bar.
+
+    Guards: a single token of length <=2 ("x") is too ambiguous -> unknown."""
     norm_q = normalize_name(company)
     if not norm_q:
         return Match()
     q_tokens = norm_q.split()
     n = len(q_tokens)
-    family = [k for k in idx.norm_keys if k.split()[:n] == q_tokens]
-    if family:
-        anchor = max(family, key=lambda k: _family_volume(idx, k))
-        return Match(keys=family, score=100.0, anchor=anchor)
-    # typo fallback: best single fuzzy key
+    if n == 1 and len(q_tokens[0]) <= 2:            # e.g. "x" -> too ambiguous
+        return Match(confidence="low")
+
+    keyset = set(idx.norm_keys)
+    prefix_family = [k for k in idx.norm_keys if k.split()[:n] == q_tokens]
+
+    # HIGH confidence: an exact normalized key exists.
+    if norm_q in keyset:
+        anchor = max(prefix_family, key=lambda k: _family_volume(idx, k))
+        return Match(keys=prefix_family, score=100.0, anchor=anchor, confidence="high")
+
+    # LOW confidence: only longer entities start with the query -> ambiguous.
+    if prefix_family:
+        # Guard against a short/common token pulling in a large unrelated family:
+        # only aggregate members that are the query + at most one extra token
+        # (e.g. "ramp business", not the entire "x *" universe).
+        narrow = [k for k in prefix_family if len(k.split()) <= n + 1]
+        fam = narrow or prefix_family
+        anchor = max(fam, key=lambda k: _family_volume(idx, k))
+        return Match(keys=fam, score=70.0, anchor=anchor, confidence="low")
+
+    # Typo fallback: strict fuzzy, low confidence, must clear a higher bar.
     best = process.extractOne(norm_q, idx.norm_keys, scorer=fuzz.token_set_ratio)
     if best is None:
         return Match()
     key, score, _ = best
-    if score < _MATCH_THRESHOLD:
-        return Match(score=float(score))
-    return Match(keys=[key], score=float(score), anchor=key)
+    if score < _FUZZY_THRESHOLD:
+        return Match(score=float(score), confidence="low")
+    return Match(keys=[key], score=float(score), anchor=key, confidence="low")
 
 
 # --------------------------------------------------------------- scoring
@@ -275,7 +305,7 @@ def score_company(company: str, idx: SponsorIndex) -> SponsorSignal:
             evidence=[
                 "No matching employer found in USCIS H-1B Employer Data Hub "
                 f"for FY{'-'.join(str(y) for y in idx.fiscal_years)} "
-                f"(best fuzzy score {match.score:.0f} < {_MATCH_THRESHOLD}).",
+                f"(best fuzzy score {match.score:.0f} < {_FUZZY_THRESHOLD}).",
                 "Absence is not proof a company never sponsors - small/new "
                 "sponsors and pure-PERM (green-card) sponsors may not appear "
                 "in H-1B petition data.",
@@ -304,6 +334,12 @@ def score_company(company: str, idx: SponsorIndex) -> SponsorSignal:
     likelihood = _likelihood(approvals, filed_recent, rate)
     anchor_key = match.anchor or match.keys[0]
     display = idx.display.get(anchor_key, company)
+
+    # Low-confidence (prefix/fuzzy, no exact key): the entity might not be the
+    # company the user means -> never claim "high", and flag for verification.
+    low_conf = match.confidence != "high"
+    if low_conf and likelihood == "high":
+        likelihood = "medium"
 
     fy_bits = ", ".join(
         f"FY{fy}: {per_fy[fy].approvals} approvals/{per_fy[fy].denials} denials"
@@ -340,6 +376,13 @@ def score_company(company: str, idx: SponsorIndex) -> SponsorSignal:
         f"approvals + >={_MED_RATE:.0%} rate.",
     ]
 
+    if low_conf:
+        evidence.insert(0, (
+            f"[LOW-CONFIDENCE MATCH] No exact USCIS entity named '{normalize_name(company)}'; "
+            f"matched '{display}' by prefix/fuzzy ({match.score:.0f}/100). "
+            "VERIFY this is the same company before relying on it (could be a "
+            "different firm with a similar name)."))
+
     return SponsorSignal(
         company=company,
         normalized_name=anchor_key,
@@ -347,6 +390,8 @@ def score_company(company: str, idx: SponsorIndex) -> SponsorSignal:
         most_recent_fy=str(most_recent_with_data),
         approval_rate=round(rate, 4) if rate is not None else None,
         likelihood=likelihood,
+        confidence="high" if not low_conf else "low",
+        needs_verification=low_conf,
         evidence=evidence,
     )
 

@@ -36,6 +36,12 @@ def build_cases():
         {"label": "infosys-high", "input": "Infosys", "expect": {"likelihood": "high"}},
         {"label": "madeup-tiny", "input": "Zorblax Quijibo Widgets XYZ123",
          "expect": {"likelihood_in": ["low", "unknown"]}},
+        # Regression: short/ambiguous name must NOT false-positive to "X Energy".
+        {"label": "short-name-guard-X", "input": "X",
+         "expect": {"likelihood_in": ["unknown"]}},
+        # Regression: a name that normalizes to noise must NOT spuriously match.
+        {"label": "normalization-collapse-guard", "input": "Joe's Corner Bakery XYZ",
+         "expect": {"likelihood_in": ["unknown"]}},
         {"label": "normalization-google-llc-vs-inc",
          "input": ("Google LLC", "Google Inc"),
          "expect": {"same_record": True}},

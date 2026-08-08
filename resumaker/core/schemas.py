@@ -89,6 +89,8 @@ class SponsorSignal(BaseModel):
     most_recent_fy: str = ""
     approval_rate: float | None = None
     likelihood: Literal["high", "medium", "low", "unknown"] = "unknown"
+    confidence: Literal["high", "medium", "low"] = "high"  # name-match confidence
+    needs_verification: bool = False   # ambiguous match -> human should confirm
     evidence: list[str] = Field(default_factory=list)
 
 
