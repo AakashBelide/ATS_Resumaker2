@@ -48,12 +48,25 @@ def _allowlist() -> set[str]:
                  " ".join(prof.all_employers()), " ".join(prof.all_titles()),
                  p.get("contact", {}).get("name", "")):
         toks |= {t.lower() for t in re.findall(r"[A-Za-z]+", blob)}
-    toks |= {"ai", "ml", "genai", "llm", "llms", "rag", "mlops", "llmops", "nl2sql",
-             "api", "apis", "aws", "gcp", "sql", "etl", "ci", "cd", "kubernetes",
-             "docker", "terraform", "airflow", "snowflake", "bigquery", "pyspark",
-             "langgraph", "langchain", "crewai", "qdrant", "neo4j", "fastapi",
-             "opentelemetry", "observability", "agentic", "vectordb", "openai",
-             "gpt", "vlm", "ocr", "roi", "devops", "backend", "frontend", "webhook"}
+    toks |= {
+        # acronyms / product names
+        "ai", "ml", "genai", "llm", "llms", "rag", "mlops", "llmops", "nl2sql",
+        "api", "apis", "aws", "gcp", "sql", "nosql", "etl", "elt", "ci", "cd",
+        "kubernetes", "docker", "terraform", "airflow", "snowflake", "bigquery",
+        "pyspark", "langgraph", "langchain", "crewai", "qdrant", "neo4j", "fastapi",
+        "opentelemetry", "openai", "gpt", "vlm", "ocr", "roi", "sdk", "cli", "gpu",
+        "cpu", "grpc", "graphql", "oauth", "sso", "yaml", "json", "csv", "http",
+        "https", "ui", "ux", "kpi", "kpis", "adx", "aks", "vm", "vms",
+        # common tech words the base dictionary lacks / mis-corrects
+        "async", "await", "auth", "backend", "frontend", "fullstack", "middleware",
+        "runtime", "realtime", "dataset", "datasets", "dataframe", "dataframes",
+        "changelog", "timestamp", "config", "namespace", "tokenizer", "tokenization",
+        "embeddings", "embedding", "chatbot", "chatbots", "scalable", "observability",
+        "agentic", "vectordb", "devops", "webhook", "webhooks", "serverless",
+        "microservice", "microservices", "dedup", "deduplicate", "deduplicating",
+        "deduplication", "orchestrator", "orchestration", "multimodal", "multitenant",
+        "throughput", "latency", "workflow", "workflows", "upsell",
+        "knowledgebase", "onboarding", "roadmap", "stakeholder", "stakeholders"}
     return toks
 
 
