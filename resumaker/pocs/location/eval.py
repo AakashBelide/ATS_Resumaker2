@@ -41,23 +41,32 @@ def build_cases():
          "input": (_job("Remote", WorkModel.remote, remote_restriction="California residents only"),
                    LocationPrefs()),
          "expect": {"strategy": "remote_ineligible", "passes": False}},
-        # Different metro, willing to relocate + listed -> committed relocation line.
-        {"label": "relocating-to-nyc",
+        # RELOCATE-ANYWHERE (owner's setting): out-of-state job -> present job metro
+        # bare (reads local), passes geo filter.
+        {"label": "relocate-anywhere-bare-nyc",
          "input": (_job("New York, NY", WorkModel.onsite),
-                   LocationPrefs(willing_to_relocate=True,
-                                 relocation_metros=["New York, NY"],
-                                 relocation_timeframe="Q4 2026")),
+                   LocationPrefs(relocate_anywhere=True)),
+         "expect": {"strategy": "relocating", "display": "New York, NY", "passes": True}},
+        # relocate-anywhere + suburb normalizes to the metro: Bellevue WA -> Seattle, WA.
+        {"label": "relocate-anywhere-suburb-normalizes",
+         "input": (_job("Bellevue, WA", WorkModel.onsite),
+                   LocationPrefs(relocate_anywhere=True)),
+         "expect": {"strategy": "relocating", "display": "Seattle, WA", "passes": True}},
+        # Alternate display style: target metro + Open to Relocation.
+        {"label": "relocate-anywhere-open-style",
+         "input": (_job("New York, NY", WorkModel.onsite),
+                   LocationPrefs(relocate_anywhere=True, relocation_display="target_metro_open")),
+         "expect": {"strategy": "relocating", "display": "New York, NY (Open to Relocation)"}},
+        # Explicit target metro + base_relocating style + timeframe.
+        {"label": "explicit-base-relocating-style",
+         "input": (_job("New York, NY", WorkModel.onsite),
+                   LocationPrefs(willing_to_relocate=True, relocation_metros=["New York, NY"],
+                                 relocation_timeframe="Q4 2026", relocation_display="base_relocating")),
          "expect": {"strategy": "relocating",
-                    "display": "Relocating to New York, NY (Q4 2026)"}},
-        # Suburb of a target metro also normalizes: Jersey City -> New York, NY.
-        {"label": "relocating-suburb-normalizes",
-         "input": (_job("Jersey City, NJ", WorkModel.onsite),
-                   LocationPrefs(willing_to_relocate=True,
-                                 relocation_metros=["New York, NY"])),
-         "expect": {"strategy": "relocating", "display": "Relocating to New York, NY"}},
-        # Different metro, NOT relocating -> keep real metro, fail geo, warn.
+                    "display": "Boston, MA | Relocating to New York, NY (Q4 2026)"}},
+        # Different metro, NOT relocating at all -> keep real metro, fail geo, warn.
         {"label": "non-local-no-reloc",
-         "input": (_job("Seattle, WA", WorkModel.onsite), LocationPrefs()),
+         "input": (_job("Seattle, WA", WorkModel.onsite), LocationPrefs(relocate_anywhere=False)),
          "expect": {"strategy": "non_local", "display": "Boston, MA", "passes": False}},
         # JD location unspecified -> present real metro, no false geo-fail.
         {"label": "unknown-jd-location",

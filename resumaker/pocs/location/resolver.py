@@ -83,15 +83,32 @@ _METRO = {
 
 @dataclass
 class LocationPrefs:
-    """Candidate location preferences (Task 1.13 enrichment will own persistence;
-    for now defaults + optional profile['preferences']['location'])."""
+    """Candidate location preferences (persisted by Task 1.13 in preferences.json)."""
     open_to_remote: bool = True
     willing_to_relocate: bool = False
-    relocation_metros: list[str] = field(default_factory=list)  # e.g. ["New York, NY"]
+    # relocate_anywhere: candidate will move to ANY metro (own expense) -> present
+    # the job's metro automatically for every out-of-metro role.
+    relocate_anywhere: bool = False
+    relocation_metros: list[str] = field(default_factory=list)  # explicit targets
     relocation_timeframe: str = ""                              # e.g. "Q3 2026"
+    # How to render the location for a relocation role:
+    #   bare_metro        -> "New York, NY"                (reads local; best filter)
+    #   target_metro_open -> "New York, NY (Open to Relocation)"
+    #   base_relocating   -> "Boston, MA | Relocating to New York, NY"
+    relocation_display: str = "bare_metro"
     # None => authorized in all US states (F-1 CPT/OPT is nationwide); a list
     # restricts (e.g. an already-sponsored candidate tied to specific states).
     authorized_states: list[str] | None = None
+
+
+def _reloc_display(base_metro: str, job_metro: str, prefs: LocationPrefs) -> str:
+    tf = f" ({prefs.relocation_timeframe})" if prefs.relocation_timeframe else ""
+    style = prefs.relocation_display
+    if style == "target_metro_open":
+        return f"{job_metro} (Open to Relocation)"
+    if style == "base_relocating":
+        return f"{base_metro} | Relocating to {job_metro}{tf}"
+    return job_metro  # bare_metro (default): reads fully local
 
 
 @dataclass
@@ -209,14 +226,22 @@ def resolve_location(job: JobPosting, *, candidate_location: str | None = None,
         plan.is_local = True
         return plan
 
-    # different metro
+    # different metro: present the job's metro if the candidate will move there -
+    # either because it's an explicit target OR they relocate anywhere (own expense).
     reloc_norm = {m.strip().lower() for m in prefs.relocation_metros}
-    if prefs.willing_to_relocate and job_metro.lower() in reloc_norm:
-        tf = f" ({prefs.relocation_timeframe})" if prefs.relocation_timeframe else ""
-        plan.display = f"Relocating to {job_metro}{tf}"
+    explicit = prefs.willing_to_relocate and job_metro.lower() in reloc_norm
+    if explicit or prefs.relocate_anywhere:
+        plan.display = _reloc_display(cand_metro, job_metro, prefs)
         plan.strategy = "relocating"
-        plan.notes.append(f"Presenting committed relocation to {job_metro} "
-                          f"(you listed it as a target metro).")
+        plan.passes_geo_filter = True
+        if prefs.relocation_display == "bare_metro":
+            plan.notes.append(
+                f"Presenting target metro '{job_metro}' as your location (you relocate "
+                f"anywhere at own expense). Set your LinkedIn location to this metro or "
+                f"'Open to relocating' so the resume<->LinkedIn check stays consistent "
+                f"(Appendix B9).")
+        else:
+            plan.notes.append(f"Presenting relocation to {job_metro}.")
         return plan
 
     plan.strategy = "non_local"
@@ -225,8 +250,8 @@ def resolve_location(job: JobPosting, *, candidate_location: str | None = None,
     plan.warnings.append(
         f"JD is {wm} in {job_metro} but you are in {cand_metro}. ~43% of recruiters "
         f"apply a location-radius filter first, so this is likely a hard geo gate. "
-        f"Add '{job_metro}' to relocation_metros (with a timeframe) if you would "
-        f"genuinely move; otherwise consider skipping.")
+        f"Enable relocate_anywhere or add '{job_metro}' to relocation_metros if you "
+        f"would genuinely move; otherwise consider skipping.")
     return plan
 
 
@@ -237,7 +262,9 @@ def load_prefs() -> LocationPrefs:
     return LocationPrefs(
         open_to_remote=loc.get("open_to_remote", True),
         willing_to_relocate=loc.get("willing_to_relocate", False),
+        relocate_anywhere=loc.get("relocate_anywhere", False),
         relocation_metros=list(loc.get("relocation_metros", [])),
         relocation_timeframe=loc.get("relocation_timeframe", ""),
+        relocation_display=loc.get("relocation_display", "bare_metro"),
         authorized_states=loc.get("authorized_states"),
     )
