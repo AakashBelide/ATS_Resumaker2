@@ -23,12 +23,17 @@ from pathlib import Path
 
 import httpx
 
-from core import profile as prof
-
 _REPO = Path(__file__).resolve().parents[3]
 _DEFAULT_PDF = (_REPO / "outputs" / "state-street-ai-orchestration-engineer" /
                 "state-street-ai-orchestration-engineer.pdf")
-_API = "https://api.affinda.com/v3/documents"
+# Affinda is region-scoped: api.affinda.com (APAC, default) | api.us1.affinda.com (US)
+# | api.eu1.affinda.com (EU). A token only authenticates against its account's region.
+_DEFAULT_BASE = "https://api.affinda.com"
+
+
+def _api_url() -> str:
+    base = os.getenv("AFFINDA_BASE_URL") or _DEFAULT_BASE
+    return base.rstrip("/") + "/v3/documents"
 
 
 def _load_env() -> None:
@@ -59,48 +64,54 @@ def parse_with_affinda(pdf_path: str) -> dict:
         raise RuntimeError(
             "Set AFFINDA_WORKSPACE (recommended) or AFFINDA_COLLECTION in .env.")
     with open(pdf_path, "rb") as fh:
-        r = httpx.post(_API, headers={"Authorization": f"Bearer {key}"},
+        r = httpx.post(_api_url(), headers={"Authorization": f"Bearer {key}"},
                        files={"file": (Path(pdf_path).name, fh, "application/pdf")},
                        data=data, timeout=120)
     r.raise_for_status()
     return r.json().get("data", {}) or {}
 
 
+def _leaf(x):
+    """Affinda leaf fields are {raw, parsed, confidence,...}; pull a readable value."""
+    if isinstance(x, dict):
+        p = x.get("parsed")
+        if isinstance(p, (str, int, float)):
+            return p
+        if isinstance(p, dict):
+            return p.get("formatted") or p.get("rawText") or p.get("name") or x.get("raw")
+        return x.get("raw")
+    return x
+
+
 def _card(d: dict) -> dict:
-    """Normalize Affinda's response into a comparable parse card."""
-    def _txt(x):
-        return x.get("raw") if isinstance(x, dict) else x
-    work = d.get("workExperience", []) or []
+    """Normalize Affinda's resume schema into a readable parse card. Work/education/
+    project entries come back as grouped `raw` text blocks in this workspace config."""
+    def blocks(key):
+        return [_leaf(it) for it in (d.get(key) or []) if _leaf(it)]
     return {
-        "name": _txt((d.get("name") or {}).get("raw") if isinstance(d.get("name"), dict) else d.get("name")),
-        "emails": d.get("emails", []) or d.get("email", []),
-        "phones": d.get("phoneNumbers", []) or [],
-        "location": (d.get("location") or {}).get("formatted", "") if isinstance(d.get("location"), dict) else d.get("location", ""),
-        "employers": [w.get("organization") for w in work if w.get("organization")],
-        "titles": [w.get("jobTitle") for w in work if w.get("jobTitle")],
-        "skills": [s.get("name") if isinstance(s, dict) else s for s in (d.get("skills", []) or [])],
-        "education": [(e.get("organization") or (e.get("accreditation") or {}).get("education"))
-                      for e in (d.get("education", []) or [])],
+        "name": _leaf(d.get("candidateName")),
+        "emails": [_leaf(e) for e in (d.get("email") or [])],
+        "phones": [_leaf(p) for p in (d.get("phoneNumber") or [])],
+        "location": _leaf(d.get("location")),
+        "total_years_experience": _leaf(d.get("totalYearsExperience")),
+        "experience": blocks("workExperience"),
+        "projects": blocks("project"),
+        "education": blocks("education"),
+        "skills": [_leaf(s) for s in (d.get("skill") or [])],
     }
 
 
 def affinda_report(pdf_path: str | None = None) -> dict:
-    """Parse via Affinda and diff against the profile (what we intended)."""
+    """Parse via Affinda (independent oracle) and summarize what it captured."""
     pdf_path = pdf_path or str(_DEFAULT_PDF)
     card = _card(parse_with_affinda(pdf_path))
-    prof_emps = {e.lower() for e in prof.all_employers()}
-    got_emps = {(e or "").lower() for e in card["employers"]}
-    missed_emps = sorted(e for e in prof_emps
-                         if not any(e in g or g in e for g in got_emps if g))
-    captured = {k: bool(v) for k, v in card.items()}
+    key_fields = ["name", "emails", "location", "experience", "education", "skills"]
     return {
         "pdf": pdf_path,
         "parsed": card,
-        "captured_fields": captured,
-        "employers_missed_by_parser": missed_emps,
+        "captured": {k: bool(card.get(k)) for k in key_fields},
         "n_skills_parsed": len(card["skills"]),
-        "parse_ok": all([card["name"], card["emails"], card["location"],
-                         card["employers"], card["skills"]]),
+        "parse_ok": all(card.get(k) for k in key_fields),
     }
 
 
