@@ -149,6 +149,20 @@ class VerifyReport(BaseModel):
     checks: dict[str, Any] = Field(default_factory=dict)
 
 
+class CoverLetter(BaseModel):
+    """Task 1.12 output. Grounded, anti-AI-tell, human-reviews-before-send."""
+    company: str = ""
+    role: str = ""
+    greeting: str = "Dear Hiring Manager,"
+    paragraphs: list[str] = Field(default_factory=list)
+    closing: str = "Sincerely,"
+    signoff_name: str = ""
+    text: str = ""                      # full assembled letter
+    word_count: int = 0
+    passed: bool = True                 # grounding gate (no invented metrics)
+    warnings: list[str] = Field(default_factory=list)   # anti-AI-tell lint, etc.
+
+
 class ATSScore(BaseModel):
     """Task 1.11 output. Transparent keyword/skill-overlap proxy (NOT a real ATS
     score). overall = 0.5*keyword + 0.3*quantification + 0.2*structure."""

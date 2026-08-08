@@ -72,6 +72,18 @@ def _extract_metrics(text: str) -> list[str]:
     return found
 
 
+def ungrounded_metrics(text: str) -> list[str]:
+    """Public: numbers in `text` that don't trace to the profile (fabrication check
+    for any generated artifact - resume, cover letter, LinkedIn blurb)."""
+    prof_metrics = _profile_metric_set()
+    out: list[str] = []
+    for raw in _extract_metrics(text):
+        n = _norm_metric(raw)
+        if n and n not in prof_metrics:
+            out.append(raw.strip())
+    return sorted(set(out))
+
+
 def _resume_text(content: ResumeContent) -> str:
     parts = [content.headline, content.summary]
     for e in content.experiences:

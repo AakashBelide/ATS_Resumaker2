@@ -8,6 +8,7 @@ from pathlib import Path
 from pocs.apply_decision import decide_apply
 from pocs.ats import score_ats
 from pocs.ats_verify import verify_ats
+from pocs.cover_letter import write_cover_letter
 from pocs.fact_gate import verify_resume
 from pocs.gap import analyze_gaps
 from pocs.jd_structure import structure_jd
@@ -68,8 +69,15 @@ if ats.weak_requirements:
 print("  experience blocks:", [e.get("title", "")[:40] for e in doc.content.experiences])
 print("  projects:", [p.get("title", "")[:30] for p in doc.content.projects])
 
+# Cover letter (grounded, anti-AI-tell; human reviews before sending)
+cl = write_cover_letter(job, gap=gap)
+print(f"\nCOVER LETTER: {cl.word_count} words  grounded={cl.passed}")
+for w in cl.warnings:
+    print("   cl-warning:", w)
+
 # Save readable artifacts next to the resume
 out = Path(doc.pdf_path).parent
+(out / "cover_letter.txt").write_text(cl.text)
 (out / "JD.txt").write_text(f"{url}\n\n{job.raw_text}")
 (out / "resume_extracted_text.txt").write_text(extract_text(doc.pdf_path))
 (out / "content.json").write_text(doc.content.model_dump_json(indent=1))  # for free re-renders
@@ -79,5 +87,7 @@ out = Path(doc.pdf_path).parent
     "decision": decision.model_dump(),
     "pages": doc.page_count, "fact_gate_passed": rep.passed,
     "ats": ats.model_dump(), "ats_verify": vrep.model_dump(),
+    "cover_letter": {"word_count": cl.word_count, "passed": cl.passed,
+                     "warnings": cl.warnings},
 }, indent=1, default=str))
 print("PIPELINE_DONE")

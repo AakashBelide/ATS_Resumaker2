@@ -143,8 +143,11 @@ class ClaudeCLIProvider(LLMProvider):
     def complete(self, prompt: str, *, system: str | None = None,
                  temperature: float = 0.0, max_tokens: int = 4096,
                  task: str = "") -> LLMResponse:
+        # `--tools ""` disables ALL built-in tools: these are pure text-generation
+        # calls, so the model must never attempt tool use (which wastes the single
+        # turn and returns is_error/stop_reason=tool_use).
         cmd = ["claude", "-p", prompt, "--output-format", "json",
-               "--max-turns", "1", "--model", self.model]
+               "--max-turns", "1", "--model", self.model, "--tools", ""]
         if system:
             cmd += ["--append-system-prompt", system]
         # Retry transient CLI failures (rc!=0, empty stdout, JSON parse) with
