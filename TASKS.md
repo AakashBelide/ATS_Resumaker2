@@ -75,6 +75,7 @@ Project plan + task tracker. Companion to [RESUME_SYSTEM_BLUEPRINT.md](RESUME_SY
 | 2.2 | **CLI runner** — `python -m cli run <url>` → artifacts in `outputs/<company-role>/`. SSE-ready progress events. | ✅ Done | 2.1 | main | `cli.py`: `run <url> [--out --pages --gate --no-parallel --no-cover --semantic lexical\|gemini --json]` + `costs`. Live per-stage progress printer + decision/resume/ATS/cover summary. `run_pipeline.py` kept as a thin back-compat wrapper. |
 | 2.3 | **Quality eval** — run on 10 real JDs; measure fact-gate pass %, ATS score, re-draft count, manual quality read. | ⬜ Todo | 2.2 | — | Primary success metric = re-drafts ≈ 0. |
 | 2.4 | **CLI vs API comparison** — cost/quality/latency of Claude-CLI path vs Gemini-API path; pick default. | ⬜ Todo | 2.3 | — | Stay under $5 Gemini during this. |
+| 2.5 | **Live progress tracking (visual)** — make long/background runs observable. | ⬜ Todo | 2.1 | — | The orchestrator already emits `(stage,status,detail)` events (SSE-ready). (a) **CLI**: a `rich`-based live view (per-stage spinner + elapsed; for the multi-job eval a live-updating table with a running summary row). (b) **Machine-readable status**: each run appends `progress.jsonl` / writes `status.json` in its out-dir so any watcher (or the future web UI) can render state; add a `resumaker watch <dir>` command. (c) This is the same event stream the **Phase-5 web dashboard consumes over SSE** (see 5.x) - build the emitter once, render it in CLI now and browser later. Decouples progress from stdout so detached runs are trackable. |
 
 ---
 
