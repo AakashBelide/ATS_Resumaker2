@@ -85,9 +85,9 @@ Project plan + task tracker. Companion to [RESUME_SYSTEM_BLUEPRINT.md](RESUME_SY
 
 | # | Task | Status | Deps | Owner | Observations |
 |---|------|--------|------|-------|--------------|
-| 3.1 | **Stand up a local open-source ATS** — evaluate OpenCATS (self-host) and/or `ats-screener`/open-resume as the "recruiter view." Docker. | ⬜ Todo | 2.2 | — | Fully local; safe sandbox. |
-| 3.2 | **Create a real test job** in the ATS matching one of our target JDs. | ⬜ Todo | 3.1 | — | |
-| 3.3 | **Submit our resume + decoys**, run the ATS parse + recruiter Boolean/keyword search + ranking. | ⬜ Todo | 3.2, 1.8 | — | Measure parse fidelity + search surfacing + rank. |
+| 3.3 | **Automated ATS+recruiter simulation** (parse fidelity + Boolean surfacing + BM25 ranking vs decoys). | ✅ Done | 1.8 | main | `pocs/ats_sim/`. Deterministic $0 CI layer. **Parse card** extracts the fields an ATS captures (name/email/phone/location/links/sections/experience/skills/education) → State Street resume **100% completeness**. **Boolean surfacing**: contains all 6 recruiter must-haves. **BM25 ranking** vs 6 realistic decoys → **rank #1, margin 16.5 over 2nd**. Eval 3/3. (Simulation, not a real ATS - see 3.1/3.4 for real proxies.) NOTE: offline validation harness, NOT in the per-JD pipeline. |
+| 3.4 | **Independent industry parser (Affinda free tier)** — real Textkernel-class parse oracle. | ⬜ Todo | 3.3 | — | `pocs/ats_sim/affinda.py`: send the PDF, get a real parse card, diff vs intended. Needs owner's free `AFFINDA_API_KEY` (gitignored `.env`; never committed). Most credible "does it parse" check. |
+| 3.1 | **OpenCATS (Docker) — real ATS recruiter UI** for a manual test. | ⬜ Todo | 2.2 | — | `validation/opencats/` docker-compose; upload resume + decoys, run recruiter Boolean search + view ranking in a genuine ATS UI. Real interface (parser is old/unrepresentative). **Manual/offline - explicitly NOT in the pipeline.** |
 | 3.4 | **Recruiter-filter simulation** — script a hiring-manager filter (knockouts + keyword search + rank) and confirm our resume advances; iterate on misses. | ⬜ Todo | 3.3 | — | Closes the loop on "gets seen." |
 | 3.5 | **Browser-extension → local-ATS assisted-apply** (optional) — extension captures JD, backend runs pipeline, autofills the *local test* application, **stops before submit** (human-in-loop). NOT real external companies. | ⬜ Todo | 3.4 | — | Assisted-apply only (blueprint §21). Validates the extension↔CLI bridge end-to-end safely. |
 
