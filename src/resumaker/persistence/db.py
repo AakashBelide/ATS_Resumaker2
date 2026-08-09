@@ -13,7 +13,7 @@ import json
 import sqlite3
 from collections.abc import Iterator
 from contextlib import contextmanager
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 from resumaker.config import get_settings
 from resumaker.domain.ingestion import BoardRef, Company, JobRecord, RunRecord
@@ -187,6 +187,75 @@ def list_jobs(status: str | None = None, limit: int = 100) -> list[JobRecord]:
     with connect() as conn:
         rows = conn.execute(q, args).fetchall()
     return [_job_from_row(r) for r in rows]
+
+
+# ------------------------------------------------------------------ discovery (RA.1)
+_ORDER_SQL = {"recent": "first_seen DESC", "company": "company ASC, first_seen DESC",
+              "title": "title ASC"}
+
+
+def _job_where(company: str | None, source: str | None, location_like: str | None,
+               title_like: str | None, since_days: int | None,
+               status: str | None) -> tuple[str, list]:
+    """Build a parameterized WHERE for the jobs table. Recency uses `first_seen` (our own
+    reliable timestamp), since ATS `posted_at` is inconsistent/absent across sources."""
+    clauses: list[str] = []
+    args: list = []
+
+    def add(clause: str, value: object) -> None:
+        clauses.append(clause)
+        args.append(value)
+
+    if company:
+        add("company = ?", company)
+    if source:
+        add("source = ?", source)
+    if location_like:
+        add("lower(location) LIKE ?", f"%{location_like.lower()}%")
+    if title_like:
+        add("lower(title) LIKE ?", f"%{title_like.lower()}%")
+    if since_days is not None:
+        add("first_seen >= ?", (datetime.now(UTC) - timedelta(days=since_days)).isoformat())
+    if status:
+        add("status = ?", status)
+    return (" WHERE " + " AND ".join(clauses)) if clauses else "", args
+
+
+def query_jobs(*, company: str | None = None, source: str | None = None,
+               location_like: str | None = None, title_like: str | None = None,
+               since_days: int | None = None, status: str | None = None,
+               order: str = "recent", limit: int = 50, offset: int = 0) -> list[JobRecord]:
+    """Deterministic filtered/sorted/paged query over `jobs` (Discovery, RA.1). No LLM."""
+    where, args = _job_where(company, source, location_like, title_like, since_days, status)
+    order_sql = _ORDER_SQL.get(order, _ORDER_SQL["recent"])
+    q = f"SELECT * FROM jobs{where} ORDER BY {order_sql} LIMIT ? OFFSET ?"
+    with connect() as conn:
+        rows = conn.execute(q, [*args, limit, offset]).fetchall()
+    return [_job_from_row(r) for r in rows]
+
+
+def count_jobs(*, company: str | None = None, source: str | None = None,
+               location_like: str | None = None, title_like: str | None = None,
+               since_days: int | None = None, status: str | None = None) -> int:
+    where, args = _job_where(company, source, location_like, title_like, since_days, status)
+    with connect() as conn:
+        return int(conn.execute(f"SELECT count(*) FROM jobs{where}", args).fetchone()[0])
+
+
+def job_facets(*, company: str | None = None, source: str | None = None,
+               location_like: str | None = None, title_like: str | None = None,
+               since_days: int | None = None, status: str | None = None) -> dict:
+    """Counts by company + source over the same filter (for Discovery filter chips)."""
+    where, args = _job_where(company, source, location_like, title_like, since_days, status)
+    with connect() as conn:
+        cos = conn.execute(
+            f"SELECT company, count(*) n FROM jobs{where} GROUP BY company ORDER BY n DESC",
+            args).fetchall()
+        srcs = conn.execute(
+            f"SELECT source, count(*) n FROM jobs{where} GROUP BY source ORDER BY n DESC",
+            args).fetchall()
+    return {"companies": {r["company"]: r["n"] for r in cos},
+            "sources": {r["source"]: r["n"] for r in srcs}}
 
 
 # ------------------------------------------------------------------ companies

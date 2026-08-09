@@ -226,6 +226,31 @@ def _cmd_onboard_seed(args) -> int:
     return 0
 
 
+def _cmd_discovery(args) -> int:
+    """Filterable, LLM-free view over the ingested feed (RA.1). No resume scoring."""
+    from resumaker.ingestion import DiscoveryFilters, discover
+    from resumaker.persistence import db
+    db.init_db()
+    res = discover(DiscoveryFilters(
+        company=args.company, source=args.source, location=args.location,
+        keyword=args.keyword, since_days=args.since_days, on_target=args.on_target,
+        order=args.order, limit=args.limit, offset=args.offset))
+    if args.json:
+        print(json.dumps({"total": res.total, "facets": res.facets,
+                          "jobs": [j.model_dump(mode="json") for j in res.jobs]}, indent=1))
+        return 0
+    shown = f"{len(res.jobs)} of {res.total}"
+    print(f"DISCOVERY - {shown} postings"
+          + (f"  (offset {args.offset})" if args.offset else "") + "\n")
+    for j in res.jobs:
+        seen = (j.first_seen.date().isoformat() if j.first_seen else "")
+        print(f"  {seen}  {j.title[:52]:52}  {j.company[:18]:18}  {j.location[:24]}")
+    top = sorted(res.facets.get("companies", {}).items(), key=lambda x: -x[1])[:8]
+    if top:
+        print("\nby company:", ", ".join(f"{c}({n})" for c, n in top))
+    return 0
+
+
 def _cmd_remove(args) -> int:
     """Remove a company from the watchlist."""
     from resumaker.persistence import db
@@ -305,6 +330,20 @@ def main(argv: list[str] | None = None) -> int:
     os_ = sub.add_parser("onboard-seed", help="onboard every company in a JSON list; report resolved/manual")
     os_.add_argument("file", help="JSON list of company names (or {name, careers_url} objects)")
     os_.set_defaults(func=_cmd_onboard_seed)
+
+    dc = sub.add_parser("discovery", help="filterable feed of ingested postings (no LLM/scoring)")
+    dc.add_argument("--company", default=None)
+    dc.add_argument("--source", default=None)
+    dc.add_argument("--location", default=None, help="location substring, e.g. boston")
+    dc.add_argument("--keyword", default=None, help="title substring, e.g. 'machine learning'")
+    dc.add_argument("--since-days", type=int, default=None, dest="since_days")
+    dc.add_argument("--on-target", action="store_true", dest="on_target",
+                    help="only titles matching your target roles (and not avoid roles)")
+    dc.add_argument("--order", choices=["recent", "company", "title"], default="recent")
+    dc.add_argument("--limit", type=int, default=50)
+    dc.add_argument("--offset", type=int, default=0)
+    dc.add_argument("--json", action="store_true")
+    dc.set_defaults(func=_cmd_discovery)
 
     rm = sub.add_parser("remove", help="remove a company from the watchlist")
     rm.add_argument("name", help="company name (exact)")

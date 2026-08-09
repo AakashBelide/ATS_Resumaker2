@@ -88,6 +88,52 @@ def test_service_dedupes_on_reingest(tmp_db, monkeypatch):
     assert r3.new == 1 and r3.unchanged == 1
 
 
+def test_discovery_filters_and_facets(tmp_db, monkeypatch):
+    from resumaker.domain import JobRecord
+    from resumaker.ingestion import DiscoveryFilters, discover
+    from resumaker.persistence import db
+    rows = [
+        ("greenhouse", "1", "Machine Learning Engineer", "Anthropic", "San Francisco, CA"),
+        ("greenhouse", "2", "Data Engineer", "Anthropic", "New York, NY"),
+        ("ashby", "3", "Security Engineer", "OpenAI", "Remote, US"),
+        ("workday", "4", "Staff Software Engineer", "NVIDIA", "Santa Clara, CA"),
+    ]
+    for src, ext, title, co, loc in rows:
+        db.upsert_job(JobRecord(source=src, external_id=ext, title=title, company=co,
+                                location=loc, content_hash=ext))
+
+    # unfiltered
+    r = discover(DiscoveryFilters())
+    assert r.total == 4 and len(r.jobs) == 4
+    assert r.facets["companies"]["Anthropic"] == 2
+
+    # company filter
+    assert discover(DiscoveryFilters(company="Anthropic")).total == 2
+    # source filter
+    assert discover(DiscoveryFilters(source="ashby")).total == 1
+    # location substring
+    assert discover(DiscoveryFilters(location="ca")).total == 2   # SF + Santa Clara
+    # title keyword
+    assert discover(DiscoveryFilters(keyword="engineer")).total == 4
+    assert discover(DiscoveryFilters(keyword="data")).total == 1
+    # pagination
+    assert len(discover(DiscoveryFilters(limit=2)).jobs) == 2
+
+
+def test_discovery_on_target_gate(tmp_db, monkeypatch):
+    from resumaker.domain import JobRecord
+    from resumaker.ingestion import DiscoveryFilters, discover
+    from resumaker.persistence import db
+    monkeypatch.setattr("resumaker.enrichment.preferences",
+                        lambda: {"target_roles": ["engineer"], "avoid_roles": ["security"]})
+    for ext, title in [("1", "ML Engineer"), ("2", "Security Engineer"), ("3", "Recruiter")]:
+        db.upsert_job(JobRecord(source="greenhouse", external_id=ext, title=title,
+                                company="Acme", location="Boston, MA", content_hash=ext))
+    r = discover(DiscoveryFilters(on_target=True))
+    assert {j.title for j in r.jobs} == {"ML Engineer"}   # engineer target, security avoided
+    assert r.total == 1
+
+
 @pytest.mark.parametrize("loc,is_us", [
     ("Boston, MA", True), ("New York, NY", True), ("Chicago, IL", True),
     ("Remote - US", True), ("United States", True), ("San Francisco, California", True),

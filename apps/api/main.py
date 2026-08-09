@@ -13,7 +13,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from apps.api.routers import costs, health, jobs, profile, runs
+from apps.api.routers import costs, discovery, health, jobs, profile, runs
 from resumaker import __version__
 from resumaker.config import get_settings
 from resumaker.observability.logging import configure_logging, get_logger
@@ -47,7 +47,8 @@ def create_app() -> FastAPI:
     app = FastAPI(title="resumaker", version=__version__, lifespan=lifespan)
     app.add_middleware(
         CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
-    for r in (health.router, runs.router, jobs.router, profile.router, costs.router):
+    for r in (health.router, runs.router, jobs.router, discovery.router,
+              profile.router, costs.router):
         app.include_router(r)
     return app
 

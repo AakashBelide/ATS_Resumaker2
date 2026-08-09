@@ -106,13 +106,19 @@ Project plan + task tracker. Companion to [RESUME_SYSTEM_BLUEPRINT.md](RESUME_SY
 
 ---
 
-## Phase 5 — Frontend + Browser extension *(deferred — details to be discussed)*
+## Phase 5 — Frontend + Browser extension
 
-> Placeholder. Tasks to be defined with the owner later. Likely: Next.js dashboard (review/approve/download, history, analytics/monitoring) + MV3 extension (capture JD → trigger pipeline).
+> **Defined (2026-08-09).** Next.js pages render on top of the RA backend (build backend-first). Five pages, in dependency order: **Discovery** (RA.1 — filterable feed of new postings from onboarded companies; filter by company/role/recency/location/pay), **Onboarding** (drop company name + careers URL → a scheduled agent resolves the board/adapter dynamically; batch of agents for multiple; CLI-drivable — this is the productized version of the research-agent onboarding), **Tracker** (RA.2 — jobs added from Discovery / web-extension trigger; add runs fit+gap+sponsorship+keywords, resume/cover on manual trigger; status lifecycle), **Dashboard** (RA.4), **Metrics** (RA.5). MV3 extension: capture a JD / one-click add-to-Tracker.
 
 | # | Task | Status | Deps | Owner | Observations |
 |---|------|--------|------|-------|--------------|
-| 5.x | TBD with owner | ⏸️ Deferred | Phase 4 | — | Per owner: "focus on frontend later." |
+| 5.1 | Discovery page (filter feed) | ⬜ Todo | RA.1 | — | Deterministic filters; no auto-fit-ranking. |
+| 5.2 | Onboarding page (name + URL → agent) | ⬜ Todo | RI.0 | — | Background/batch agents; CLI still works. |
+| 5.3 | Tracker page (status lifecycle + match results) | ⬜ Todo | RA.2 | — | Manual resume/cover trigger. |
+| 5.4 | Dashboard (stats/patterns) | ⬜ Todo | RA.4 | — | |
+| 5.5 | Metrics (model calls/costs/usage) | ⬜ Todo | RA.5 | — | |
+| 5.6 | Profile page (view/edit + enrichment) | ⬜ Todo | RA.3 | — | Keystone. |
+| 5.7 | MV3 extension (capture JD → add-to-Tracker) | ⬜ Todo | RA.2 | — | |
 
 ---
 
@@ -209,10 +215,36 @@ ats-resumaker/
 | # | Task | Status | Notes |
 |---|------|--------|-------|
 | RI.0 | **Auto-onboarding** — resolve a company to a board from just its name: slug-probe (Greenhouse/Lever/Ashby) then careers-page parse (extracts Workday tenant + token) when a careers URL is supplied. Unresolved → manual. `cli onboard` / `onboard-seed` / `POST /v1/onboard`. | ✅ Done | Pluggable fetch layer (httpx→Playwright); stealth backend (Scrapling/Firecrawl) can slot behind `fetch_html`. |
-| RI.1 | **Board-listing ingestion** — `providers/sources/*` list postings per company (Greenhouse/Lever/Ashby + Workday CxS w/ curl_cffi). | ✅ Done | All 4 adapters registered; `posted_at` captured where the ATS exposes it (+ our own `first_seen`). |
+| RI.1 | **Board-listing ingestion** — `providers/sources/*` list postings per company. | ✅ Done | **24 adapters** covering **77 companies**. Clean/unblocked (plain httpx, group A): Greenhouse, Lever, Ashby, Amazon, Eightfold, Oracle Cloud CE, SmartRecruiters, McKinsey (Solr), Goldman (GraphQL), Jibe/iCIMS (+Atlassian), Apple, Google (SSR blob), Phenom, Radancy, Dassault (Exalead XML), IBM (ES API), iCIMS-classic (Suffolk, HTML). Anti-bot tier (group B — curl_cffi TLS-impersonation / cookie handshake / custom headers): Workday CxS (27 cos, Akamai), ByteDance, Tesla (Akamai — needs residential/browser), pcsx/Qualcomm (Cloudflare), paradox/FedEx (WAF ct-cookie), Meta (FB GraphQL rotating doc_id+lsd), Microsoft (Azure edge — residential), Wayfair (PerimeterX, cleared via curl_cffi). `posted_at` where the ATS exposes it (+ `first_seen`). Fixture-tested parsers; most live-verified. |
 | RI.2 | **Dedupe** — identity `(source, external_id)` + `content_hash` over listing fields (catches edits/re-posts); only new/changed flagged. Idempotent re-ingest. | ✅ Done | Verified: re-ingest 819→0 new; edited posting re-flags. Secondary cross-board fuzzy = follow-up. |
 | RI.3 | **Scheduler** — APScheduler in-process (memory store, re-registered from config on boot). Tick: ingest→dedupe→preference-filter→notify. Wired into API lifespan (`RESUMAKER_SCHEDULER_ENABLED`) + `cli schedule [--once]`. | ✅ Done | Never runs the pipeline or applies (§21); human triggers tailoring. |
 | RI.4 | **Notifications** — new preference-matching postings → durable JSONL digest + structured log + optional webhook. | ✅ Done | `notify_webhook` config; human decides. |
+
+---
+
+# APPLICATION PLATFORM (Phase RA — the 5-page product on top of ingestion)
+
+> **Context (owner direction, 2026-08-09).** With ingestion collecting ~3–4k US+tech postings across 77 companies, the next arc is the actual *application* platform: turn the feed into a triaged workflow. Backend-first (CLI/API), then the frontend pages render on top.
+
+**Key design decision — DO NOT auto-score/rank the whole feed against the resume.** Validated empirically (4,125 jobs): a resume/profile-based lexical *fit score* on job titles is compressed (~0.19–0.21, no separation) and **misranks** genuine matches (floated "Manager, Data Science" above IC Data-Engineer roles at OpenAI/Anthropic), and it degrades further because the master resume/profile is **incomplete**. Correct split:
+- **Discovery = deterministic filtering** (target/avoid-role match, company, recency, location, pay-if-present). Resume-independent, $0, no LLM.
+- **Real matching (fit / gap / sponsorship / keywords, LLM) runs ONLY on add-to-Tracker** — full JD present, cost justified, human-chosen. Resume + cover stay manual-trigger. Keeps LLM spend low (Claude CLI subscription / capped Gemini).
+
+**Owner-approved adds/flags (2026-08-09):**
+1. **Profile page is the keystone** — everything downstream depends on profile completeness (currently thin). Surface `enrichment/manager.py` (`update_profile_fact`): view/edit profile; let Tracker gap-analysis feed discovered skills back in. Fix/enrich first or match quality stays capped.
+2. **Tracker needs a status lifecycle** (`interested → applied → interview → offer/rejected`), the spine for Dashboard "daily applications" + the future interview-prep hook.
+3. **Sponsorship is a first-class filter** (owner `needs_sponsorship=True`) — surfaced in the Tracker match step + a flag on cards.
+4. **Pay is sparse** — ATS feeds only carry comp for disclosure states (CA/NY/CO/WA/IL); don't expect it everywhere.
+
+| # | Task | Status | Deps | Notes |
+|---|------|--------|------|-------|
+| RA.1 | **Discovery backend** — query API over `jobs` (deterministic filters: role vs target/avoid, company, recency, location, pay-if-present; sort by recency/relevance). CLI + `GET /v1/discovery`. | ⬜ Todo | RI.1 | No LLM, no resume dependency. First build. |
+| RA.2 | **Tracker backend** — add-to-tracker action runs fit+gap+sponsorship+keywords (LLM, **no** resume/cover); stores result + a status field (lifecycle). Manual trigger for resume/cover. CLI + `POST /v1/tracker`. | ⬜ Todo | RA.1, R4 stages | Reuses existing stages; mirrors the on-add pipeline from the original ATS-Resumaker. |
+| RA.3 | **Profile page/enrichment surface** — view/edit profile; Tracker gap-analysis proposes profile enrichments (owner approves). CLI + `/v1/profile`. | ⬜ Todo | 1.13 | Keystone; parallel to RA.1/RA.2. |
+| RA.4 | **Dashboard** — analytics over `jobs`/`runs`/tracker: daily new listings, daily applications, per-company/role/keyword breakdowns, patterns. | ⬜ Todo | RA.2 | Data already in SQLite. |
+| RA.5 | **Metrics** — model calls, cost (Gemini cap + Claude usage), context/usage; suitable for CLI or API. | ⬜ Todo | R5 | Extends `observability/cost` + `/costs`. |
+
+**Futures (parked — acknowledged, not built now):** (a) cold-outreach contact finder (option on Tracker jobs); (b) web-extension autofill from the tailored resume; (c) dynamic role-appropriate address generation (location-filter workaround); (d) interview-prep section (notes + AI research on company/culture/likely questions/resources) — hangs off the Tracker `interview` status.
 
 ## Rebuild status log
 
@@ -233,3 +265,23 @@ ats-resumaker/
   - **R9 (remaining):** optional 3-JD live regression; retire `legacy/` (recoverable via
     tag); refresh README/docs. Held for owner sign-off (regression LLM time + deleting the
     POC tree).
+- **2026-08-09 — Watchlist coverage → 77 companies (RI.1 expanded) + platform direction set.**
+  Extended ingestion from the original 4 families to **24 adapters** via a live deep-research
+  pass (per-company endpoint verification), correcting several wrong assumptions before coding
+  (Google's v3 REST is dead → SSR `ds:1` blob; Qualcomm is Eightfold **PCSX** not `/apply/v2`;
+  FedEx is **Paradox** not Phenom; Meta's `doc_id` rotates in a JS bundle). Added google, meta,
+  tesla, pcsx, paradox, ibm, icims-classic, wayfair adapters; Atlassian reuses jibe. **Key
+  finding:** curl_cffi Chrome-TLS impersonation clears not just Akamai (Workday) but also
+  **PerimeterX (Wayfair)** and **Cloudflare (Qualcomm)** from a datacenter IP — so the only
+  genuinely residential-only boards are **Tesla** (stricter Akamai `_abck`) and **Microsoft**
+  (Azure edge). Live-verified end-to-end: Google/Atlassian/IBM/Suffolk/Wayfair/Qualcomm/Meta/
+  FedEx all ingest US+tech postings. 85 tests green; committed + **pushed** (owner asked) — the
+  25 previously-local RI commits + these are now on `origin/main`, secret/PII-scanned clean.
+  Original ~80-company list effectively fully covered (AWS folds into Amazon; LinkedIn dropped).
+  Details in `docs/JOB_INGESTION_RESEARCH.md` (per-company verdict table).
+- **2026-08-09 — Platform arc defined (Phase RA + Phase 5).** Empirically **rejected auto-fit-
+  ranking of the feed** (resume-based title fit misranks + degrades on an incomplete profile);
+  adopted Discovery=deterministic filter, Tracker=full LLM match on add. Recorded the 5-page plan
+  (Discovery/Onboarding/Tracker/Dashboard/Metrics + Profile keystone), owner-approved adds/flags
+  (Profile-first, Tracker status lifecycle, sponsorship as first-class filter, pay sparsity), and
+  parked futures. **Next: RA.1 Discovery backend → RA.2 Tracker backend.**
