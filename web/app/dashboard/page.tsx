@@ -1,15 +1,19 @@
 "use client";
-// Dashboard (RA.4): feed + application-funnel + run outcomes over the watchlist.
+// Dashboard (RA.4): feed + application-funnel + on-target composition over the watchlist.
 import { useEffect, useState } from "react";
 
-import { dashboard, type Dashboard } from "@/lib/api";
+import CompanyLogo from "@/components/CompanyLogo";
+import { dashboard, discovery, type Dashboard, type Discovery } from "@/lib/api";
 
-function Bars({ data, max }: { data: [string, number][]; max: number }) {
+const LEVEL_ORDER = ["intern", "junior", "mid", "senior", "staff", "manager"];
+const STAGE_ORDER = ["interested", "applied", "interview", "offer", "rejected", "skipped"];
+
+function Bars({ data, max, logos }: { data: [string, number][]; max: number; logos?: boolean }) {
   return (
-    <div className="bars">
+    <div className={`bars${logos ? " with-logos" : ""}`}>
       {data.map(([label, n]) => (
         <div className="bar" key={label}>
-          <span className="lbl">{label}</span>
+          <span className="lbl">{logos && <CompanyLogo name={label} size={22} />}{label}</span>
           <span className="track"><span className="fill" style={{ width: `${max ? (n / max) * 100 : 0}%` }} /></span>
           <span className="val">{n}</span>
         </div>
@@ -20,8 +24,12 @@ function Bars({ data, max }: { data: [string, number][]; max: number }) {
 
 export default function DashboardPage() {
   const [d, setD] = useState<Dashboard | null>(null);
+  const [disc, setDisc] = useState<Discovery | null>(null);
   const [error, setError] = useState("");
-  useEffect(() => { dashboard(14).then(setD).catch((e) => setError(String(e))); }, []);
+  useEffect(() => {
+    dashboard(14).then(setD).catch((e) => setError(String(e)));
+    discovery({ on_target: true, limit: 1 }).then(setDisc).catch(() => {});
+  }, []);
 
   const companies = d ? Object.entries(d.jobs_by_company).slice(0, 12) : [];
   const sources = d ? Object.entries(d.jobs_by_source) : [];
@@ -29,6 +37,18 @@ export default function DashboardPage() {
   const dmax = Math.max(1, ...daily.map((x) => x.count));
   const cmax = Math.max(1, ...companies.map(([, n]) => n));
   const smax = Math.max(1, ...sources.map(([, n]) => n));
+
+  const levels: [string, number][] = disc
+    ? LEVEL_ORDER.filter((l) => disc.facets.levels[l]).map((l) => [l, disc.facets.levels[l]])
+    : [];
+  const lmax = Math.max(1, ...levels.map(([, n]) => n));
+  const states: [string, number][] = disc
+    ? Object.entries(disc.facets.states).filter(([s]) => s !== "OTHER").sort((a, b) => b[1] - a[1]).slice(0, 10)
+    : [];
+  const stmax = Math.max(1, ...states.map(([, n]) => n));
+
+  const funnel = d ? STAGE_ORDER.filter((s) => d.tracker_funnel[s]).map((s) => [s, d.tracker_funnel[s]] as [string, number]) : [];
+  const fmax = Math.max(1, ...funnel.map(([, n]) => n));
 
   return (
     <>
@@ -41,9 +61,9 @@ export default function DashboardPage() {
           <>
             <div className="stat-row">
               <div className="stat"><div className="num">{d.watchlist.companies}</div><div className="cap">Companies watched</div></div>
-              <div className="stat"><div className="num accent">{d.watchlist.jobs}</div><div className="cap">Postings ingested</div></div>
+              <div className="stat"><div className="num accent">{d.watchlist.jobs.toLocaleString()}</div><div className="cap">Postings ingested</div></div>
+              <div className="stat"><div className="num">{disc ? disc.total.toLocaleString() : "—"}</div><div className="cap">On-target postings</div></div>
               <div className="stat"><div className="num">{d.watchlist.tracked}</div><div className="cap">Tracked</div></div>
-              <div className="stat"><div className="num">{d.runs.total}</div><div className="cap">Pipeline runs</div></div>
             </div>
 
             <div className="block">
@@ -62,15 +82,33 @@ export default function DashboardPage() {
             <div className="block">
               <div className="block-head"><h2>Application funnel</h2></div>
               <div className="panel">
-                {Object.keys(d.tracker_funnel).length === 0 ? <p className="muted" style={{ fontSize: 13 }}>no tracked jobs yet</p> :
-                  <div className="chips">{Object.entries(d.tracker_funnel).map(([k, v]) => (
-                    <span key={k} className={`pill ${k}`}>{k} · {v}</span>))}</div>}
+                {funnel.length === 0 ? <p className="muted" style={{ fontSize: 13 }}>no tracked jobs yet</p> :
+                  <div className="bars">
+                    {funnel.map(([s, n]) => (
+                      <div className="bar" key={s}>
+                        <span className="lbl">{s}</span>
+                        <span className="track"><span className={`fill stage-${s}`} style={{ width: `${(n / fmax) * 100}%` }} /></span>
+                        <span className="val">{n}</span>
+                      </div>
+                    ))}
+                  </div>}
+              </div>
+            </div>
+
+            <div className="dash-2col">
+              <div className="block">
+                <div className="block-head"><h2>On-target by level</h2></div>
+                <div className="panel">{levels.length ? <Bars data={levels} max={lmax} /> : <p className="muted" style={{ fontSize: 13 }}>—</p>}</div>
+              </div>
+              <div className="block">
+                <div className="block-head"><h2>Top states</h2><span className="count">on-target</span></div>
+                <div className="panel">{states.length ? <Bars data={states} max={stmax} /> : <p className="muted" style={{ fontSize: 13 }}>—</p>}</div>
               </div>
             </div>
 
             <div className="block">
               <div className="block-head"><h2>Postings by company</h2><span className="count">top 12</span></div>
-              <div className="panel"><Bars data={companies} max={cmax} /></div>
+              <div className="panel"><Bars data={companies} max={cmax} logos /></div>
             </div>
 
             <div className="block">

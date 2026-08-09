@@ -4,6 +4,7 @@
 import { useEffect, useState } from "react";
 
 import { profileProposals, profileSummary, type ProfileSummary, type Proposal } from "@/lib/api";
+import { groupSkills } from "@/lib/skills";
 
 export default function ProfilePage() {
   const [p, setP] = useState<ProfileSummary | null>(null);
@@ -50,9 +51,28 @@ export default function ProfilePage() {
               </div>
             </div>
 
+            {(p.employers.length > 0 || p.titles.length > 0) && (
+              <div className="block">
+                <div className="block-head"><h2>Experience</h2><span className="count">{p.employers.length} employers</span></div>
+                <div className="panel kv">
+                  <span className="k">Employers</span>
+                  <span className="chips">{p.employers.map((e) => <span key={e} className="chip">{e}</span>)}</span>
+                  <span className="k">Titles</span>
+                  <span className="chips">{p.titles.map((t) => <span key={t} className="chip">{t}</span>)}</span>
+                </div>
+              </div>
+            )}
+
             <div className="block">
-              <div className="block-head"><h2>Skills</h2><span className="count">{p.n_skills}</span></div>
-              <div className="panel"><div className="chips">{p.skills.map((s) => <span key={s} className="chip">{s}</span>)}</div></div>
+              <div className="block-head"><h2>Skills</h2><span className="count">{p.n_skills} · grouped</span></div>
+              <div className="panel skill-groups">
+                {groupSkills(p.skills).map(([cat, items]) => (
+                  <div className="skill-group" key={cat}>
+                    <div className="sg-head"><span className="sg-name">{cat}</span><span className="sg-n">{items.length}</span></div>
+                    <div className="chips">{items.map((s) => <span key={s} className="chip skill">{s}</span>)}</div>
+                  </div>
+                ))}
+              </div>
             </div>
 
             {prop && (

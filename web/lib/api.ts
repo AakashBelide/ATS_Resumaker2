@@ -69,11 +69,15 @@ export type JobRecord = {
   company: string; location: string; status: string; posted_at: string;
   first_seen: string | null; last_seen: string | null;
 };
-export type DiscoveryFacets = { companies: Record<string, number>; sources: Record<string, number> };
+export type DiscoveryFacets = {
+  companies: Record<string, number>; sources: Record<string, number>;
+  states: Record<string, number>; levels: Record<string, number>;
+};
 export type Discovery = { total: number; jobs: JobRecord[]; facets: DiscoveryFacets };
 export type DiscoveryQuery = {
   company?: string; source?: string; location?: string; keyword?: string;
-  since_days?: number; on_target?: boolean; order?: string; limit?: number; offset?: number;
+  since_days?: number; on_target?: boolean; state?: string; level?: string;
+  order?: string; limit?: number; offset?: number;
 };
 export function discovery(q: DiscoveryQuery = {}): Promise<Discovery> {
   return get<Discovery>(`/v1/discovery${qs(q)}`);
@@ -130,10 +134,47 @@ export async function setTrackerNotes(id: number, notes: string): Promise<Tracke
   return r.json();
 }
 
+// ---- Match report (report.json served as a run artifact) --------------------
+export type ReportJob = {
+  title: string; company: string; location: string; work_model: string;
+  remote_restriction: string; seniority: string; salary_range: string;
+  work_auth_note: string; sponsorship_stance: string;
+  required_quals: string[]; preferred_quals: string[]; responsibilities: string[];
+  knockouts: { question: string; kind: string; hard: boolean }[];
+  source_url: string; source_type: string; raw_text: string;
+};
+export type ReportGapItem = { requirement: string; status: string; evidence: string; substitution: string };
+export type Report = {
+  url: string; out_dir: string; gated_out: boolean;
+  job: ReportJob;
+  keyword_set: { keywords: { term: string; weight: number; kind: string }[]; standardized: string[] };
+  gap: { items: ReportGapItem[]; gaps: string[]; substitutions: unknown[] };
+  fit: {
+    dimensions: Record<string, number>;
+    deterministic_0_100: number; llm_0_100: number; final_0_100: number; final_1_5: number;
+    rationale: string;
+  };
+  sponsorship: { verdict: string; hard_blocker: boolean; source: string; needs_verification: boolean; reasons: string[] };
+  decision: { recommend_apply: boolean; confidence: string; reasons: string[]; blockers: string[] };
+  warnings: string[]; error: string | null;
+};
+export async function getReport(runId: string): Promise<Report> {
+  const r = await fetch(`${BASE}/v1/runs/${encodeURIComponent(runId)}/artifacts/report.json`, { headers: headers() });
+  if (!r.ok) throw new Error(`getReport → ${r.status}`);
+  return r.json();
+}
+
 // ---- Onboarding (RI.0) ------------------------------------------------------
 export type Company = { id: number | null; name: string; active: boolean; boards: { source: string; token: string; extra: Record<string, string> }[] };
 export type OnboardResult = { name: string; resolved: boolean; method: string; boards: { source: string; token: string; extra: Record<string, string> }[]; note: string; tried: string[] };
 export const listCompanies = () => get<Company[]>("/v1/companies");
+export async function setCompanyActive(name: string, active: boolean): Promise<{ name: string; active: boolean }> {
+  const r = await fetch(`${BASE}/v1/companies/${encodeURIComponent(name)}/active`, {
+    method: "PATCH", headers: headers(), body: JSON.stringify({ active }),
+  });
+  if (!r.ok) throw new Error(`setCompanyActive → ${r.status}`);
+  return r.json();
+}
 export async function onboard(name: string, careers_url?: string, add = true): Promise<OnboardResult> {
   const r = await fetch(`${BASE}/v1/onboard`, {
     method: "POST", headers: headers(), body: JSON.stringify({ name, careers_url, add }),

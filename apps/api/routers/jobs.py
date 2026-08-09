@@ -47,6 +47,19 @@ def add_company(body: CompanyIn) -> dict:
     return {"id": cid, "name": body.name, "boards": len(body.boards)}
 
 
+class ActiveIn(BaseModel):
+    active: bool
+
+
+@router.patch("/companies/{name}/active")
+def set_company_active(name: str, body: ActiveIn) -> dict:
+    """Pause/resume scraping for a company. Paused (active=false) companies are skipped by
+    the ingest sweep; resuming picks up live postings from that point on (no backfill)."""
+    if not db.set_company_active(name, body.active):
+        raise HTTPException(404, "company not found")
+    return {"name": name, "active": body.active}
+
+
 @router.post("/onboard")
 def onboard(body: OnboardIn) -> dict:
     """Auto-discover a company's board (slug-probe -> careers-page parse) and, if resolved

@@ -16,6 +16,10 @@ export default function MetricsPage() {
   const budget = cost._gemini_budget as { cap_usd: number; spent_usd: number; remaining_usd: number } | undefined;
   const providers = Object.entries(cost).filter(([k]) => !k.startsWith("_")) as [string, Prov][];
   const pct = budget && budget.cap_usd ? Math.min(100, (budget.spent_usd / budget.cap_usd) * 100) : 0;
+  const totCalls = providers.reduce((a, [, p]) => a + p.calls, 0);
+  const totCost = providers.reduce((a, [, p]) => a + p.cost_usd, 0);
+  const totTokens = providers.reduce((a, [, p]) => a + p.input_tokens + p.output_tokens, 0);
+  const runs = m?.runs;
 
   return (
     <>
@@ -26,6 +30,13 @@ export default function MetricsPage() {
         {error && <p className="error">{error}</p>}
         {!m ? <p className="loading">loading…</p> : (
           <>
+            <div className="stat-row">
+              <div className="stat"><div className="num accent">${totCost.toFixed(2)}</div><div className="cap">Total spend</div></div>
+              <div className="stat"><div className="num">{totCalls.toLocaleString()}</div><div className="cap">LLM calls</div></div>
+              <div className="stat"><div className="num">{(totTokens / 1e6).toFixed(2)}M</div><div className="cap">Tokens processed</div></div>
+              <div className="stat"><div className="num">{runs?.total ?? 0}</div><div className="cap">Pipeline runs</div></div>
+            </div>
+
             <div className="block">
               <div className="block-head"><h2>LLM usage by provider</h2></div>
               <div className="panel">

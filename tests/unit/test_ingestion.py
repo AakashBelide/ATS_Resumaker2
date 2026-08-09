@@ -236,9 +236,54 @@ def test_discovery_on_target_gate(tmp_db, monkeypatch):
     ("Toronto, ON, Canada", False), ("Gdansk, Poland", False), ("Singapore", False),
     ("Bratislava, Bratislava", False),             # 'City, Region' no US signal -> foreign
     ("Cambridge, England", False),
+    ("Bangalore, In", False), ("Hyderabad, In", False),  # 'In' == India, not Indiana
+    ("Indianapolis, IN", True),                    # no foreign marker -> Indiana abbr wins
+    ("Atlanta, Boston", True), ("Boston, Chicago", True),  # multi US city, no state token
 ])
 def test_is_us_location(loc, is_us):
     assert service.is_us_location(loc) is is_us
+
+
+@pytest.mark.parametrize("loc,states", [
+    ("San Jose, CA", ["CA"]),
+    ("San Francisco, CA | New York City, NY", ["CA", "NY"]),
+    ("US-CA-Menlo Park", ["CA"]),
+    ("Austin, Texas", ["TX"]),
+    ("2 Locations", []), ("Remote - USA", []), ("", []),  # unresolved -> OTHER bucket
+    ("Bangalore, In", ["IN"]),                     # note: kept only for parity; dropped at ingest
+    ("Atlanta, Boston", ["GA", "MA"]),             # multi-city -> both states via city map
+])
+def test_us_states_of(loc, states):
+    assert service.us_states_of(loc) == states
+
+
+@pytest.mark.parametrize("title,level", [
+    ("Machine Learning Intern", "intern"), ("Data Science Co-op", "intern"),
+    ("Engineering Manager", "manager"), ("Senior Manager, Data Science", "manager"),
+    ("Staff Software Engineer", "staff"), ("Principal AI Engineer", "staff"),
+    ("Senior Data Engineer", "senior"), ("Lead ML Engineer", "senior"),
+    ("New Grad Software Engineer", "junior"), ("Junior Developer", "junior"),
+    ("Data Scientist", "mid"), ("Software Engineer", "mid"),
+    ("International Growth Analyst", "mid"),        # 'intern' must not fire on 'international'
+])
+def test_title_level(title, level):
+    assert service.title_level(title) == level
+
+
+def test_mckinsey_job_url():
+    from resumaker.providers.sources.mckinsey import mckinsey_job_url
+    # Best-effort fallback slug rule (matches live `friendlyURL` 100/100): lowercase, keep
+    # ASCII hyphen-minus, strip every other non-alnum incl. en/em dashes, collapse + trim.
+    # en-dash '–' is stripped -> NO hyphen before quantumblack
+    assert mckinsey_job_url("Knowledge Graph Data Engineer – QuantumBlack, AI by McKinsey", "110946") == (
+        "https://www.mckinsey.com/careers/search-jobs/jobs/"
+        "knowledgegraphdataengineerquantumblackaibymckinsey-110946")
+    # ASCII hyphen '-' is kept -> hyphen survives before quantumblack
+    assert mckinsey_job_url("Senior Knowledge Graph Data Engineer - QuantumBlack, AI by McKinsey", "110947") == (
+        "https://www.mckinsey.com/careers/search-jobs/jobs/"
+        "seniorknowledgegraphdataengineer-quantumblackaibymckinsey-110947")
+    # no title -> bare id form (last resort)
+    assert mckinsey_job_url("", "110946") == "https://www.mckinsey.com/careers/search-jobs/jobs/110946"
 
 
 @pytest.mark.parametrize("title,is_tech", [
@@ -251,6 +296,9 @@ def test_is_us_location(loc, is_us):
     ("Registered Nurse", False), ("Warehouse Associate", False),
     ("Marketing Manager", False), ("Store Manager", False),
     ("Product Designer", False),               # ambiguous -> default drop (no tech marker)
+    ("Data Consultant", True), ("Analytics Consultant", True),  # tech-qualified consulting kept
+    ("Statistician", True), ("Applied Scientist", True), ("Research Scientist", True),
+    ("Financial Analyst", False), ("Management Consultant", False),  # pure-business still dropped
 ])
 def test_is_tech_role(title, is_tech):
     assert service.is_tech_role(title) is is_tech
@@ -262,6 +310,21 @@ def test_preference_filter(monkeypatch):
     assert service.matches_preferences("Machine Learning Engineer") is True
     assert service.matches_preferences("Sales Engineer") is False   # avoid wins
     assert service.matches_preferences("Product Manager") is False  # no target kw
+
+
+def test_matches_preferences_broad_net(monkeypatch):
+    # avoid labels carry '(pure)' qualifiers in the real profile - must still block the role
+    monkeypatch.setattr("resumaker.enrichment.preferences", lambda: {
+        "target_roles": ["AI Engineer", "Machine Learning Engineer", "Data Scientist"],
+        "avoid_roles": ["Security Engineer", "Frontend Engineer (pure)",
+                        "Site Reliability Engineer (pure infra)"]})
+    for t in ["Software Development Engineer, ECS", "Applied Scientist", "ML Engineer",
+              "Data Analyst", "Enterprise Systems Architecture", "Senior Data Scientist"]:
+        assert service.matches_preferences(t) is True, t
+    for t in ["Security Engineer", "Frontend Engineer", "Senior Site Reliability Engineer",
+              "Data Center Engineering Operations Technician", "IT Support Engineer",
+              "Email Marketing Manager"]:
+        assert service.matches_preferences(t) is False, t
 
 
 def test_google_parse_response():

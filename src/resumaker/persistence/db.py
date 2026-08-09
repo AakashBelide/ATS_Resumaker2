@@ -312,6 +312,16 @@ def remove_company(name: str) -> int:
         return cur.rowcount
 
 
+def set_company_active(name: str, active: bool) -> bool:
+    """Pause (active=False) or resume (active=True) a company's scraping. Inactive companies
+    are skipped by `ingest_all` (list_companies(active_only=True)); on resume, the next sweep
+    simply ingests whatever is live on the board then (no gap backfill). Returns True if a
+    row was updated."""
+    with connect() as conn:
+        cur = conn.execute("UPDATE companies SET active=? WHERE name=?", (int(active), name))
+        return cur.rowcount > 0
+
+
 def list_companies(active_only: bool = True) -> list[Company]:
     with connect() as conn:
         q = "SELECT * FROM companies" + (" WHERE active=1" if active_only else "")

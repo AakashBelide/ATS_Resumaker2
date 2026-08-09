@@ -124,11 +124,34 @@ _FOREIGN = {
 }
 
 
+# Major US cities (tech hubs) -> state code. Purpose: rescue multi-city postings that name
+# cities but NO state, e.g. McKinsey's "Atlanta, Boston" / "Boston, Chicago" (a comma with no
+# US-state token would otherwise read as foreign). Deliberately EXCLUDES names that collide
+# with well-known foreign cities (cambridge, birmingham, manchester, london, paris, ...) so
+# the foreign check stays authoritative. Also feeds the Discovery state facet.
+_US_CITY_TO_STATE = {
+    "new york": "ny", "brooklyn": "ny", "san francisco": "ca", "los angeles": "ca",
+    "san jose": "ca", "sunnyvale": "ca", "mountain view": "ca", "palo alto": "ca",
+    "menlo park": "ca", "santa clara": "ca", "cupertino": "ca", "san diego": "ca",
+    "san mateo": "ca", "oakland": "ca", "seattle": "wa", "bellevue": "wa", "redmond": "wa",
+    "boston": "ma", "chicago": "il", "austin": "tx", "dallas": "tx", "houston": "tx",
+    "plano": "tx", "atlanta": "ga", "denver": "co", "boulder": "co", "arlington": "va",
+    "mclean": "va", "reston": "va", "pittsburgh": "pa", "philadelphia": "pa", "miami": "fl",
+    "phoenix": "az", "tempe": "az", "minneapolis": "mn", "detroit": "mi", "charlotte": "nc",
+    "raleigh": "nc", "durham": "nc", "nashville": "tn", "columbus": "oh", "salt lake city": "ut",
+}
+
+
 def is_us_location(location: str) -> bool:
     """Heuristic: is this posting US-based? Empty/unknown counts as US (keep - the JD will
-    clarify). An explicit US state name or US term wins; a 2-letter state abbr is only
-    honored after a comma ('Boston, MA') to avoid matching prepositions like 'in'/'or';
-    a foreign country/city (without a US state abbr) marks it out."""
+    clarify). An explicit US state name or US term wins; then a 2-letter state abbr after a
+    comma ('Boston, MA') is honored; then a known major US city ('Atlanta, Boston'); an
+    explicit foreign country/city marker otherwise drops it.
+
+    Special-case: India's country code 'In' collides with Indiana's 'IN'. When the string
+    also names a foreign place, the ambiguous 'in' abbr is NOT allowed to rescue it - so
+    'Bangalore, In' correctly reads as foreign, while 'Indianapolis, IN' (no foreign marker)
+    stays US and 'Dublin, CA' (unambiguous CA) stays US."""
     loc = (location or "").strip().lower()
     if not loc:
         return True
@@ -136,15 +159,82 @@ def is_us_location(location: str) -> bool:
         return True
     if any(term in f" {loc} " for term in _US_TERMS):
         return True
+    foreign = any(f in loc for f in _FOREIGN)
     m = re.search(r",\s*([a-z]{2})\b", loc)     # 'City, ST' pattern only
-    if m and m.group(1) in _US_STATES:
+    if m and m.group(1) in _US_STATES and not (foreign and m.group(1) == "in"):
         return True
-    if any(f in loc for f in _FOREIGN):         # explicit foreign country/city
+    if foreign:                                 # explicit foreign country/city, no US signal
         return False
+    if any(city in loc for city in _US_CITY_TO_STATE):   # 'Atlanta, Boston' (city, no state)
+        return True
     # No US signal found. A structured "City, Region/Country" (has a comma) with no US
     # signal is almost certainly foreign (e.g. 'Bratislava, Bratislava') -> drop. A bare
     # single token ('Austin') or 'Remote' stays as ambiguous-keep.
     return "," not in loc
+
+
+# state name -> 2-letter code, for deriving a state facet from the free-text location string
+# (Discovery state dropdown). Reuses the abbr/name sets above; kept as an explicit map so we
+# can go name -> code. Includes DC and (deliberately) 'west virginia' before 'virginia'.
+_STATE_NAME_TO_CODE = {
+    "alabama": "al", "alaska": "ak", "arizona": "az", "arkansas": "ar", "california": "ca",
+    "colorado": "co", "connecticut": "ct", "delaware": "de", "florida": "fl", "georgia": "ga",
+    "hawaii": "hi", "idaho": "id", "illinois": "il", "indiana": "in", "iowa": "ia",
+    "kansas": "ks", "kentucky": "ky", "louisiana": "la", "maine": "me", "maryland": "md",
+    "massachusetts": "ma", "michigan": "mi", "minnesota": "mn", "mississippi": "ms",
+    "missouri": "mo", "montana": "mt", "nebraska": "ne", "nevada": "nv", "ohio": "oh",
+    "oklahoma": "ok", "oregon": "or", "pennsylvania": "pa", "tennessee": "tn", "texas": "tx",
+    "utah": "ut", "vermont": "vt", "washington": "wa", "wisconsin": "wi", "wyoming": "wy",
+    "new hampshire": "nh", "new jersey": "nj", "new mexico": "nm", "new york": "ny",
+    "north carolina": "nc", "north dakota": "nd", "rhode island": "ri", "south carolina": "sc",
+    "south dakota": "sd", "west virginia": "wv", "virginia": "va", "district of columbia": "dc",
+}
+
+
+def us_states_of(location: str) -> list[str]:
+    """Best-effort: which US state code(s) does this free-text location resolve to? Returns
+    an uppercase, sorted, de-duplicated list (a posting may list several sites). Empty list =
+    unresolved (remote / 'N Locations' / foreign / blank), which Discovery buckets as OTHER.
+    Handles full state names, the 'City, ST' comma-abbr form, and the Workday 'US-CA-...'
+    prefix. Deterministic, no LLM."""
+    loc = (location or "").lower()
+    if not loc:
+        return []
+    found: set[str] = set()
+    for name, code in _STATE_NAME_TO_CODE.items():
+        if name in loc:
+            found.add(code.upper())
+    for m in re.finditer(r",\s*([a-z]{2})\b", loc):     # 'San Jose, CA'
+        if m.group(1) in _US_STATES:
+            found.add(m.group(1).upper())
+    for m in re.finditer(r"\bus[-\s]([a-z]{2})[-\s]", loc):     # 'US-CA-Menlo Park'
+        if m.group(1) in _US_STATES:
+            found.add(m.group(1).upper())
+    for city, code in _US_CITY_TO_STATE.items():        # 'Atlanta, Boston' (city, no state)
+        if city in loc:
+            found.add(code.upper())
+    return sorted(found)
+
+
+# title -> coarse seniority level, for a deterministic (no-LLM) Discovery level filter. Word-
+# boundary matched so 'intern' does not fire on 'international'. Precedence top to bottom.
+_LEVEL_PATTERNS = [
+    ("intern", re.compile(r"\bintern(ship)?\b|\bco[-\s]?op\b|\bapprentice")),
+    ("manager", re.compile(r"\b(manager|mgr|director|head of|vp|vice president)\b")),
+    ("staff", re.compile(r"\b(staff|principal|distinguished|fellow|architect)\b")),
+    ("senior", re.compile(r"\b(senior|sr|lead)\b")),
+    ("junior", re.compile(r"\b(junior|jr|entry[-\s]level|new[-\s]grad|graduate|early career)\b")),
+]
+
+
+def title_level(title: str) -> str:
+    """Coarse seniority bucket from a job title: intern | junior | mid | senior | staff |
+    manager. 'mid' is the residual (no level token). Deterministic, no LLM."""
+    t = (title or "").lower()
+    for level, pat in _LEVEL_PATTERNS:
+        if pat.search(t):
+            return level
+    return "mid"
 
 
 # Non-tech markers: if the title is clearly one of these, drop it even if it also contains
@@ -175,6 +265,16 @@ _TECH_POS = (
     "test engineer", "solutions engineer", "ios ", "android ", "mobile engineer",
     "web developer", "api ", "sdet", "ml engineer", "ai engineer", "data science",
     "computer scientist", "technical program manager", "developer relations",
+    # additions: clearly-technical roles the precision-first net was missing, plus
+    # tech-QUALIFIED analyst/consultant (keeps 'Data/Analytics/Technology Consultant' and
+    # 'Data Analyst' without letting bare 'Financial Analyst'/'Management Consultant' flood in)
+    "research engineer", "research scientist", "applied scientist", "ml scientist",
+    "statistician", "computational", "bioinformatics", "operations research", "python",
+    "generative ai", "genai", "agentic", " llm ", "prompt engineer", "analytics",
+    "business intelligence", "quantitative analyst", "data consultant",
+    "analytics consultant", "technology consultant", "technical consultant",
+    "ai consultant", "ml consultant", "cloud consultant", "digital consultant",
+    "engineering consultant", "solution consultant", "data & analytics",
 )
 
 
@@ -188,16 +288,51 @@ def is_tech_role(title: str) -> bool:
     return any(m in t for m in _TECH_POS)
 
 
+# On-target = a broad "is this in my field?" net. The stored preference labels ("Machine
+# Learning Engineer", "Frontend Engineer (pure)") don't appear literally in real titles, so
+# instead of substring-matching the labels we match a wide keyword net (engineer / developer /
+# software / ai / ml / data / analyst / scientist / architect / python / ...), MINUS the avoid
+# roles and a small pure-ops noise list. Word boundaries stop short tokens ('ai','ml','dev')
+# firing inside unrelated words ('email','html','device'). This keeps SDE / Applied Scientist /
+# ML / DS / DE / analyst / architect roles, while dropping 'Operations Technician' / 'IT
+# Support'. Deterministic, no LLM.
+_ONTARGET_RE = re.compile(
+    r"\b("
+    r"engineer|engineering|developer|software|programmer|architect\w*|sde|swe|"
+    r"data|analyst|analytics|scientist|research|"
+    r"machine\s*learning|artificial\s*intelligence|deep\s*learning|computer\s*vision|"
+    r"nlp|llm|gen\s*ai|genai|generative|agentic|"
+    r"ai|ml|mlops|devops|python|"
+    r"cloud|platform|infrastructure|backend|back\s*end|full[-\s]?stack|"
+    r"robotics|algorithm|quant\w*|statistic\w*|computational|bioinformatics"
+    r")\b",
+    re.IGNORECASE)
+# Pure non-target roles that would otherwise slip the net via 'engineer'/'data'/etc.
+_NON_TARGET_NOISE = (
+    " operations technician", " operation technician", " ops technician",
+    " it support", " help desk", " service desk", " desktop support",
+    " field technician", " network technician", " data center technician",
+    " support technician", " facilities ", " maintenance technician",
+)
+# Avoid label (parenthetical stripped) -> extra keyword variants to also block.
+_AVOID_EXTRA = {
+    "site reliability engineer": ["site reliability", " sre ", " sre,"],
+    "frontend engineer": ["frontend engineer", "front end engineer", "front-end engineer"],
+    "security engineer": ["security engineer"],
+}
+
+
 def matches_preferences(title: str) -> bool:
-    """True if the title looks on-target per preferences: contains a target-role keyword
-    and no avoid keyword. Absent preferences -> everything passes (no filtering)."""
+    """True if the title is on-target: it's in the tech field (broad keyword net) and matches
+    none of the avoid roles / pure-ops noise. See _ONTARGET_RE above for the rationale."""
     from resumaker.enrichment import preferences
     prefs = preferences()
-    t = (title or "").lower()
-    targets = [k.lower() for k in prefs.get("target_roles", []) or []]
-    avoids = [k.lower() for k in prefs.get("avoid_roles", []) or []]
-    if avoids and any(a in t for a in avoids):
+    t = f" {(title or '').lower()} "
+
+    if any(n in t for n in _NON_TARGET_NOISE):
         return False
-    if targets:
-        return any(k in t for k in targets)
-    return True
+    for a in prefs.get("avoid_roles", []) or []:
+        base = re.sub(r"\(.*?\)", "", a).strip().lower()     # drop '(pure)' / '(pure infra)'
+        if base and (base in t or any(x in t for x in _AVOID_EXTRA.get(base, []))):
+            return False
+    return bool(_ONTARGET_RE.search(title or ""))

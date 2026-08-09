@@ -4,7 +4,7 @@ ingested `jobs`. Powers the frontend Discovery page. Real matching happens on ad
 """
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
 
 from apps.api.security import require_token
@@ -28,12 +28,14 @@ def discovery(
     keyword: str | None = None,
     since_days: int | None = None,
     on_target: bool = False,
+    state: str | None = None,
+    level: str | None = None,
     order: str = "recent",
-    limit: int = 50,
-    offset: int = 0,
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
 ) -> DiscoveryOut:
     res = discover(DiscoveryFilters(
         company=company, source=source, location=location, keyword=keyword,
-        since_days=since_days, on_target=on_target, order=order,
-        limit=limit, offset=offset))
+        since_days=since_days, on_target=on_target, state=state, level=level,
+        order=order, limit=limit, offset=offset))
     return DiscoveryOut(total=res.total, jobs=res.jobs, facets=res.facets)
