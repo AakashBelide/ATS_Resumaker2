@@ -167,6 +167,32 @@ def test_tracker_add_requires_target(tmp_db):
         tracker.add(run_match=False)
 
 
+def test_enrichment_proposals(tmp_path, monkeypatch):
+    from resumaker.domain import TrackerEntry
+    from resumaker.enrichment import proposals as pr
+    monkeypatch.setattr(pr, "get_settings",
+                        lambda: type("S", (), {"output_root": tmp_path})())
+    monkeypatch.setattr(pr.db, "list_tracker",
+                        lambda: [TrackerEntry(id=1, url="u", run_id="acme-mle", company="Acme")])
+    monkeypatch.setattr(pr.profile, "all_skills", lambda: {"Python"})
+    d = tmp_path / "acme-mle"
+    d.mkdir()
+    (d / "report.json").write_text(json.dumps({"gap": {"items": [
+        {"requirement": "Kubernetes orchestration", "status": "supportedByResume",
+         "evidence": "ran k8s in prod"},
+        {"requirement": "Rust systems programming", "status": "gap"},
+        {"requirement": "Python scripting", "status": "supportedByResume"},  # already listed
+        {"requirement": "Go", "status": "existing"},                          # not a signal
+    ]}}))
+    out = pr.propose_from_tracker()
+    have = [p.requirement for p in out["have_but_unlisted"]]
+    gaps = [p.requirement for p in out["recurring_gaps"]]
+    assert "Kubernetes orchestration" in have
+    assert "Python scripting" not in have          # a listed skill appears -> skipped
+    assert gaps == ["Rust systems programming"]
+    assert out["have_but_unlisted"][0].companies == ["Acme"]
+
+
 def test_discovery_on_target_gate(tmp_db, monkeypatch):
     from resumaker.domain import JobRecord
     from resumaker.ingestion import DiscoveryFilters, discover

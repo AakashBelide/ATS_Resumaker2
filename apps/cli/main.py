@@ -321,6 +321,68 @@ def _cmd_track_rm(args) -> int:
     return 0
 
 
+def _cmd_profile_show(_args) -> int:
+    """Local, full view of the profile signals + preferences + enrichment log tail."""
+    from resumaker.enrichment import preferences, read_enrichment_log
+    from resumaker.persistence import profile
+    prefs = preferences()
+    print("PROFILE")
+    print(f"  years_experience : {profile.candidate_years()}")
+    print(f"  needs_sponsorship: {profile.needs_sponsorship()}")
+    print(f"  employers        : {', '.join(sorted(profile.all_employers()))}")
+    print(f"  titles           : {', '.join(sorted(profile.all_titles()))}")
+    print(f"  skills ({len(profile.all_skills())}):    {', '.join(sorted(profile.all_skills()))}")
+    print("\nPREFERENCES")
+    print(f"  target_roles: {prefs.get('target_roles', [])}")
+    print(f"  avoid_roles : {prefs.get('avoid_roles', [])}")
+    loc = prefs.get("location", {})
+    if loc:
+        print(f"  location    : {loc}")
+    log = read_enrichment_log()[-5:]
+    if log:
+        print("\nRECENT ENRICHMENT LOG")
+        for r in log:
+            print(f"  {r.get('ts','')[:19]}  {r.get('kind','')}: {r.get('detail','')}")
+    return 0
+
+
+def _cmd_profile_set(args) -> int:
+    """Fold an owner-provided fact into profile.json (path is dot/bracket, value is JSON)."""
+    from resumaker.enrichment import update_profile_fact
+    # path like "skills.Languages" or "preferences.location.base" -> list of keys
+    path: list = []
+    for seg in args.path.replace("]", "").replace("[", ".").split("."):
+        if seg == "":
+            continue
+        path.append(int(seg) if seg.isdigit() else seg)
+    try:
+        value = json.loads(args.value)      # allow lists/objects/numbers
+    except json.JSONDecodeError:
+        value = args.value                  # plain string
+    old = update_profile_fact(path, value, args.reason)
+    print(f"set {args.path}: {old!r} -> {value!r}\n  reason: {args.reason}")
+    return 0
+
+
+def _cmd_profile_proposals(_args) -> int:
+    """Enrichment proposals mined from tracked jobs' gap reports (owner approves manually)."""
+    from resumaker.enrichment import propose_from_tracker, tracked_report_count
+    n = tracked_report_count()
+    props = propose_from_tracker()
+    print(f"ENRICHMENT PROPOSALS  (from {n} tracked match report(s))\n")
+    have = props["have_but_unlisted"]
+    print(f"HAVE BUT UNLISTED (evidence exists; safe to add explicitly) - {len(have)}")
+    for p in have:
+        print(f"  [{p.count}x] {p.requirement[:70]}   ({', '.join(p.companies[:3])})")
+    gaps = props["recurring_gaps"]
+    print(f"\nRECURRING GAPS (verify you actually have it before adding) - {len(gaps)}")
+    for p in gaps:
+        print(f"  [{p.count}x] {p.requirement[:70]}   ({', '.join(p.companies[:3])})")
+    if not have and not gaps:
+        print("  (none yet - track some jobs first: `track add`)")
+    return 0
+
+
 def _cmd_remove(args) -> int:
     """Remove a company from the watchlist."""
     from resumaker.persistence import db
@@ -436,6 +498,18 @@ def main(argv: list[str] | None = None) -> int:
     tr = tksub.add_parser("rm", help="remove a tracked job")
     tr.add_argument("id", type=int)
     tr.set_defaults(func=_cmd_track_rm)
+
+    pf = sub.add_parser("profile", help="view/edit your profile + enrichment proposals")
+    pfsub = pf.add_subparsers(dest="profile_cmd", required=True)
+    pfsub.add_parser("show", help="full local view of profile + preferences").set_defaults(
+        func=_cmd_profile_show)
+    ps = pfsub.add_parser("set", help="update a profile fact (path=dot/bracket, value=JSON)")
+    ps.add_argument("path", help="e.g. skills.Languages or preferences.location.base")
+    ps.add_argument("value", help="JSON value (list/obj/number) or plain string")
+    ps.add_argument("--reason", required=True, help="why (audited in the enrichment log)")
+    ps.set_defaults(func=_cmd_profile_set)
+    pfsub.add_parser("proposals", help="enrichment ideas mined from tracked jobs").set_defaults(
+        func=_cmd_profile_proposals)
 
     rm = sub.add_parser("remove", help="remove a company from the watchlist")
     rm.add_argument("name", help="company name (exact)")
