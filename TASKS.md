@@ -238,8 +238,8 @@ ats-resumaker/
 
 | # | Task | Status | Deps | Notes |
 |---|------|--------|------|-------|
-| RA.1 | **Discovery backend** — query API over `jobs` (deterministic filters: role vs target/avoid, company, recency, location, pay-if-present; sort by recency/relevance). CLI + `GET /v1/discovery`. | ⬜ Todo | RI.1 | No LLM, no resume dependency. First build. |
-| RA.2 | **Tracker backend** — add-to-tracker action runs fit+gap+sponsorship+keywords (LLM, **no** resume/cover); stores result + a status field (lifecycle). Manual trigger for resume/cover. CLI + `POST /v1/tracker`. | ⬜ Todo | RA.1, R4 stages | Reuses existing stages; mirrors the on-add pipeline from the original ATS-Resumaker. |
+| RA.1 | **Discovery backend** — query API over `jobs` (deterministic filters: role vs target/avoid, company, recency, location, pay-if-present; sort by recency/relevance). CLI + `GET /v1/discovery`. | ✅ Done | RI.1 | `db.query_jobs/count_jobs/job_facets` + `ingestion.discovery.discover()` (+on-target gate & gated facets); CLI `discovery`; `GET /v1/discovery`. No LLM/resume. Live: 359 on-target of 4,125. **Pay filter deferred** (needs a comp column captured at ingest). |
+| RA.2 | **Tracker backend** — add-to-tracker action runs fit+gap+sponsorship+keywords (LLM, **no** resume/cover); stores result + a status field (lifecycle). Manual trigger for resume/cover. CLI + `POST /v1/tracker`. | ✅ Done | RA.1, R4 stages | `run_pipeline(match_only=True)` (stops after apply-decision) + `tracker` table + `ingestion.tracker`; CLI `track add/list/stage/note/rm`; `/v1/tracker`. Lifecycle interested→applied→interview→offer→rejected/skipped; re-add preserves stage/notes. Live-verified (DoorDash Staff ML → fit 18/skip, no resume produced). |
 | RA.3 | **Profile page/enrichment surface** — view/edit profile; Tracker gap-analysis proposes profile enrichments (owner approves). CLI + `/v1/profile`. | ⬜ Todo | 1.13 | Keystone; parallel to RA.1/RA.2. |
 | RA.4 | **Dashboard** — analytics over `jobs`/`runs`/tracker: daily new listings, daily applications, per-company/role/keyword breakdowns, patterns. | ⬜ Todo | RA.2 | Data already in SQLite. |
 | RA.5 | **Metrics** — model calls, cost (Gemini cap + Claude usage), context/usage; suitable for CLI or API. | ⬜ Todo | R5 | Extends `observability/cost` + `/costs`. |
@@ -285,3 +285,13 @@ ats-resumaker/
   (Discovery/Onboarding/Tracker/Dashboard/Metrics + Profile keystone), owner-approved adds/flags
   (Profile-first, Tracker status lifecycle, sponsorship as first-class filter, pay sparsity), and
   parked futures. **Next: RA.1 Discovery backend → RA.2 Tracker backend.**
+- **2026-08-09 — RA.1 + RA.2 backends done (committed + pushed).** **RA.1 Discovery**:
+  deterministic, $0, LLM-free, resume-independent query layer (`db.query_jobs/count_jobs/
+  job_facets` + `ingestion.discovery`) with company/source/location/keyword/recency filters,
+  sort, pagination, an optional on-target preference gate (gated facets), CLI `discovery` +
+  `GET /v1/discovery`. Live: 359 on-target of 4,125. **RA.2 Tracker**: `run_pipeline(match_only
+  =True)` runs fit/gap/sponsorship/keywords and stops before resume/cover; `tracker` table +
+  application lifecycle (re-add preserves stage/notes); CLI `track` + `/v1/tracker`. Live-
+  verified end-to-end (DoorDash Staff ML → fit 18/skip/sponsorship likely, no resume produced).
+  89 tests green, lint+mypy clean. **Next: RA.3 Profile/enrichment surface → RA.4 Dashboard →
+  RA.5 Metrics; then Phase 5 frontend pages.**
