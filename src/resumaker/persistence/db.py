@@ -328,6 +328,38 @@ def list_companies(active_only: bool = True) -> list[Company]:
     return out
 
 
+# ------------------------------------------------------------------ analytics (RA.4/RA.5)
+def jobs_daily(days: int = 14) -> list[dict]:
+    """New listings per day (by `first_seen`) over the last `days`, most-recent first."""
+    cutoff = (datetime.now(UTC) - timedelta(days=days)).isoformat()
+    with connect() as conn:
+        rows = conn.execute(
+            "SELECT substr(first_seen,1,10) d, count(*) n FROM jobs "
+            "WHERE first_seen >= ? GROUP BY d ORDER BY d DESC", (cutoff,)).fetchall()
+    return [{"date": r["d"], "count": r["n"]} for r in rows]
+
+
+def tracker_funnel() -> dict[str, int]:
+    with connect() as conn:
+        rows = conn.execute(
+            "SELECT stage, count(*) n FROM tracker GROUP BY stage").fetchall()
+    return {r["stage"]: r["n"] for r in rows}
+
+
+def run_stats() -> dict:
+    """Run counts by status + avg fit/ATS + total recorded cost."""
+    with connect() as conn:
+        by = {r["status"]: r["n"] for r in conn.execute(
+            "SELECT status, count(*) n FROM runs GROUP BY status").fetchall()}
+        a = conn.execute(
+            "SELECT count(*) total, avg(fit_0_100) af, avg(ats_overall) aa, "
+            "sum(cost_usd) c FROM runs").fetchone()
+    return {"total": int(a["total"] or 0), "by_status": by,
+            "avg_fit": round(a["af"], 1) if a["af"] is not None else None,
+            "avg_ats": round(a["aa"], 1) if a["aa"] is not None else None,
+            "total_cost_usd": round(a["c"] or 0.0, 4)}
+
+
 # ------------------------------------------------------------------ tracker (RA.2)
 def upsert_tracker(entry: TrackerEntry) -> int:
     """Insert a tracked job or refresh its match fields (keyed on url). Preserves `stage`

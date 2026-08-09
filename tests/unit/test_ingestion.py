@@ -167,6 +167,24 @@ def test_tracker_add_requires_target(tmp_db):
         tracker.add(run_match=False)
 
 
+def test_dashboard_stats(tmp_db):
+    from resumaker.analytics import dashboard_stats
+    from resumaker.domain import JobRecord, TrackerEntry
+    from resumaker.persistence import db
+    for ext, co, src in [("1", "Anthropic", "greenhouse"), ("2", "Anthropic", "greenhouse"),
+                         ("3", "OpenAI", "ashby")]:
+        db.upsert_job(JobRecord(source=src, external_id=ext, title="ML Engineer",
+                                company=co, location="SF, CA", url=f"u{ext}", content_hash=ext))
+    db.upsert_tracker(TrackerEntry(url="u1", company="Anthropic", stage="applied"))
+    db.upsert_tracker(TrackerEntry(url="u3", company="OpenAI", stage="interested"))
+    s = dashboard_stats()
+    assert s["watchlist"]["jobs"] == 3 and s["watchlist"]["tracked"] == 2
+    assert s["jobs_by_company"]["Anthropic"] == 2
+    assert s["jobs_by_source"]["greenhouse"] == 2 and s["jobs_by_source"]["ashby"] == 1
+    assert s["tracker_funnel"] == {"applied": 1, "interested": 1}
+    assert sum(d["count"] for d in s["new_listings_daily"]) == 3   # all first-seen today
+
+
 def test_enrichment_proposals(tmp_path, monkeypatch):
     from resumaker.domain import TrackerEntry
     from resumaker.enrichment import proposals as pr

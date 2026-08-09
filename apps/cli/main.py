@@ -417,6 +417,56 @@ def _cmd_costs(_args) -> int:
     return 0
 
 
+def _cmd_dashboard(args) -> int:
+    """Feed + application-funnel stats (RA.4). Deterministic, $0."""
+    from resumaker.analytics import dashboard_stats
+    from resumaker.persistence import db
+    db.init_db()
+    s = dashboard_stats(days=args.days)
+    if args.json:
+        print(json.dumps(s, indent=1))
+        return 0
+    w = s["watchlist"]
+    print(f"WATCHLIST: {w['companies']} companies, {w['jobs']} postings, {w['tracked']} tracked\n")
+    print(f"NEW LISTINGS (last {args.days}d):")
+    for d in s["new_listings_daily"][:args.days]:
+        print(f"  {d['date']}  {'#' * min(d['count'], 60)} {d['count']}")
+    print("\nTOP COMPANIES:", ", ".join(f"{c}({n})" for c, n in
+                                        list(s["jobs_by_company"].items())[:10]))
+    print("BY SOURCE:", ", ".join(f"{c}({n})" for c, n in s["jobs_by_source"].items()))
+    if s["tracker_funnel"]:
+        print("\nAPPLICATION FUNNEL:", ", ".join(f"{k}={v}" for k, v in
+                                                 s["tracker_funnel"].items()))
+    r = s["runs"]
+    print(f"\nRUNS: {r['total']} total {r['by_status']}  "
+          f"avg_fit={r['avg_fit']} avg_ats={r['avg_ats']} cost=${r['total_cost_usd']}")
+    return 0
+
+
+def _cmd_metrics(args) -> int:
+    """Model calls / cost / usage (RA.5)."""
+    from resumaker.analytics import metrics_overview
+    from resumaker.persistence import db
+    db.init_db()
+    ov = metrics_overview()
+    if args.json:
+        print(json.dumps(ov, indent=1))
+        return 0
+    print("LLM USAGE (by provider):")
+    for prov, a in ov["cost"].items():
+        if prov.startswith("_"):
+            continue
+        print(f"  {prov:12} calls={a['calls']:4} in={a['input_tokens']:>8} "
+              f"out={a['output_tokens']:>8} cost=${a['cost_usd']}")
+    gb = ov["cost"].get("_gemini_budget", {})
+    if gb:
+        print(f"  gemini budget: ${gb['spent_usd']} / ${gb['cap_usd']} "
+              f"(remaining ${gb['remaining_usd']})")
+    r = ov["runs"]
+    print(f"\nRUNS: {r['total']} {r['by_status']}  cost=${r['total_cost_usd']}")
+    return 0
+
+
 def _cmd_serve(args) -> int:
     import uvicorn
 
@@ -521,6 +571,15 @@ def main(argv: list[str] | None = None) -> int:
 
     c = sub.add_parser("costs", help="show LLM spend (Gemini budget + Claude usage)")
     c.set_defaults(func=_cmd_costs)
+
+    db_ = sub.add_parser("dashboard", help="feed + application-funnel stats")
+    db_.add_argument("--days", type=int, default=14)
+    db_.add_argument("--json", action="store_true")
+    db_.set_defaults(func=_cmd_dashboard)
+
+    mt = sub.add_parser("metrics", help="model calls / cost / usage overview")
+    mt.add_argument("--json", action="store_true")
+    mt.set_defaults(func=_cmd_metrics)
 
     sv = sub.add_parser("serve", help="launch the API (uvicorn)")
     sv.add_argument("--port", type=int, default=None)
