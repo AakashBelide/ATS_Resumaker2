@@ -25,15 +25,17 @@ _ETAG_NS = "gh_etag"
 
 
 def _persisted_job_count(token: str) -> int:
-    """How many jobs from this greenhouse board are already stored? Boards are identified by
-    the canonical listing URL we emit below (`boards.greenhouse.io/{token}/jobs/...`), since
-    the `jobs` table has no board token column. Failures count as 0 (fetch fully -> safe)."""
+    """How many greenhouse jobs are already stored for the company that owns this board token?
+    Resolved via company_boards (URL-independent, so it stays correct regardless of whether we
+    store the canonical or the company `absolute_url`). Failures count as 0 (fetch fully)."""
     try:
         from resumaker.persistence import db
         with db.connect() as conn:
             row = conn.execute(
-                "SELECT count(*) FROM jobs WHERE source=? AND url LIKE ?",
-                ("greenhouse", f"https://boards.greenhouse.io/{token}/jobs/%"),
+                "SELECT count(*) FROM jobs WHERE source='greenhouse' AND company IN ("
+                " SELECT c.name FROM companies c JOIN company_boards b ON b.company_id=c.id"
+                " WHERE b.source='greenhouse' AND b.token=?)",
+                (token,),
             ).fetchone()
         return int(row[0]) if row else 0
     except Exception:  # noqa: BLE001 - never let an index hiccup block a fetch
@@ -61,16 +63,19 @@ class GreenhouseSource:
         out: list[PostingStub] = []
         for j in r.json().get("jobs", []) or []:
             jid = str(j.get("id", ""))
+            canonical = f"https://boards.greenhouse.io/{token}/jobs/{jid}"
+            # Prefer the company's `absolute_url` (greenhouse's own public link for the job):
+            # for companies that redirect the greenhouse board to their site (e.g. Stripe), the
+            # canonical URL 302s to a generic careers *landing*, whereas absolute_url opens the
+            # actual role. For greenhouse-hosted boards absolute_url == canonical, so no change.
+            abs_url = (j.get("absolute_url") or "").strip()
             out.append(PostingStub(
                 source=self.source,
                 external_id=jid,
-                # Canonical boards URL so the single-JD scraper hits the clean API path.
-                # A company's `absolute_url` often points at its own site (no greenhouse.io
-                # host), which would force a Playwright fallback - so we keep it in `extra`.
-                url=f"https://boards.greenhouse.io/{token}/jobs/{jid}",
+                url=abs_url or canonical,
                 title=j.get("title", ""),
                 location=(j.get("location") or {}).get("name", ""),
                 updated_at=j.get("updated_at", ""),
-                extra={"absolute_url": j.get("absolute_url", "")},
+                extra={"absolute_url": abs_url, "canonical_url": canonical},
             ))
         return out

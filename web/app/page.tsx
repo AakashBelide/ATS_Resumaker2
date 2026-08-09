@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import CompanyLogo from "@/components/CompanyLogo";
 import MultiSelect from "@/components/MultiSelect";
+import Select from "@/components/Select";
 import {
   addTracker, discovery, listTracker, type Discovery, type DiscoveryQuery, type JobRecord,
 } from "@/lib/api";
@@ -165,19 +166,13 @@ export default function DiscoveryPage() {
           <MultiSelect label="state" options={stateOpts} selected={q.state ?? []} onChange={(v) => patch({ state: v })}
                        labelFor={(v) => (v === "OTHER" ? "Remote / Other" : v)} />
           <MultiSelect label="level" options={levelOpts} selected={q.level ?? []} onChange={(v) => patch({ level: v })} />
-          <div className="field">
-            <label>since</label>
-            <select value={q.since_days ?? ""} onChange={(e) => patch({ since_days: e.target.value ? Number(e.target.value) : undefined })}>
-              <option value="">any</option><option value="1">1d</option><option value="3">3d</option>
-              <option value="7">7d</option><option value="14">14d</option>
-            </select>
-          </div>
-          <div className="field">
-            <label>sort</label>
-            <select value={q.order} onChange={(e) => patch({ order: e.target.value })}>
-              <option value="recent">recent</option><option value="company">company</option><option value="title">title</option>
-            </select>
-          </div>
+          <Select label="since" value={String(q.since_days ?? "")}
+                  options={[{ value: "", label: "any" }, { value: "1", label: "1d" }, { value: "3", label: "3d" },
+                            { value: "7", label: "7d" }, { value: "14", label: "14d" }]}
+                  onChange={(v) => patch({ since_days: v ? Number(v) : undefined })} />
+          <Select label="sort" value={q.order ?? "recent"}
+                  options={[{ value: "recent", label: "recent" }, { value: "company", label: "company" }, { value: "title", label: "title" }]}
+                  onChange={(v) => patch({ order: v })} />
           <div className={`field toggle${q.on_target ? " on" : ""}`} onClick={() => patch({ on_target: !q.on_target })}>
             <label>on-target</label><span className="mono">{q.on_target ? "yes" : "no"}</span>
           </div>

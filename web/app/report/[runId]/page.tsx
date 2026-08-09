@@ -197,65 +197,65 @@ export default function ReportPage() {
                 </div>
               </div>
 
-              {/* documents (resume / cover letter) — generated ON DEMAND, not on track */}
+              {/* job description (left, below the analysis) */}
               <div className="block">
-                <div className="block-head"><h2>Documents</h2></div>
+                <div className="block-head"><h2>Job description</h2></div>
                 <div className="panel">
-                  {r.resume || r.cover_letter ? (
-                    <div className="chips">
-                      {r.resume != null && <a className="btn btn-sm" href={artifactUrl(runId, "resume.pdf")} target="_blank" rel="noreferrer">résumé PDF ↗</a>}
-                      {r.resume != null && <a className="btn btn-sm" href={artifactUrl(runId, "resume.docx")} target="_blank" rel="noreferrer">résumé DOCX ↗</a>}
-                      {r.cover_letter != null && <a className="btn btn-sm" href={artifactUrl(runId, "cover_letter.txt")} target="_blank" rel="noreferrer">cover letter ↗</a>}
-                    </div>
-                  ) : (
-                    <div className="doc-empty">
-                      <div className="doc-empty-art" aria-hidden>
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" width="30" height="30">
-                          <path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z" />
-                          <path d="M14 3v6h6M8 13h8M8 17h5" />
-                        </svg>
-                      </div>
-                      <p className="muted" style={{ fontSize: 13.5, lineHeight: 1.6, margin: "0 0 4px" }}>
-                        No tailored résumé or cover letter yet. Tracking runs a <b>match-only</b> analysis (fit / gap /
-                        sponsorship / keywords) — the tailored documents are generated <b>on demand</b>, not
-                        automatically, so you only spend the run when you actually want to apply.
-                      </p>
-                      {gen ? (
-                        <button className="btn btn-sm" disabled>
-                          <span className="matching mono">generating… {gen.stage}</span>
-                        </button>
-                      ) : genDone ? (
-                        <a className="btn btn-sm btn-primary" href={`/report/${encodeURIComponent(genDone)}`}>view generated documents ↗</a>
-                      ) : (
-                        <button className="btn btn-sm btn-primary" onClick={generate}>Generate résumé &amp; cover letter</button>
-                      )}
-                    </div>
+                  {r.job.required_quals.length > 0 && (
+                    <>
+                      <p className="kicker">Required</p>
+                      <ul className="rlist">{r.job.required_quals.map((x, i) => <li key={i}>{x}</li>)}</ul>
+                    </>
+                  )}
+                  {r.job.preferred_quals.length > 0 && (
+                    <>
+                      <p className="kicker" style={{ marginTop: 14 }}>Preferred</p>
+                      <ul className="rlist">{r.job.preferred_quals.map((x, i) => <li key={i}>{x}</li>)}</ul>
+                    </>
+                  )}
+                  {r.job.responsibilities.length > 0 && (
+                    <>
+                      <p className="kicker" style={{ marginTop: 14 }}>Responsibilities</p>
+                      <ul className="rlist">{r.job.responsibilities.map((x, i) => <li key={i}>{x}</li>)}</ul>
+                    </>
                   )}
                 </div>
               </div>
             </div>
 
-            {/* -------- right: job description -------- */}
+            {/* -------- right: documents (résumé / cover letter), generated on demand -------- */}
             <aside className="report-side">
-              <div className="block-head"><h2>Job description</h2></div>
-              <div className="panel jd-panel">
-                {r.job.required_quals.length > 0 && (
-                  <>
-                    <p className="kicker">Required</p>
-                    <ul className="rlist">{r.job.required_quals.map((x, i) => <li key={i}>{x}</li>)}</ul>
-                  </>
-                )}
-                {r.job.preferred_quals.length > 0 && (
-                  <>
-                    <p className="kicker" style={{ marginTop: 14 }}>Preferred</p>
-                    <ul className="rlist">{r.job.preferred_quals.map((x, i) => <li key={i}>{x}</li>)}</ul>
-                  </>
-                )}
-                {r.job.responsibilities.length > 0 && (
-                  <>
-                    <p className="kicker" style={{ marginTop: 14 }}>Responsibilities</p>
-                    <ul className="rlist">{r.job.responsibilities.map((x, i) => <li key={i}>{x}</li>)}</ul>
-                  </>
+              <div className="block-head"><h2>Documents</h2></div>
+              <div className="panel">
+                {r.resume || r.cover_letter ? (
+                  <div className="chips">
+                    {r.resume != null && <a className="btn btn-sm" href={artifactUrl(runId, "resume.pdf")} target="_blank" rel="noreferrer">résumé PDF ↗</a>}
+                    {r.resume != null && <a className="btn btn-sm" href={artifactUrl(runId, "resume.docx")} target="_blank" rel="noreferrer">résumé DOCX ↗</a>}
+                    {r.cover_letter != null && <a className="btn btn-sm" href={artifactUrl(runId, "cover_letter.txt")} target="_blank" rel="noreferrer">cover letter ↗</a>}
+                  </div>
+                ) : (
+                  <div className="doc-empty">
+                    <div className="doc-empty-art" aria-hidden>
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" width="30" height="30">
+                        <path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z" />
+                        <path d="M14 3v6h6M8 13h8M8 17h5" />
+                      </svg>
+                    </div>
+                    <p className="muted" style={{ fontSize: 13.5, lineHeight: 1.6, margin: "0 0 4px" }}>
+                      No tailored résumé or cover letter yet. Tracking runs a <b>match-only</b> analysis (fit / gap /
+                      sponsorship / keywords) — the tailored documents are generated <b>on demand</b>, not
+                      automatically, so you only spend the run when you actually want to apply.
+                    </p>
+                    {gen ? (
+                      <button className="btn btn-sm" disabled>
+                        <span className="matching mono">generating… {gen.stage}</span>
+                      </button>
+                    ) : genDone ? (
+                      <a className="btn btn-sm btn-primary" href={`/report/${encodeURIComponent(genDone)}`}>view generated documents ↗</a>
+                    ) : (
+                      <button className="btn btn-sm btn-primary" onClick={generate}>Generate résumé &amp; cover letter</button>
+                    )}
+                  </div>
                 )}
               </div>
             </aside>
