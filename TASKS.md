@@ -212,3 +212,23 @@ ats-resumaker/
 | RI.2 | **Dedupe** — identity `(source, external_id)`; `content_hash` over normalized JD text (catches edits/re-posts); secondary fuzzy `company+title+location` (catches cross-board dupes). Only new/changed enqueue. | ⬜ Todo | `jobs.status`: new→seen→queued→processed→(applied/skipped). |
 | RI.3 | **Scheduler** — APScheduler in-process w/ SQLite jobstore (survives restart) or cron→`cli ingest`. Per-company cadence in config. Tick: ingest→dedupe→preference-filter→apply-gate→notify. | ⬜ Todo | Never auto-submits (§21). |
 | RI.4 | **Notifications** — new high-fit jobs → digest (email/webhook); human decides. | ⬜ Todo | Sits on apply-decision + preferences. |
+
+## Rebuild status log
+
+- **2026-08-08 — R0–R8 COMPLETE & committed.** Reorganized the validated POCs into a
+  production monorepo, migrating logic verbatim (parity-preserving) behind clean
+  interfaces. All phases lint-clean, mypy-clean, tested at each step; old tree preserved
+  as `legacy/` (+ tag `poc-complete`, branch `legacy-pocs`).
+  - **R0** backup · **R1** skeleton+packaging (extras, ruff/mypy/pytest, Makefile) ·
+    **R2** core (config/domain/observability/persistence; SQLite w/ companies·jobs·runs) ·
+    **R3** providers (LLM registry: Claude-CLI+Anthropic+Gemini + response cache; scraper;
+    sources seam) · **R4** all stages + orchestrator — **parity gate PASSED** on a live
+    Databricks JD (0 errors, 1-page, fact-gate PASS, ATS-verify PASS, ATS 81, grounded
+    cover letter, run indexed) · **R5** FastAPI (runs/SSE/watchlist/costs + token auth;
+    live ingest indexed 819 postings, re-ingest deduped to 0 new) · **R6** CLI
+    (run/watch/ingest/costs/serve) · **R7** web (Next.js) + extension (MV3) scaffolds ·
+    **R8** deploy (Docker image builds 971 MB, container serves /health with auth; Caddy;
+    systemd). 32 tests green; Gemini spend $0.0002/$5.
+  - **R9 (remaining):** optional 3-JD live regression; retire `legacy/` (recoverable via
+    tag); refresh README/docs. Held for owner sign-off (regression LLM time + deleting the
+    POC tree).
