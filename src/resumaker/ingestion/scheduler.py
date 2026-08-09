@@ -18,8 +18,17 @@ from resumaker.observability.logging import get_logger
 
 _log = get_logger("resumaker.ingestion.scheduler")
 
-_FAST_SOURCES = {"greenhouse", "lever", "ashby"}
-_SLOW_SOURCES = {"workday"}
+# Clean public JSON APIs with no/low bot protection -> poll often (hourly).
+_FAST_SOURCES = {"greenhouse", "lever", "ashby", "amazon", "eightfold", "oracle_cloud",
+                 "smartrecruiters", "mckinsey", "goldman", "jibe", "apple"}
+
+
+def _slow_sources() -> set[str]:
+    """Everything not in the fast set (Workday/Phenom/Radancy/Dassault/ByteDance/Microsoft
+    - heavier, HTML/XML, or bot-sensitive) -> poll gently (daily). Computed from the live
+    registry so a newly-added source is never silently skipped."""
+    from resumaker.providers.sources import available_sources
+    return set(available_sources()) - _FAST_SOURCES
 
 
 def run_tick(sources: set[str] | None = None) -> list[IngestResult]:
@@ -42,7 +51,7 @@ def build_scheduler():
     sched.add_job(lambda: run_tick(_FAST_SOURCES), "interval",
                   minutes=s.scheduler_interval_minutes, id="boards_fast",
                   replace_existing=True)
-    sched.add_job(lambda: run_tick(_SLOW_SOURCES), "interval",
-                  minutes=s.scheduler_workday_interval_minutes, id="workday_slow",
+    sched.add_job(lambda: run_tick(_slow_sources()), "interval",
+                  minutes=s.scheduler_workday_interval_minutes, id="boards_slow",
                   replace_existing=True)
     return sched
