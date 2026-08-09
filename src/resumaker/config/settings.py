@@ -62,6 +62,11 @@ class Settings(BaseSettings):
     api_host: str = "0.0.0.0"
     api_port: int = 8000
 
+    # -- watchlist ingestion + scheduler (RI) --------------------------------
+    scheduler_enabled: bool = False       # if True, the API polls the watchlist on a cadence
+    scheduler_interval_minutes: int = 60
+    notify_webhook: str | None = None     # optional: POST a JSON digest of new jobs here
+
     @model_validator(mode="after")
     def _derive_paths(self) -> Settings:
         if self.data_dir is None:

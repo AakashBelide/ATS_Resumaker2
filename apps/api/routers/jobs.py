@@ -7,13 +7,15 @@ cadence.
 """
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
 from apps.api.security import require_token
 from resumaker.domain import BoardRef, Company, JobRecord
-from resumaker.persistence import cache, db
-from resumaker.providers.sources import available_sources, get_source
+from resumaker.ingestion import ingest_company as _ingest
+from resumaker.ingestion import resolve as _resolve
+from resumaker.persistence import db
+from resumaker.providers.sources import available_sources
 
 router = APIRouter(prefix="/v1", tags=["jobs"], dependencies=[Depends(require_token)])
 
@@ -21,6 +23,12 @@ router = APIRouter(prefix="/v1", tags=["jobs"], dependencies=[Depends(require_to
 class CompanyIn(BaseModel):
     name: str
     boards: list[BoardRef]
+
+
+class OnboardIn(BaseModel):
+    name: str
+    careers_url: str | None = None
+    add: bool = True   # add to the watchlist if resolved
 
 
 @router.get("/sources")
@@ -39,28 +47,29 @@ def add_company(body: CompanyIn) -> dict:
     return {"id": cid, "name": body.name, "boards": len(body.boards)}
 
 
+@router.post("/onboard")
+def onboard(body: OnboardIn) -> dict:
+    """Auto-discover a company's board (slug-probe -> careers-page parse) and, if resolved
+    and `add`, put it on the watchlist. Unresolved -> caller supplies careers_url/token."""
+    res = _resolve(body.name, careers_url=body.careers_url)
+    if res.resolved and body.add:
+        db.add_company(Company(name=body.name, boards=res.boards))
+    return {"name": res.name, "resolved": res.resolved, "method": res.method,
+            "boards": [b.model_dump() for b in res.boards], "note": res.note,
+            "tried": res.tried}
+
+
 @router.get("/jobs", response_model=list[JobRecord])
 def list_jobs(status: str | None = None, limit: int = 100) -> list[JobRecord]:
     return db.list_jobs(status=status, limit=limit)
 
 
 @router.post("/companies/{name}/ingest")
-def ingest_company(name: str) -> dict:
-    """List every board of the named company, dedupe postings into `jobs`, and report
-    new/changed/seen counts. Idempotent - safe to call repeatedly."""
+def ingest_company(name: str, preferred_only: bool = False) -> dict:
+    """List every board of the named company, dedupe into `jobs`, report counts."""
     companies = {c.name: c for c in db.list_companies(active_only=False)}
     if name not in companies:
-        return {"error": f"company '{name}' not on the watchlist"}
-    new = seen = 0
-    for board in companies[name].boards:
-        for stub in get_source(board.source).list_postings(board.token):
-            content_hash = cache.make_key(stub.title, stub.location, stub.updated_at)
-            _, is_new_or_changed = db.upsert_job(JobRecord(
-                source=stub.source, external_id=stub.external_id, url=stub.url,
-                title=stub.title, company=name, location=stub.location,
-                content_hash=content_hash))
-            if is_new_or_changed:
-                new += 1
-            else:
-                seen += 1
-    return {"company": name, "new_or_changed": new, "unchanged": seen}
+        raise HTTPException(404, f"company '{name}' not on the watchlist")
+    r = _ingest(companies[name], preferred_only=preferred_only)
+    return {"company": r.company, "new_or_changed": r.new, "unchanged": r.unchanged,
+            "errors": r.errors}

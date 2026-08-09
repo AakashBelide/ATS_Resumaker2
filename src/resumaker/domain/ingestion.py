@@ -46,7 +46,8 @@ class JobRecord(BaseModel):
     location: str = ""
     content_hash: str = ""
     status: JobStatus = "new"
-    first_seen: datetime | None = None
+    posted_at: str = ""                # source's publish/updated date when available
+    first_seen: datetime | None = None  # when WE first saw it (reliable freshness proxy)
     last_seen: datetime | None = None
 
     @property

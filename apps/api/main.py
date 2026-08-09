@@ -28,8 +28,19 @@ async def lifespan(app: FastAPI):
     db.init_db()
     s = get_settings()
     _log.info("api starting", extra={"version": __version__, "env": s.environment,
-                                     "auth": bool(s.api_token)})
-    yield
+                                     "auth": bool(s.api_token), "scheduler": s.scheduler_enabled})
+    scheduler = None
+    if s.scheduler_enabled:
+        from resumaker.ingestion.scheduler import build_scheduler
+        scheduler = build_scheduler()
+        scheduler.start()
+        _log.info("watchlist scheduler started",
+                  extra={"interval_min": s.scheduler_interval_minutes})
+    try:
+        yield
+    finally:
+        if scheduler:
+            scheduler.shutdown(wait=False)
 
 
 def create_app() -> FastAPI:

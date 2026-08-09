@@ -1,9 +1,15 @@
 """Board-listing adapters (watchlist ingestion). `get_source(name)` returns an adapter."""
+from resumaker.providers.sources.ashby import AshbySource
 from resumaker.providers.sources.base import PostingStub, SourceAdapter
 from resumaker.providers.sources.greenhouse import GreenhouseSource
+from resumaker.providers.sources.lever import LeverSource
+from resumaker.providers.sources.workday import WorkdaySource
 
 _SOURCES: dict[str, SourceAdapter] = {
     GreenhouseSource.source: GreenhouseSource(),
+    LeverSource.source: LeverSource(),
+    AshbySource.source: AshbySource(),
+    WorkdaySource.source: WorkdaySource(),
 }
 
 

@@ -168,18 +168,82 @@ def _cmd_watch(args) -> int:
 
 def _cmd_ingest(args) -> int:
     """List a board's postings and dedupe them into the jobs index."""
-    from resumaker.domain import JobRecord
-    from resumaker.persistence import cache, db
-    from resumaker.providers.sources import get_source
+    from resumaker.domain import BoardRef, Company
+    from resumaker.ingestion import ingest_company
+    from resumaker.persistence import db
     db.init_db()
-    new = seen = 0
-    for stub in get_source(args.source).list_postings(args.token):
-        _, changed = db.upsert_job(JobRecord(
-            source=stub.source, external_id=stub.external_id, url=stub.url,
-            title=stub.title, company=args.token, location=stub.location,
-            content_hash=cache.make_key(stub.title, stub.location, stub.updated_at)))
-        new, seen = (new + 1, seen) if changed else (new, seen + 1)
-    print(f"{args.source}/{args.token}: {new} new/changed, {seen} unchanged")
+    company = Company(name=args.token, boards=[BoardRef(source=args.source, token=args.token)])
+    r = ingest_company(company)
+    print(f"{args.source}/{args.token}: {r.new} new/changed, {r.unchanged} unchanged"
+          + (f"  errors={r.errors}" if r.errors else ""))
+    return 0
+
+
+def _cmd_onboard(args) -> int:
+    """Auto-discover a company's board and (optionally) add it to the watchlist."""
+    from resumaker.domain import Company
+    from resumaker.ingestion import resolve
+    from resumaker.persistence import db
+    db.init_db()
+    res = resolve(args.name, careers_url=args.careers_url)
+    if res.resolved:
+        b = res.boards[0]
+        print(f"RESOLVED {args.name!r} via {res.method}: {b.source}/{b.token}"
+              + (f" {b.extra}" if b.extra else ""))
+        if not args.no_add:
+            db.add_company(Company(name=args.name, boards=res.boards))
+            print("  -> added to watchlist")
+    else:
+        print(f"UNRESOLVED {args.name!r}: {res.note}")
+        if res.tried:
+            print(f"  tried: {', '.join(res.tried)}")
+    return 0 if res.resolved else 2
+
+
+def _cmd_onboard_seed(args) -> int:
+    """Onboard every company in a JSON list ([\"Name\", ...] or [{name, careers_url?}]).
+    Prints a resolved/manual report; adds resolved companies to the watchlist."""
+    from resumaker.domain import Company
+    from resumaker.ingestion import resolve
+    from resumaker.persistence import db
+    db.init_db()
+    items = json.loads(Path(args.file).read_text())
+    entries = [{"name": i} if isinstance(i, str) else i for i in items]
+    resolved, manual = [], []
+    for e in entries:
+        res = resolve(e["name"], careers_url=e.get("careers_url"))
+        if res.resolved:
+            db.add_company(Company(name=e["name"], boards=res.boards))
+            b = res.boards[0]
+            resolved.append((e["name"], f"{b.source}/{b.token}", res.method))
+            print(f"  [OK]     {e['name']:28} {b.source}/{b.token}  ({res.method})", flush=True)
+        else:
+            manual.append(e["name"])
+            print(f"  [MANUAL] {e['name']:28} needs careers_url/token", flush=True)
+    print(f"\nResolved {len(resolved)}/{len(entries)}; {len(manual)} need manual onboarding.")
+    if manual:
+        print("Manual:", ", ".join(manual))
+    return 0
+
+
+def _cmd_schedule(args) -> int:
+    """Run the watchlist poll once (--once) or start the recurring scheduler (blocking)."""
+    from resumaker.ingestion.scheduler import run_tick
+    if args.once:
+        results = run_tick()
+        total_new = sum(r.new for r in results)
+        print(f"tick: {len(results)} companies, {total_new} new/changed postings")
+        return 0
+    from apscheduler.schedulers.blocking import BlockingScheduler
+
+    from resumaker.config import get_settings
+    sched = BlockingScheduler()
+    mins = get_settings().scheduler_interval_minutes
+    sched.add_job(run_tick, "interval", minutes=mins, id="watchlist_ingest")
+    print(f"scheduler running every {mins} min (Ctrl-C to stop)")
+    import contextlib
+    with contextlib.suppress(KeyboardInterrupt, SystemExit):
+        sched.start()
     return 0
 
 
@@ -223,6 +287,20 @@ def main(argv: list[str] | None = None) -> int:
     g.add_argument("source", help="board source, e.g. greenhouse")
     g.add_argument("token", help="board token/slug, e.g. databricks")
     g.set_defaults(func=_cmd_ingest)
+
+    o = sub.add_parser("onboard", help="auto-discover a company's board + add to watchlist")
+    o.add_argument("name", help="company name, e.g. 'State Street'")
+    o.add_argument("--careers-url", default=None, help="careers page URL (helps resolve Workday/custom)")
+    o.add_argument("--no-add", action="store_true", help="just report; don't add to the watchlist")
+    o.set_defaults(func=_cmd_onboard)
+
+    os_ = sub.add_parser("onboard-seed", help="onboard every company in a JSON list; report resolved/manual")
+    os_.add_argument("file", help="JSON list of company names (or {name, careers_url} objects)")
+    os_.set_defaults(func=_cmd_onboard_seed)
+
+    sc = sub.add_parser("schedule", help="poll the watchlist (--once) or run the recurring scheduler")
+    sc.add_argument("--once", action="store_true", help="run a single ingest tick and exit")
+    sc.set_defaults(func=_cmd_schedule)
 
     c = sub.add_parser("costs", help="show LLM spend (Gemini budget + Claude usage)")
     c.set_defaults(func=_cmd_costs)

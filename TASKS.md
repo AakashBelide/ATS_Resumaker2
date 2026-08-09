@@ -208,10 +208,11 @@ ats-resumaker/
 
 | # | Task | Status | Notes |
 |---|------|--------|-------|
-| RI.1 | **Board-listing ingestion** — `providers/sources/*` list postings per company (Greenhouse `boards/{token}/jobs`, Lever, Ashby, Workday CxS) reusing the anti-bot HTTP layer. | ⬜ Todo | Watchlist = `companies` table (name + per-source board tokens). |
-| RI.2 | **Dedupe** — identity `(source, external_id)`; `content_hash` over normalized JD text (catches edits/re-posts); secondary fuzzy `company+title+location` (catches cross-board dupes). Only new/changed enqueue. | ⬜ Todo | `jobs.status`: new→seen→queued→processed→(applied/skipped). |
-| RI.3 | **Scheduler** — APScheduler in-process w/ SQLite jobstore (survives restart) or cron→`cli ingest`. Per-company cadence in config. Tick: ingest→dedupe→preference-filter→apply-gate→notify. | ⬜ Todo | Never auto-submits (§21). |
-| RI.4 | **Notifications** — new high-fit jobs → digest (email/webhook); human decides. | ⬜ Todo | Sits on apply-decision + preferences. |
+| RI.0 | **Auto-onboarding** — resolve a company to a board from just its name: slug-probe (Greenhouse/Lever/Ashby) then careers-page parse (extracts Workday tenant + token) when a careers URL is supplied. Unresolved → manual. `cli onboard` / `onboard-seed` / `POST /v1/onboard`. | ✅ Done | Pluggable fetch layer (httpx→Playwright); stealth backend (Scrapling/Firecrawl) can slot behind `fetch_html`. |
+| RI.1 | **Board-listing ingestion** — `providers/sources/*` list postings per company (Greenhouse/Lever/Ashby + Workday CxS w/ curl_cffi). | ✅ Done | All 4 adapters registered; `posted_at` captured where the ATS exposes it (+ our own `first_seen`). |
+| RI.2 | **Dedupe** — identity `(source, external_id)` + `content_hash` over listing fields (catches edits/re-posts); only new/changed flagged. Idempotent re-ingest. | ✅ Done | Verified: re-ingest 819→0 new; edited posting re-flags. Secondary cross-board fuzzy = follow-up. |
+| RI.3 | **Scheduler** — APScheduler in-process (memory store, re-registered from config on boot). Tick: ingest→dedupe→preference-filter→notify. Wired into API lifespan (`RESUMAKER_SCHEDULER_ENABLED`) + `cli schedule [--once]`. | ✅ Done | Never runs the pipeline or applies (§21); human triggers tailoring. |
+| RI.4 | **Notifications** — new preference-matching postings → durable JSONL digest + structured log + optional webhook. | ✅ Done | `notify_webhook` config; human decides. |
 
 ## Rebuild status log
 

@@ -42,6 +42,7 @@ CREATE TABLE IF NOT EXISTS jobs (
     location     TEXT NOT NULL DEFAULT '',
     content_hash TEXT NOT NULL DEFAULT '',
     status       TEXT NOT NULL DEFAULT 'new',
+    posted_at    TEXT NOT NULL DEFAULT '',
     first_seen   TEXT NOT NULL,
     last_seen    TEXT NOT NULL,
     UNIQUE (source, external_id)
@@ -92,9 +93,17 @@ def connect() -> Iterator[sqlite3.Connection]:
 
 
 def init_db() -> None:
-    """Create tables if absent. Idempotent; safe to call on every boot."""
+    """Create tables if absent + apply lightweight column migrations. Idempotent."""
     with connect() as conn:
         conn.executescript(_SCHEMA)
+        _migrate(conn)
+
+
+def _migrate(conn: sqlite3.Connection) -> None:
+    """Additive migrations for DBs created by an earlier schema (add-column only)."""
+    cols = {r["name"] for r in conn.execute("PRAGMA table_info(jobs)").fetchall()}
+    if "posted_at" not in cols:
+        conn.execute("ALTER TABLE jobs ADD COLUMN posted_at TEXT NOT NULL DEFAULT ''")
 
 
 # ------------------------------------------------------------------ runs
@@ -149,10 +158,10 @@ def upsert_job(job: JobRecord) -> tuple[int, bool]:
         if existing is None:
             cur = conn.execute(
                 """INSERT INTO jobs (source, external_id, url, title, company, location,
-                       content_hash, status, first_seen, last_seen)
-                   VALUES (?,?,?,?,?,?,?,?,?,?)""",
+                       content_hash, status, posted_at, first_seen, last_seen)
+                   VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
                 (job.source, job.external_id, job.url, job.title, job.company,
-                 job.location, job.content_hash, "new", now, now))
+                 job.location, job.content_hash, "new", job.posted_at, now, now))
             return int(cur.lastrowid or 0), True
         changed = existing["content_hash"] != job.content_hash
         conn.execute(
@@ -248,5 +257,5 @@ def _job_from_row(r: sqlite3.Row) -> JobRecord:
     return JobRecord(
         id=r["id"], source=r["source"], external_id=r["external_id"], url=r["url"],
         title=r["title"], company=r["company"], location=r["location"],
-        content_hash=r["content_hash"], status=r["status"],
+        content_hash=r["content_hash"], status=r["status"], posted_at=r["posted_at"],
         first_seen=_dt(r["first_seen"]), last_seen=_dt(r["last_seen"]))
