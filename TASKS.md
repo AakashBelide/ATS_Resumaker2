@@ -151,3 +151,64 @@ Project plan + task tracker. Companion to [RESUME_SYSTEM_BLUEPRINT.md](RESUME_SY
 - **2026-08-07 — Sponsorship: JD-explicit stance + precedence.** JD structuring (1.2) now extracts a structured `sponsorship_stance` (offers/no_sponsorship/case_by_case/unclear) in addition to `work_auth_note`. New `pocs/sponsorship/resolve.py` combines signals with correct precedence: **JD-explicit stance is authoritative and overrides USCIS company history** (a JD "no sponsorship" = hard blocker even for Amazon). USCIS history is only a fallback prior when the JD is silent. Verified live (Amazon+no→not_eligible; silent→history) + deterministic eval 5/5. This feeds the apply/no-apply decision (1.7).
 - **2026-08-07 — Tasks 1.3 ✅, 1.5 ✅, 1.4 ✅.** 1.3 keywords (triple-pass consensus). 1.5 sponsorship (background sub-agent, real USCIS data, TLS/JA3 finding → `curl_cffi`). 1.4 gap analysis (grounded + evidence-verified, Cloud Run↔Lambda bridge works). All eval-passing, committed + pushed. **Milestone: the entire JD-understanding front half of the pipeline is done (5/12 Phase-1 POCs).** Added retry+backoff to Claude provider for concurrency resilience.
   - **Next:** 1.6 role-fit score → 1.7 apply/no-apply; then the centerpiece 1.8 resume generation (.docx→PDF) + 1.9 fact-gate + 1.10 ATS-verify + 1.11 scorer + 1.12 cover letter.
+
+---
+
+# PRODUCTION REBUILD (Phases R0–R9)
+
+> **Context.** Phases 0–3 delivered every capability as *isolated POCs* (`resumaker/pocs/*`) plus a thin orchestrator/CLI — proven end-to-end, but structured as experiments. This rebuild reorganizes them into a **production-grade, self-hostable monorepo** with clean domain boundaries, a real service layer, persistence, observability, and deploy assets. **No capability is lost or rewritten from scratch** — logic is *migrated* behind proper interfaces, then verified for parity against the POC behavior before the old tree is retired.
+>
+> **Owner decisions (2026-08-08):** single-user self-hosted · fully provider-agnostic LLM registry (Claude CLI + Anthropic API + Gemini, selectable by config in any environment) · deploy-agnostic Docker (host chosen later) · full monorepo scaffold, backend-first (web/extension skeletons now, implemented later).
+>
+> **Architecture stance (right-sized, not cargo-culted):** **modular monolith**, not microservices. In-process background worker + persisted jobs table, not Celery/Redis. **SQLite** (files remain canonical, DB derived), not Postgres. On-disk/SQLite caches, not Redis. No load balancer. Discipline (clean seams, tests, versioning, observability, CI-style checks) *yes*; distributed-systems overhead *no* — it fights the free/lightweight constraint. Seams are left so any of these can scale up later without a rewrite.
+
+## Target structure
+
+```
+ats-resumaker/
+├── src/resumaker/            # CORE LIBRARY (pure domain logic; no web deps)
+│   ├── config/               # pydantic-settings (env-driven), constants
+│   ├── domain/               # pydantic schemas = I/O contracts
+│   ├── providers/
+│   │   ├── llm/              # base, registry, claude_cli, anthropic_api, gemini, cache
+│   │   ├── scrape/           # single-JD scrapers (greenhouse/lever/ashby/workday/playwright)
+│   │   └── sources/          # board-LISTING adapters (watchlist ingestion) — seam now
+│   ├── stages/               # one Stage per pipeline step (migrated from pocs/)
+│   ├── ats/                  # scorer, semantic, verify, skills_rank, fact_gate, sim, affinda
+│   ├── pipeline/             # orchestrator (stage DAG) + progress + result
+│   ├── enrichment/           # preferences + house-rules manager
+│   ├── persistence/          # repositories (file store + sqlite), migrations, cache store
+│   └── observability/        # logging, metrics, cost guard
+├── apps/api/                 # FastAPI (health, runs, jobs, SSE, profile, costs) + worker + auth
+├── apps/cli/                 # Typer CLI (thin over the library)
+├── web/  extension/          # Next.js + MV3 scaffolds (implemented later)
+├── deploy/                   # Dockerfile, compose, Caddyfile, systemd
+├── validation/opencats/      # unchanged (real-ATS manual test)
+├── tests/                    # unit · integration · eval (POC evals promoted here)
+├── data/  outputs/           # gitignored (PII + artifacts)
+└── pyproject.toml            # single package + extras: [api], [scrape], [dev]
+```
+
+## Phases
+
+| # | Phase | Status | Exit criterion |
+|---|-------|--------|----------------|
+| R0 | **Backup** — git tag `poc-complete` + branch `legacy-pocs`; keep `resumaker/` on disk until parity verified. | ✅ Done | Recoverable snapshot exists; old tree untouched. |
+| R1 | **Skeleton + packaging** — monorepo dirs, `pyproject.toml` (single package + extras), tooling (ruff, mypy, pytest, Makefile/justfile). | ⬜ Todo | `uv sync` clean; `import resumaker` works; lint/type/test tasks run. |
+| R2 | **Core foundation** — `config/` (pydantic-settings), `domain/` schemas, `observability/` (structured logging, `/metrics` counters, cost guard), `persistence/` (file store canonical + SQLite derived + cache store). **DB schema includes `companies`/`jobs`/`runs` for ingestion from day one.** | ⬜ Todo | Settings load from env; SQLite migrates on boot; cost guard parity with POC; unit tests green. |
+| R3 | **Provider layer** — LLM `registry` (claude_cli · anthropic_api · gemini) behind one `LLMProvider` interface + **prompt-hash response cache**; scrape registry; `sources/` board-listing seam. | ⬜ Todo | Any provider selectable by config; cache hits verified; a live scrape + a live Claude-CLI call pass. |
+| R4 | **Stages + pipeline** — migrate every `pocs/*` into `stages/*` behind a uniform `Stage` interface; port orchestrator to a stage DAG + `ProgressReporter`. **Parity gate:** a full run matches POC output (fact-gate PASS, ATS-verify PASS, 1-page, grounded). | ⬜ Todo | `run_pipeline(url)` produces byte-comparable-quality artifacts to the POC path on ≥1 live JD. |
+| R5 | **API service** — FastAPI app factory; routers: `health`, `runs` (start/get/list), `jobs` (watchlist), `sse` (progress stream reusing the emitter), `profile`, `costs`; in-process worker + persisted job queue; **token auth** + rate limit; no PII in logs. | ⬜ Todo | `POST /v1/runs` starts a run; SSE streams live progress; artifacts land; auth enforced. |
+| R6 | **CLI** — Typer app over the library: `run`, `watch`, `costs`, `ingest`, `serve`. Back-compat with today's commands. | ⬜ Todo | Feature-parity with current `cli.py`; `run <url>` works end-to-end. |
+| R7 | **Web + extension scaffolds** — Next.js dashboard skeleton (review/approve/download, history, cost/quality panels) + MV3 extension skeleton (capture JD → call API). Not feature-complete; wired to the API contract. | ⬜ Todo | `web` builds & talks to `/v1`; extension loads & posts a JD. |
+| R8 | **Deploy** — multi-stage slim Dockerfile, `docker-compose.yml` (api + Caddy auto-HTTPS; optional Grafana), `.env.example`, systemd unit. Deploy-agnostic. | ⬜ Todo | `docker compose up` serves the API over HTTPS on a fresh host; healthcheck green. |
+| R9 | **Cutover** — full test suite green, parity confirmed on a 3-JD regression; delete `resumaker/`; update README/docs; final commit. | ⬜ Todo | Old tree removed; docs updated; everything runs from the new structure. |
+
+## Post-core subsystem (designed-for in R2/R3 schema + seams; built after R6)
+
+| # | Task | Status | Notes |
+|---|------|--------|-------|
+| RI.1 | **Board-listing ingestion** — `providers/sources/*` list postings per company (Greenhouse `boards/{token}/jobs`, Lever, Ashby, Workday CxS) reusing the anti-bot HTTP layer. | ⬜ Todo | Watchlist = `companies` table (name + per-source board tokens). |
+| RI.2 | **Dedupe** — identity `(source, external_id)`; `content_hash` over normalized JD text (catches edits/re-posts); secondary fuzzy `company+title+location` (catches cross-board dupes). Only new/changed enqueue. | ⬜ Todo | `jobs.status`: new→seen→queued→processed→(applied/skipped). |
+| RI.3 | **Scheduler** — APScheduler in-process w/ SQLite jobstore (survives restart) or cron→`cli ingest`. Per-company cadence in config. Tick: ingest→dedupe→preference-filter→apply-gate→notify. | ⬜ Todo | Never auto-submits (§21). |
+| RI.4 | **Notifications** — new high-fit jobs → digest (email/webhook); human decides. | ⬜ Todo | Sits on apply-decision + preferences. |

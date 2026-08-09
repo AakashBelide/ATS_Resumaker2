@@ -1,0 +1,88 @@
+[project]
+name = "resumaker"
+version = "0.1.0"
+description = "Grounded, ATS-optimized resume + cover-letter tailoring from a job-description URL."
+readme = "README.md"
+requires-python = ">=3.13"
+
+# Core library dependencies. Kept lean: web/scrape-heavy/dev deps live in extras so a
+# minimal `uv sync` (or a slim runtime image) stays small.
+dependencies = [
+    "pydantic>=2.13.4",
+    "pydantic-settings>=2.6.0",
+    "httpx>=0.28.1",
+    "python-dotenv>=1.2.2",
+    "rapidfuzz>=3.14.5",
+    "python-docx>=1.2.0",
+    "pypdf>=6.15.0",
+    "pdfplumber>=0.11.10",
+    "pyspellchecker>=0.9.0",
+    "beautifulsoup4>=4.15.0",
+    "lxml>=6.1.1",
+    "curl-cffi>=0.16.0",
+    "rich>=15.0.0",
+    # LLM providers (provider-agnostic registry): Anthropic API + Google Gemini.
+    # The Claude CLI provider shells out to the `claude` binary and needs no SDK.
+    "anthropic>=0.40.0",
+    "google-genai>=2.17.0",
+]
+
+[project.optional-dependencies]
+# The FastAPI service + in-process scheduler (R5, RI.3). Not needed for library/CLI use.
+api = [
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.32.0",
+    "sse-starlette>=2.1.3",
+    "apscheduler>=3.10.4",
+]
+# Playwright fallback scraper (R3). Heavy (bundled browsers) so opt-in.
+scrape = [
+    "playwright>=1.62.0",
+]
+dev = [
+    "ruff>=0.7.0",
+    "mypy>=1.13.0",
+    "pytest>=8.3.0",
+    "pytest-asyncio>=0.24.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+# The distributable library. `apps/` (api + cli) are deploy entrypoints run from the
+# repo root (`uv run uvicorn apps.api.main:app`, `uv run python -m apps.cli`), not shipped
+# as an importable library, so they are intentionally not packaged here.
+packages = ["src/resumaker"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+src = ["src", "apps", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "C4"]
+ignore = [
+    "E501",   # line length is enforced by the formatter, not the linter
+    "UP042",  # keep `str, Enum` (not StrEnum) for pydantic serialization parity
+]
+
+[tool.mypy]
+python_version = "3.13"
+plugins = ["pydantic.mypy"]
+ignore_missing_imports = true
+check_untyped_defs = true
+warn_unused_ignores = true
+namespace_packages = true
+explicit_package_bases = true
+mypy_path = "src"
+
+[tool.pytest.ini_options]
+pythonpath = ["src", "."]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+markers = [
+    "live: hits real network/LLM providers (skipped by default; run with -m live)",
+]
+addopts = "-ra -m 'not live'"

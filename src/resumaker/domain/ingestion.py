@@ -1,0 +1,74 @@
+"""Domain models for the job-watchlist / ingestion subsystem (RI.1-RI.4).
+
+These mirror the derived SQLite tables (`companies`, `jobs`, `runs`). The board-
+listing adapters (`providers/sources/`) emit `JobPosting`-like postings that get
+normalized into `JobRecord`s, deduped, and (optionally) fed to the pipeline, which
+records a `RunRecord`. Defined now so the schema and seams exist from day one, even
+though the crawler/scheduler land after the API/CLI core.
+"""
+from __future__ import annotations
+
+from datetime import datetime
+from typing import Literal
+
+from pydantic import BaseModel, Field
+
+JobStatus = Literal["new", "seen", "queued", "processed", "applied", "skipped"]
+RunStatus = Literal["pending", "running", "done", "error", "gated_out"]
+
+
+class BoardRef(BaseModel):
+    """A company's posting board on one source (e.g. Greenhouse token 'databricks')."""
+    source: str                        # greenhouse | lever | ashby | workday
+    token: str                         # board slug / company id used by that source's API
+    extra: dict[str, str] = Field(default_factory=dict)  # e.g. workday host/tenant
+
+
+class Company(BaseModel):
+    """A watched company. `boards` lists where to poll for its openings."""
+    id: int | None = None
+    name: str
+    active: bool = True
+    boards: list[BoardRef] = Field(default_factory=list)
+    created_at: datetime | None = None
+
+
+class JobRecord(BaseModel):
+    """A single ingested posting. Dedup identity is `(source, external_id)`;
+    `content_hash` (normalized JD text) detects edits/re-posts so we only re-run on
+    real change."""
+    id: int | None = None
+    source: str
+    external_id: str                   # the source's stable posting id
+    url: str = ""
+    title: str = ""
+    company: str = ""
+    location: str = ""
+    content_hash: str = ""
+    status: JobStatus = "new"
+    first_seen: datetime | None = None
+    last_seen: datetime | None = None
+
+    @property
+    def dedup_key(self) -> str:
+        return f"{self.source}:{self.external_id}"
+
+
+class RunRecord(BaseModel):
+    """A pipeline execution (history/analytics). Files under `out_dir` stay canonical;
+    this row is the queryable index over them."""
+    id: str                            # run id (also the out-dir slug)
+    job_id: int | None = None          # FK to jobs when triggered by ingestion
+    url: str = ""
+    out_dir: str = ""
+    status: RunStatus = "pending"
+    recommend_apply: bool | None = None
+    fit_0_100: float | None = None
+    ats_overall: float | None = None
+    fact_gate_pass: bool | None = None
+    ats_verify_pass: bool | None = None
+    page_count: int | None = None
+    cost_usd: float = 0.0
+    error: str = ""
+    created_at: datetime | None = None
+    finished_at: datetime | None = None
