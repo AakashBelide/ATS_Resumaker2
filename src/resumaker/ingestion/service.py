@@ -36,12 +36,13 @@ def _content_hash(stub) -> str:
 
 
 def ingest_company(company: Company, *, preferred_only: bool = False,
-                   us_only: bool = True, sources: set[str] | None = None) -> IngestResult:
+                   us_only: bool = True, tech_only: bool = True,
+                   sources: set[str] | None = None) -> IngestResult:
     """List every board of `company`, dedupe into `jobs`, return counts + the new rows.
-    `preferred_only` keeps only titles matching job-search preferences; `us_only` (default)
-    drops postings whose location is clearly outside the US; `sources` (optional) limits to
-    boards on those ATSs (lets the scheduler poll Workday and the fast boards on different
-    cadences)."""
+    Filters (all applied before dedupe): `tech_only` (default) keeps only engineering/tech
+    titles - big enterprise boards are mostly non-tech; `us_only` (default) drops non-US
+    postings; `preferred_only` further narrows to the owner's target roles. `sources`
+    (optional) limits to boards on those ATSs (for per-cadence polling)."""
     res = IngestResult(company=company.name)
     for board in company.boards:
         if sources is not None and board.source not in sources:
@@ -52,6 +53,8 @@ def ingest_company(company: Company, *, preferred_only: bool = False,
             res.errors.append(f"{board.source}/{board.token}: {e}")
             continue
         for stub in stubs:
+            if tech_only and not is_tech_role(stub.title):
+                continue
             if preferred_only and not matches_preferences(stub.title):
                 continue
             if us_only and not is_us_location(stub.location):
@@ -73,7 +76,7 @@ def ingest_company(company: Company, *, preferred_only: bool = False,
 
 
 def ingest_all(*, preferred_only: bool = False, us_only: bool = True,
-               sources: set[str] | None = None) -> list[IngestResult]:
+               tech_only: bool = True, sources: set[str] | None = None) -> list[IngestResult]:
     """Ingest every active company, spacing requests with jitter so a full sweep across
     the watchlist doesn't burst against any one ATS."""
     companies = db.list_companies(active_only=True)
@@ -81,7 +84,8 @@ def ingest_all(*, preferred_only: bool = False, us_only: bool = True,
     for i, c in enumerate(companies):
         if i:
             time.sleep(random.uniform(0.5, 2.0))     # polite spacing between companies
-        r = ingest_company(c, preferred_only=preferred_only, us_only=us_only, sources=sources)
+        r = ingest_company(c, preferred_only=preferred_only, us_only=us_only,
+                           tech_only=tech_only, sources=sources)
         if sources is None or r.new or r.unchanged or r.errors:
             results.append(r)
     return results
@@ -137,6 +141,47 @@ def is_us_location(location: str) -> bool:
     # Foreign country/city (without a US state abbr) is out; US abbr or a bare city stays.
     is_foreign = any(f in loc for f in _FOREIGN) and not us_abbr
     return not is_foreign
+
+
+# Non-tech markers: if the title is clearly one of these, drop it even if it also contains
+# a tech-ish token (e.g. "Sales Engineer", "Technical Recruiter"). Checked first.
+_NONTECH = (
+    "sales", "account executive", "account manager", "marketing", "recruit",
+    "talent acquisition", "human resources", "hr ", "people partner", "legal", "counsel",
+    "paralegal", "accountant", "auditor", " tax ", "payroll", "administrative",
+    "executive assistant", "receptionist", "custodian", "janitor", "warehouse", "driver",
+    "delivery", "cashier", "retail", "store associate", "store manager", "nurse",
+    "clinical", "physician", "pharmacist", "therapist", "teacher", "barista", "cook",
+    "server", "security guard", "facilities", "maintenance technician", "mechanic",
+    "electrician", "plumber", "construction", "real estate", "procurement",
+    "customer service", "call center", "teller", "branch manager", "underwriter",
+    "communications", "public relations", "brand ", "copywriter", "social media",
+    "supply chain", "logistics", "buyer", "merchandis",
+)
+# Tech markers: keep if any present (and no non-tech marker). Spaces guard short tokens.
+_TECH_POS = (
+    "engineer", "developer", "software", " sde", "sde ", "programmer", "data scien",
+    "machine learning", " ml ", "ml/", "/ml", " ai ", "ai/", "/ai", "artificial intelligence",
+    "deep learning", "nlp", "computer vision", "mlops", "devops", "site reliability", " sre",
+    "platform", "infrastructure", "backend", "back end", "frontend", "front end",
+    "full stack", "full-stack", "fullstack", "cloud", "architect", "data engineer",
+    "analytics engineer", "data analyst", "research scientist", "applied scientist",
+    "quant", "database", "distributed systems", "big data", "robotics", "embedded",
+    "firmware", "security engineer", "cybersecurity", "systems engineer", "qa engineer",
+    "test engineer", "solutions engineer", "ios ", "android ", "mobile engineer",
+    "web developer", "api ", "sdet", "ml engineer", "ai engineer", "data science",
+    "computer scientist", "technical program manager", "developer relations",
+)
+
+
+def is_tech_role(title: str) -> bool:
+    """Keep engineering/tech/AI/ML/DS/DE titles; drop clearly non-technical ones. Precision-
+    first (default-drop the ambiguous) - enterprise boards are mostly non-tech, so a focused
+    watchlist wants high precision over recall."""
+    t = f" {(title or '').lower()} "
+    if any(m in t for m in _NONTECH):
+        return False
+    return any(m in t for m in _TECH_POS)
 
 
 def matches_preferences(title: str) -> bool:

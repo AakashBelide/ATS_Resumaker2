@@ -1,0 +1,76 @@
+- generic [active] [ref=f3e1]:
+  - generic [ref=f3e2]:
+    - link "Skip to main content" [ref=f3e4] [cursor=pointer]:
+      - /url: "#skipToMain"
+    - generic [ref=f3e8]:
+      - navigation [ref=f3e9]:
+        - button "Navigation Menu" [ref=f3e10] [cursor=pointer]
+        - link "McKinsey and Company Home" [ref=f3e12] [cursor=pointer]:
+          - /url: /
+          - text: 
+      - link "Careers" [ref=f3e16] [cursor=pointer]:
+        - /url: https://www.mckinsey.com/careers/home
+      - generic:
+        - menu
+    - main [ref=f3e17]:
+      - generic [ref=f3e19]:
+        - status
+    - generic [ref=f3e26]:
+      - heading [level=2] [ref=f3e27]
+      - link "" [ref=f3e29] [cursor=pointer]:
+        - /url: ""
+    - contentinfo [ref=f3e34]:
+      - generic [ref=f3e35]:
+        - generic "McKinsey & Company" [ref=f3e38]: 
+        - separator [ref=f3e39]
+        - generic [ref=f3e41]:
+          - generic [ref=f3e42]:
+            - link "LinkedIn" [ref=f3e43] [cursor=pointer]:
+              - /url: https://www.linkedin.com/company/mckinsey
+              - text: 
+            - link "Twitter" [ref=f3e44] [cursor=pointer]:
+              - /url: https://twitter.com/McKinsey
+              - text: 
+            - link "Real life at McKinsey" [ref=f3e45] [cursor=pointer]:
+              - /url: https://www.facebook.com/reallifeatmckinsey/
+              - text: 
+            - link "YouTube" [ref=f3e46] [cursor=pointer]:
+              - /url: https://www.youtube.com/playlist?list=PL30C54D951E8E1688
+              - text: 
+            - link "Instagram" [ref=f3e47] [cursor=pointer]:
+              - /url: https://www.instagram.com/mckinseyco/
+              - text: 
+          - navigation [ref=f3e48]:
+            - generic [ref=f3e49]:
+              - link "Contact us" [ref=f3e50] [cursor=pointer]:
+                - /url: /contact-us
+              - link "Scam warning" [ref=f3e51] [cursor=pointer]:
+                - /url: /scam-warning
+              - link "Careers FAQ" [ref=f3e52] [cursor=pointer]:
+                - /url: /frequently-asked-questions/careers
+              - link "Privacy policy" [ref=f3e53] [cursor=pointer]:
+                - /url: /privacy-notice
+              - link "Your privacy choices" [ref=f3e54] [cursor=pointer]:
+                - /url: https://privacyportal.onetrust.com/hosted-webform/consent/353d36fb-3a1c-4021-b831-ee6d50361d6a/a4c0cce5-8c09-4ec1-892b-44298e75dbad
+                - text: 
+              - link "Cookie preferences" [ref=f3e56] [cursor=pointer]:
+                - /url: "#"
+              - link "Terms of use" [ref=f3e58] [cursor=pointer]:
+                - /url: /terms-of-use
+              - link "Local language information" [ref=f3e59] [cursor=pointer]:
+                - /url: /local-language-information
+              - link "Accessibility statement" [ref=f3e60] [cursor=pointer]:
+                - /url: /accessibility-statement
+        - generic [ref=f3e61]:
+          - generic [ref=f3e62]:
+            - generic [ref=f3e63]: McKinsey Insights - Get our latest thinking on your iPhone, iPad, or Android device.
+            - generic [ref=f3e64]:
+              - link [ref=f3e65] [cursor=pointer]:
+                - /url: https://itunes.apple.com/us/app/id674902075?mt=8
+                - img "Download on the App Store" [ref=f3e67]
+              - link [ref=f3e68] [cursor=pointer]:
+                - /url: https://play.google.com/store/apps/details?id=com.mckinsey.mckinseyinsights
+                - img "Download Android app on Google Play" [ref=f3e70]
+          - generic [ref=f3e71]: © 1996-2026 McKinsey & Company
+    - log [ref=f3e73]
+  - alert [ref=f3e74]

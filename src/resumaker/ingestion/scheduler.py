@@ -23,8 +23,10 @@ _SLOW_SOURCES = {"workday"}
 
 
 def run_tick(sources: set[str] | None = None) -> list[IngestResult]:
-    """One poll over the given ATS sources (all if None): ingest -> dedupe -> filter -> notify."""
-    results = ingest_all(preferred_only=True, sources=sources)
+    """One poll over the given ATS sources (all if None): ingest -> tech+US filter -> dedupe
+    -> notify. Uses the broad tech-role gate (not the narrower target-role preference) so we
+    catch all of SWE/AI/ML/DS/DE, not just the exact preferred titles."""
+    results = ingest_all(tech_only=True, us_only=True, sources=sources)
     new_jobs = [j for r in results for j in r.new_jobs]
     notify_new(new_jobs)
     _log.info("watchlist tick", extra={"sources": sorted(sources) if sources else "all",

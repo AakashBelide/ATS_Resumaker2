@@ -1,0 +1,42 @@
+- generic [active] [ref=f34e1]:
+  - generic [ref=f34e5]:
+    - link "Skip to main content" [ref=f34e6] [cursor=pointer]:
+      - /url: javascript:void(0)
+    - banner [ref=f34e7]:
+      - generic [ref=f34e9]:
+        - text:  
+        - link "Microsoft" [ref=f34e10] [cursor=pointer]:
+          - /url: https://www.microsoft.com
+        - text:  
+        - link "Careers" [ref=f34e14] [cursor=pointer]:
+          - /url: https://careers.microsoft.com/v2/global/en/home.html
+        - navigation "Contextual menu" [ref=f34e16]:
+          - list [ref=f34e17]:
+            - listitem [ref=f34e18]:
+              - link "Locations" [ref=f34e19] [cursor=pointer]:
+                - /url: https://careers.microsoft.com/v2/global/en/locations.html
+            - listitem [ref=f34e20]:
+              - link "Professions" [ref=f34e21] [cursor=pointer]:
+                - /url: https://careers.microsoft.com/v2/global/en/professions.html
+            - listitem [ref=f34e22]:
+              - button "Programs " [ref=f34e24] [cursor=pointer]
+            - listitem [ref=f34e25]:
+              - button "Life at Microsoft " [ref=f34e27] [cursor=pointer]
+            - listitem [ref=f34e28]:
+              - link "Hiring tips" [ref=f34e29] [cursor=pointer]:
+                - /url: https://careers.microsoft.com/v2/global/en/hiring-tips.html
+            - text: 
+            - listitem [ref=f34e30]:
+              - link "Join talent network" [ref=f34e31] [cursor=pointer]:
+                - /url: https://apply.careers.microsoft.com/careers/join
+        - generic [ref=f34e32]:
+          - text:  
+          - search [ref=f34e33]:
+            - button "Search jobs" [disabled] [ref=f34e34]: 
+          - generic [ref=f34e35]: Sign in
+  - main [ref=f34e39]:
+    - generic [ref=f34e47]:
+      - heading "Page not found" [level=2] [ref=f34e49]
+      - paragraph [ref=f34e51]: The page you're looking for might be deleted, moved, or renamed. Oh, and check your entry for errors.
+      - link "Go to home page" [ref=f34e54] [cursor=pointer]:
+        - /url: https://careers.microsoft.com/v2/global/en/home.html

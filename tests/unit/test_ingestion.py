@@ -94,6 +94,21 @@ def test_is_us_location(loc, is_us):
     assert service.is_us_location(loc) is is_us
 
 
+@pytest.mark.parametrize("title,is_tech", [
+    ("Senior Machine Learning Engineer", True), ("Software Engineer II", True),
+    ("Data Scientist", True), ("Data Engineer, Platform", True), ("AI Engineer", True),
+    ("Site Reliability Engineer", True), ("Backend Developer", True),
+    ("Cloud Solutions Architect", True), ("SDET", True),
+    ("Sales Engineer", False),                 # non-tech marker overrides "engineer"
+    ("Technical Recruiter", False), ("Financial Analyst", False),
+    ("Registered Nurse", False), ("Warehouse Associate", False),
+    ("Marketing Manager", False), ("Store Manager", False),
+    ("Product Designer", False),               # ambiguous -> default drop (no tech marker)
+])
+def test_is_tech_role(title, is_tech):
+    assert service.is_tech_role(title) is is_tech
+
+
 def test_preference_filter(monkeypatch):
     monkeypatch.setattr("resumaker.enrichment.preferences",
                         lambda: {"target_roles": ["engineer"], "avoid_roles": ["sales"]})

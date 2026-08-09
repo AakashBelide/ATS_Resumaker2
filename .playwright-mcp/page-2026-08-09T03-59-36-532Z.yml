@@ -1,0 +1,6 @@
+- main [ref=f20e3]:
+  - generic [ref=f20e11]:
+    - heading "Page not found" [level=2] [ref=f20e13]
+    - paragraph [ref=f20e15]: The page you're looking for might be deleted, moved, or renamed. Oh, and check your entry for errors.
+    - link "Go to home page" [ref=f20e18] [cursor=pointer]:
+      - /url: https://careers.microsoft.com/v2/global/en/home.html

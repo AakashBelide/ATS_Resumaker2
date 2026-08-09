@@ -1,0 +1,133 @@
+- generic [active] [ref=f21e1]:
+  - generic [ref=f21e5]:
+    - link "Skip to main content" [ref=f21e6] [cursor=pointer]:
+      - /url: javascript:void(0)
+    - banner [ref=f21e7]:
+      - generic [ref=f21e9]:
+        - text:  
+        - link "Microsoft" [ref=f21e10] [cursor=pointer]:
+          - /url: https://www.microsoft.com
+        - text:  
+        - link "Careers" [ref=f21e14] [cursor=pointer]:
+          - /url: https://careers.microsoft.com/v2/global/en/home.html
+        - navigation "Contextual menu" [ref=f21e16]:
+          - list [ref=f21e17]:
+            - listitem [ref=f21e18]:
+              - link "Locations" [ref=f21e19] [cursor=pointer]:
+                - /url: https://careers.microsoft.com/v2/global/en/locations.html
+            - listitem [ref=f21e20]:
+              - link "Professions" [ref=f21e21] [cursor=pointer]:
+                - /url: https://careers.microsoft.com/v2/global/en/professions.html
+            - listitem [ref=f21e22]:
+              - button "Programs " [ref=f21e24] [cursor=pointer]
+            - listitem [ref=f21e25]:
+              - button "Life at Microsoft " [ref=f21e27] [cursor=pointer]
+            - listitem [ref=f21e28]:
+              - link "Hiring tips" [ref=f21e29] [cursor=pointer]:
+                - /url: https://careers.microsoft.com/v2/global/en/hiring-tips.html
+            - text: 
+            - listitem [ref=f21e30]:
+              - link "Join talent network" [ref=f21e31] [cursor=pointer]:
+                - /url: https://apply.careers.microsoft.com/careers/join
+        - generic [ref=f21e32]:
+          - text:  
+          - search [ref=f21e33]:
+            - button "Search jobs" [disabled] [ref=f21e34]: 
+          - button "Sign in" [ref=f21e36] [cursor=pointer]
+  - main [ref=f21e39]:
+    - generic [ref=f21e43]:
+      - generic [ref=f21e46]:
+        - img "Colorful header" [ref=f21e47]
+        - generic [ref=f21e49]:
+          - heading "Win and thrive together" [level=1] [ref=f21e50]
+          - generic [ref=f21e51]:
+            - generic [ref=f21e52]:
+              - generic [ref=f21e53]:
+                - textbox "Search by job title, ID, or keyword" [ref=f21e54]
+                - generic [ref=f21e55]: 
+              - separator [ref=f21e56]
+              - generic [ref=f21e57]:
+                - textbox "City, state, or country/region" [ref=f21e58]
+                - generic [ref=f21e59]: 
+            - button "Find jobs" [ref=f21e60] [cursor=pointer]
+      - generic [ref=f21e66]:
+        - generic [ref=f21e69]:
+          - iframe [ref=f21e70]:
+            - generic [ref=f22e1]:
+              - generic "YouTube Video Player" [ref=f22e3]
+              - generic [ref=f22e5]:
+                - generic:
+                  - generic:
+                    - generic [ref=f22e6] [cursor=pointer]
+                    - button "Play video" [ref=f22e10] [cursor=pointer]
+                    - button "Hide player controls" [ref=f22e14] [cursor=pointer]
+                    - generic [ref=f22e16]:
+                      - generic [ref=f22e21]:
+                        - generic [ref=f22e22]:
+                          - link "Our Mission" [ref=f22e23] [cursor=pointer]:
+                            - /url: https://www.youtube.com/watch?v=Cf036tDc6NI
+                          - link "Working at Microsoft" [ref=f22e24] [cursor=pointer]:
+                            - /url: /channel/UCRuPqly_xBRdFRb9wr1m2mQ
+                        - generic [ref=f22e26]:
+                          - button [ref=f22e27] [cursor=pointer]:
+                            - img "thumbnail-image" [ref=f22e28]
+                          - generic [ref=f22e30]:
+                            - generic: Working at Microsoft
+                            - generic: 31.9K subscribers
+                      - generic [ref=f22e31]:
+                        - button "Copy link" [ref=f22e34] [cursor=pointer]
+                        - link "Watch on YouTube" [ref=f22e45] [cursor=pointer]:
+                          - /url: https://www.youtube.com/watch?v=Cf036tDc6NI
+                          - generic [ref=f22e46]: Watch on
+          - button "Our Mission video" [ref=f21e71] [cursor=pointer]
+        - list [ref=f21e73]:
+          - listitem [ref=f21e74]:
+            - heading "Empowered by Purpose. United by Mission" [level=3] [ref=f21e75]
+            - generic [ref=f21e76]:
+              - paragraph [ref=f21e77]: When you join Microsoft, you’re not just stepping into a job— you’re stepping into a mission-driven company where purpose is at the heart of everything we do.
+              - paragraph [ref=f21e78]: Our mission—to empower every person and every organization on the planet to achieve more—isn’t just words.
+              - paragraph [ref=f21e79]: It’s our foundation. It’s what sets us apart.
+  - button "Feedback" [ref=f21e80] [cursor=pointer]
+  - contentinfo [ref=f21e86]:
+    - generic [ref=f21e87]:
+      - generic [ref=f21e88]:
+        - generic [ref=f21e89]:
+          - generic [ref=f21e90]: 
+          - generic [ref=f21e91]:
+            - link "English" [disabled]
+            - text: "|"
+          - link "FR - Canada" [ref=f21e93] [cursor=pointer]
+        - generic [ref=f21e95]:
+          - link "Support" [ref=f21e97] [cursor=pointer]:
+            - /url: https://apply.careers.microsoft.com/careers/forms/create?templateId=yx2LlRBJ7wq&fullPageResponse=1&hl=en-US
+          - link "Accessibility" [ref=f21e99] [cursor=pointer]:
+            - /url: https://careers.microsoft.com/v2/global/en/accessibility.html
+          - link "Microsoft Data Privacy Notice" [ref=f21e101] [cursor=pointer]:
+            - /url: http://go.microsoft.com/fwlink/?LinkId=518021
+          - link "Transparency FAQ" [ref=f21e103] [cursor=pointer]:
+            - /url: https://careers.microsoft.com/v2/global/en/transparency.html
+          - link "Legal policies" [ref=f21e105] [cursor=pointer]:
+            - /url: https://careers.microsoft.com/v2/global/en/legal-policies.html
+          - link "Contractor roles" [ref=f21e107] [cursor=pointer]:
+            - /url: https://careers.microsoft.com/v2/global/en/contractor-roles.html
+      - generic [ref=f21e108]:
+        - link "Facebook" [ref=f21e110] [cursor=pointer]:
+          - /url: https://www.facebook.com/MicrosoftLife
+        - link "Linkedin" [ref=f21e115] [cursor=pointer]:
+          - /url: https://www.linkedin.com/company/microsoft
+        - link "Instagram" [ref=f21e122] [cursor=pointer]:
+          - /url: https://www.instagram.com/microsoftlife
+        - link "x" [ref=f21e132] [cursor=pointer]:
+          - /url: https://x.com/microsoft
+    - generic [ref=f21e139]:
+      - link "Your Privacy Choices" [ref=f21e146] [cursor=pointer]:
+        - /url: https://aka.ms/yourcaliforniaprivacychoices
+      - link "Consumer Health Privacy" [ref=f21e147] [cursor=pointer]:
+        - /url: https://go.microsoft.com/fwlink/?linkid=2259814
+      - link "Privacy" [ref=f21e148] [cursor=pointer]:
+        - /url: https://go.microsoft.com/fwlink/?LinkId=521839
+      - link "Trademarks" [ref=f21e149] [cursor=pointer]:
+        - /url: https://go.microsoft.com/fwlink/?linkid=2196228
+      - link "Terms of use" [ref=f21e150] [cursor=pointer]:
+        - /url: https://go.microsoft.com/fwlink/?LinkID=206977
+      - generic [ref=f21e151]: © Microsoft 2026
