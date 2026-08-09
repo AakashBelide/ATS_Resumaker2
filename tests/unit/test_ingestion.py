@@ -14,7 +14,7 @@ from resumaker.providers.sources.base import PostingStub
 def test_sources_registered():
     assert set(available_sources()) == {
         "greenhouse", "lever", "ashby", "workday", "eightfold", "amazon", "oracle_cloud",
-        "smartrecruiters", "mckinsey", "goldman", "phenom", "jibe"}
+        "smartrecruiters", "mckinsey", "goldman", "phenom", "jibe", "radancy"}
 
 
 def test_slug_candidates():
@@ -89,8 +89,12 @@ def test_service_dedupes_on_reingest(tmp_db, monkeypatch):
     ("Remote - US", True), ("United States", True), ("San Francisco, California", True),
     ("Dublin, CA", True),                         # Dublin, California (US abbr wins)
     ("", True),                                    # unknown -> keep
+    ("Austin", True),                              # bare US city (no comma) -> keep
+    ("Remote", True),                              # remote -> keep
     ("Bengaluru, India", False), ("Krakow, Poland", False), ("London, United Kingdom", False),
     ("Toronto, ON, Canada", False), ("Gdansk, Poland", False), ("Singapore", False),
+    ("Bratislava, Bratislava", False),             # 'City, Region' no US signal -> foreign
+    ("Cambridge, England", False),
 ])
 def test_is_us_location(loc, is_us):
     assert service.is_us_location(loc) is is_us

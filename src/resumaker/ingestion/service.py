@@ -137,10 +137,14 @@ def is_us_location(location: str) -> bool:
     if any(term in f" {loc} " for term in _US_TERMS):
         return True
     m = re.search(r",\s*([a-z]{2})\b", loc)     # 'City, ST' pattern only
-    us_abbr = bool(m and m.group(1) in _US_STATES)
-    # Foreign country/city (without a US state abbr) is out; US abbr or a bare city stays.
-    is_foreign = any(f in loc for f in _FOREIGN) and not us_abbr
-    return not is_foreign
+    if m and m.group(1) in _US_STATES:
+        return True
+    if any(f in loc for f in _FOREIGN):         # explicit foreign country/city
+        return False
+    # No US signal found. A structured "City, Region/Country" (has a comma) with no US
+    # signal is almost certainly foreign (e.g. 'Bratislava, Bratislava') -> drop. A bare
+    # single token ('Austin') or 'Remote' stays as ambiguous-keep.
+    return "," not in loc
 
 
 # Non-tech markers: if the title is clearly one of these, drop it even if it also contains

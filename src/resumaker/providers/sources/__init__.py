@@ -10,6 +10,7 @@ from resumaker.providers.sources.lever import LeverSource
 from resumaker.providers.sources.mckinsey import McKinseySource
 from resumaker.providers.sources.oracle_cloud import OracleCloudSource
 from resumaker.providers.sources.phenom import PhenomSource
+from resumaker.providers.sources.radancy import RadancySource
 from resumaker.providers.sources.smartrecruiters import SmartRecruitersSource
 from resumaker.providers.sources.workday import WorkdaySource
 
@@ -26,6 +27,7 @@ _SOURCES: dict[str, SourceAdapter] = {
     GoldmanSource.source: GoldmanSource(),
     PhenomSource.source: PhenomSource(),
     JibeApplySource.source: JibeApplySource(),
+    RadancySource.source: RadancySource(),
 }
 
 
