@@ -18,11 +18,10 @@ _log = get_logger("resumaker.sources.http")
 _RETRY_STATUS = {429, 503}
 
 
-def polite_get(url: str, headers: dict[str, str], *, timeout: float = 20.0,
-               attempts: int = 3) -> httpx.Response:
+def _with_backoff(send, url: str, *, attempts: int) -> httpx.Response:
     r = None
     for attempt in range(attempts):
-        r = httpx.get(url, headers=headers, timeout=timeout, follow_redirects=True)
+        r = send()
         if r.status_code not in _RETRY_STATUS:
             return r
         retry_after = r.headers.get("Retry-After")
@@ -32,4 +31,19 @@ def polite_get(url: str, headers: dict[str, str], *, timeout: float = 20.0,
                      extra={"url": url, "status": r.status_code, "delay": round(delay, 2)})
         time.sleep(delay)
     assert r is not None
-    return r  # exhausted retries - caller's raise_for_status() surfaces it
+    return r  # exhausted retries - caller decides what to do with the status
+
+
+def polite_get(url: str, headers: dict[str, str], *, timeout: float = 20.0,
+               attempts: int = 3) -> httpx.Response:
+    return _with_backoff(
+        lambda: httpx.get(url, headers=headers, timeout=timeout, follow_redirects=True),
+        url, attempts=attempts)
+
+
+def polite_post(url: str, headers: dict[str, str], *, json=None, content=None,
+                timeout: float = 20.0, attempts: int = 3) -> httpx.Response:
+    return _with_backoff(
+        lambda: httpx.post(url, headers=headers, json=json, content=content,
+                           timeout=timeout, follow_redirects=True),
+        url, attempts=attempts)
