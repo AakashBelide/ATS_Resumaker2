@@ -18,15 +18,17 @@ from resumaker.observability.logging import get_logger
 
 _log = get_logger("resumaker.ingestion.scheduler")
 
-# Clean public JSON APIs with no/low bot protection -> poll often (hourly).
+# Clean public JSON/SSR APIs with no/low bot protection -> poll often (hourly). `jibe` also
+# serves Atlassian; `google` is the unprotected careers SSR blob.
 _FAST_SOURCES = {"greenhouse", "lever", "ashby", "amazon", "eightfold", "oracle_cloud",
-                 "smartrecruiters", "mckinsey", "goldman", "jibe", "apple"}
+                 "smartrecruiters", "mckinsey", "goldman", "jibe", "apple", "google"}
 
 
 def _slow_sources() -> set[str]:
-    """Everything not in the fast set (Workday/Phenom/Radancy/Dassault/ByteDance/Microsoft
-    - heavier, HTML/XML, or bot-sensitive) -> poll gently (daily). Computed from the live
-    registry so a newly-added source is never silently skipped."""
+    """Everything not in the fast set (Workday/Phenom/Radancy/Dassault/ByteDance/Microsoft +
+    the bot-gated Meta/Tesla/pcsx/paradox - heavier, HTML/XML, or WAF-fronted) -> poll gently
+    (daily). Computed from the live registry so a newly-added source is never silently
+    skipped."""
     from resumaker.providers.sources import available_sources
     return set(available_sources()) - _FAST_SOURCES
 

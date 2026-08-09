@@ -66,6 +66,28 @@ Practical guidance for the watchlist ingestion subsystem (RI), from a deep-resea
   re-publication of full JDs + respect robots.txt & rate limits.** Our personal, low-volume,
   public-JSON, facts-only watchlist sits squarely there.
 
+## Deferred-7 outcome (Aug 2026 deep-dive, per-company)
+
+The "custom career site" tail was researched against live endpoints. Verdicts:
+
+| Company | Source adapter | Endpoint | Bot gate | Headless-free? |
+|---|---|---|---|---|
+| Google | `google` (new) | SSR `about/careers/applications/jobs/results` `ds:1` blob | none | **yes — verified 200 from datacenter** |
+| Atlassian | `jibe` (reuse) | `join.atlassian.com/api/jobs` | none | **yes — verified 200 from datacenter** |
+| Tesla | `tesla` (new) | `/cua-api/apps/careers/state` (whole catalog + `lookup`) | Akamai `_abck` | curl_cffi Chrome-impersonation; else browser cookies |
+| Qualcomm | `pcsx` (new) | `app.eightfold.ai/api/pcsx/search` (NOT `/apply/v2`) | Cloudflare | curl_cffi best-effort; may need `cf_clearance` |
+| FedEx | `paradox` (new) | `careers.fedex.com/api/get-jobs` (Paradox, NOT Phenom) | Akamai-style WAF | GET `/jobs` first for the `ct` cookie, then POST |
+| Meta | `meta` (new) | `metacareers.com/graphql` `CareersJobSearchResultsDataQuery` | FB edge (bare req → 400; rapid → IP block) | rotating `doc_id` scraped from JS bundle + `lsd` + full browser headers; residential IP |
+| Wayfair | — **deferred** | `wayfair.com/.../job_search_data` (Avature backend) | **PerimeterX/HUMAN** | **no** — 429 even with perfect browser headers; Greenhouse token 404s, SmartRecruiters stale. Needs a `_px` cookie from a real browser or a PX-solver. |
+
+Takeaways that generalize: (1) the endpoint a compiled spec *assumes* is often wrong — always
+confirm live (Google's v3 REST is dead; Qualcomm is PCSX not SmartApply; FedEx is Paradox not
+Phenom). (2) "Bot-protected" ≠ "impossible": Akamai/Cloudflare TLS gates often yield to
+`curl_cffi` impersonation or a one-time cookie warmup; only an active JS-challenge WAF
+(PerimeterX on Wayfair) truly requires a browser. (3) A datacenter IP is the real blocker for
+Meta/Tesla/Qualcomm/FedEx — the same adapters are expected to pass from the user's residential
+network, which is where they're verified. Parsers for all are fixture unit-tested regardless.
+
 _Sources: Greenhouse/Lever/Ashby/Workday API docs; Scrapy AutoThrottle; MDN conditional
 requests & 429/Retry-After; curl_cffi; Scrapling/crawl4ai/Firecrawl; hiQ/Van Buren/Bright
 Data; RFC 9309. (Full citations in the research transcript.)_

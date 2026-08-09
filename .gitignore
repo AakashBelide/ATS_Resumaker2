@@ -44,3 +44,4 @@ data/
 
 # OpenCATS validation: candidate PDFs (our resume carries PII) + local DB
 validation/opencats/candidates/
+.playwright-mcp/

@@ -2,15 +2,30 @@
 (iCIMS acquired Jibe; the JSON API is stable across tenants, incl. branded hosts).
 
     BoardRef(source="jibe", token="amd", extra={"host": "careers.amd.com"})
-Clean public JSON, no auth/CAPTCHA. Ported from career-ops's jibeapply provider.
+Also covers Atlassian (host="join.atlassian.com"). Clean public JSON, no auth/CAPTCHA.
+Ported from career-ops's jibeapply provider.
 """
 from __future__ import annotations
+
+import json
 
 from resumaker.providers.sources.base import PostingStub
 from resumaker.providers.sources.http import polite_get
 from resumaker.providers.sources.ua import UA
 
 _MAX_PAGES = 40
+
+
+def _load(r) -> dict:
+    """Some Jibe tenants (e.g. Atlassian) emit raw control chars in HTML fields, which trip
+    the strict JSON parser httpx uses. Fall back to a lenient parse before giving up."""
+    try:
+        return r.json() or {}
+    except (json.JSONDecodeError, ValueError):
+        try:
+            return json.loads(r.text, strict=False) or {}
+        except (json.JSONDecodeError, ValueError):
+            return {}
 
 
 class JibeApplySource:
@@ -27,7 +42,7 @@ class JibeApplySource:
             r = polite_get(f"{base}?page={page}", {"User-Agent": UA})
             if r.status_code != 200:
                 break
-            body = r.json() or {}
+            body = _load(r)
             items = body.get("jobs") or []
             for it in items:
                 d = (it or {}).get("data") or it or {}

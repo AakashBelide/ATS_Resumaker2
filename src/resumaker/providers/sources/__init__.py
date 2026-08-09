@@ -7,15 +7,20 @@ from resumaker.providers.sources.bytedance import ByteDanceSource
 from resumaker.providers.sources.dassault import DassaultSource
 from resumaker.providers.sources.eightfold import EightfoldSource
 from resumaker.providers.sources.goldman import GoldmanSource
+from resumaker.providers.sources.google import GoogleSource
 from resumaker.providers.sources.greenhouse import GreenhouseSource
 from resumaker.providers.sources.jibe import JibeApplySource
 from resumaker.providers.sources.lever import LeverSource
 from resumaker.providers.sources.mckinsey import McKinseySource
+from resumaker.providers.sources.meta import MetaSource
 from resumaker.providers.sources.microsoft import MicrosoftSource
 from resumaker.providers.sources.oracle_cloud import OracleCloudSource
+from resumaker.providers.sources.paradox import ParadoxSource
+from resumaker.providers.sources.pcsx import PcsxSource
 from resumaker.providers.sources.phenom import PhenomSource
 from resumaker.providers.sources.radancy import RadancySource
 from resumaker.providers.sources.smartrecruiters import SmartRecruitersSource
+from resumaker.providers.sources.tesla import TeslaSource
 from resumaker.providers.sources.workday import WorkdaySource
 
 _SOURCES: dict[str, SourceAdapter] = {
@@ -36,6 +41,11 @@ _SOURCES: dict[str, SourceAdapter] = {
     ByteDanceSource.source: ByteDanceSource(),
     DassaultSource.source: DassaultSource(),
     MicrosoftSource.source: MicrosoftSource(),
+    GoogleSource.source: GoogleSource(),
+    MetaSource.source: MetaSource(),
+    TeslaSource.source: TeslaSource(),
+    PcsxSource.source: PcsxSource(),
+    ParadoxSource.source: ParadoxSource(),
 }
 
 

@@ -2,6 +2,8 @@
 (fake source, isolated tmp DB). No network."""
 from __future__ import annotations
 
+import json
+
 import pytest
 
 from resumaker.config import Settings
@@ -14,7 +16,8 @@ from resumaker.providers.sources.base import PostingStub
 def test_sources_registered():
     assert set(available_sources()) == {
         "greenhouse", "lever", "ashby", "workday", "eightfold", "amazon", "oracle_cloud",
-        "smartrecruiters", "mckinsey", "goldman", "phenom", "jibe", "radancy", "apple", "bytedance", "dassault", "microsoft"}
+        "smartrecruiters", "mckinsey", "goldman", "phenom", "jibe", "radancy", "apple",
+        "bytedance", "dassault", "microsoft", "google", "meta", "tesla", "pcsx", "paradox"}
 
 
 def test_slug_candidates():
@@ -121,6 +124,93 @@ def test_preference_filter(monkeypatch):
     assert service.matches_preferences("Machine Learning Engineer") is True
     assert service.matches_preferences("Sales Engineer") is False   # avoid wins
     assert service.matches_preferences("Product Manager") is False  # no target kw
+
+
+def test_google_parse_response():
+    from resumaker.providers.sources.google import parse_response
+    # ds:1 blob: data = [ [job...], null, total, page_size ]. Job is a positional array.
+    job = ["87598862385980102", "Staff Software Engineer", "https://apply", ["r"], ["q"],
+           "co/path", None, "Google", "en-US",
+           [["Sunnyvale, CA, USA", [], "Sunnyvale", "94089", "CA", "US"]],
+           ["desc"], [2, 3], [1782808699, 0], [1782808699, 0], [1782808699, 0]]
+    html = ("<script>AF_initDataCallback({key: 'ds:1', hash: '1', data:"
+            + json.dumps([[job], None, 1575, 20]) + ", sideChannel: {}});</script>")
+    stubs, total = parse_response(html)
+    assert total == 1575 and len(stubs) == 1
+    assert stubs[0].external_id == "87598862385980102"
+    assert stubs[0].title == "Staff Software Engineer"
+    assert stubs[0].location == "Sunnyvale, CA, USA"
+    assert stubs[0].updated_at.startswith("2026")
+    assert parse_response("<html>no ds:1 here</html>") == ([], 0)
+
+
+def test_tesla_parse_response():
+    from resumaker.providers.sources.tesla import parse_response
+    body = {"lookup": {"locations": {"401022": "Palo Alto, California",
+                                     "500": "Toronto, Ontario"}},
+            "listings": [{"id": "224501", "t": "AI Engineer, Optimus", "dp": "3", "l": "401022"},
+                         {"id": "9", "t": "Foo", "dp": "1", "l": "500"}]}
+    stubs = parse_response(body)
+    assert len(stubs) == 2
+    assert stubs[0].external_id == "224501" and stubs[0].title == "AI Engineer, Optimus"
+    assert stubs[0].location == "Palo Alto, California"
+    assert stubs[0].url.endswith("/job/224501")
+
+
+def test_pcsx_parse_response():
+    from resumaker.providers.sources.pcsx import parse_response
+    body = {"data": {"count": 2, "positions": [
+        {"id": 446717683325, "displayJobId": "3088561", "name": "ML Engineer",
+         "standardizedLocations": ["San Diego, CA, US"],
+         "locations": ["San Diego, California, USA"], "postedTs": 1774569600,
+         "positionUrl": "/careers/job/446717683325"}]}}
+    stubs, total = parse_response(body)
+    assert total == 2 and len(stubs) == 1
+    assert stubs[0].external_id == "446717683325" and stubs[0].title == "ML Engineer"
+    assert stubs[0].location == "San Diego, CA, US"       # standardized (US suffix) preferred
+    assert stubs[0].updated_at.startswith("2026")
+    assert stubs[0].url == "https://app.eightfold.ai/careers/job/446717683325"
+
+
+def test_meta_handshake_and_parse():
+    from resumaker.providers.sources.meta import (
+        extract_doc_id,
+        find_bundle_urls,
+        parse_response,
+        scrape_lsd,
+    )
+    page = ('...["LSD",[],{"token":"AbC_123"}]... '
+            '"https://static.xx.fbcdn.net/rsrc.php/v3/yb/abc.js?_nc_x=1" '
+            'other "https://z.fbcdn.net/rsrc.php/def.js"')
+    assert scrape_lsd(page) == "AbC_123"
+    bundles = find_bundle_urls(page)
+    assert bundles[0].endswith("abc.js?_nc_x=1") and len(bundles) == 2
+    # doc_id lives in a Relay operation module inside a JS bundle, not the page HTML:
+    js = ('__d("CareersJobSearchResultsDataQuery_candidate_portalRelayOperation",[],'
+          '(function(t,n,r,o,a,i){a.exports="27506805582236862"}),null);')
+    assert extract_doc_id(js) == "27506805582236862"
+    assert extract_doc_id("no operation module here") == ""
+    body = {"data": {"job_search_with_featured_jobs": {
+        "all_jobs": [{"id": "111", "title": "SWE",
+                      "locations": ["Menlo Park, CA", "Seattle, WA"]}],
+        "featured_jobs": [{"id": "222", "title": "MLE", "locations": ["Remote, US"]}]}}}
+    stubs = parse_response(body)
+    assert {s.external_id for s in stubs} == {"111", "222"}
+    assert stubs[0].location == "Menlo Park, CA, Seattle, WA"
+    assert stubs[0].url == "https://www.metacareers.com/jobs/111/"
+
+
+def test_paradox_parse_response():
+    from resumaker.providers.sources.paradox import parse_response
+    body = {"totalJob": 2363, "jobs": [
+        {"uniqueID": "PDX_FEC_ABC", "reference": "P25-354057-1", "title": "Software Engineer",
+         "applyURL": "https://fedex.paradox.ai/co/X/Job?job_id=P25-354057-1",
+         "locations": [{"city": "Memphis", "stateAbbr": "TN", "countryAbbr": "US"}],
+         "customFields": [{"cfKey": "cf_effective_date", "value": "2026-08-07"}]}]}
+    stubs, total = parse_response(body)
+    assert total == 2363 and len(stubs) == 1
+    assert stubs[0].external_id == "PDX_FEC_ABC" and stubs[0].title == "Software Engineer"
+    assert stubs[0].location == "Memphis, TN, US" and stubs[0].updated_at == "2026-08-07"
 
 
 def test_microsoft_parse_response():
