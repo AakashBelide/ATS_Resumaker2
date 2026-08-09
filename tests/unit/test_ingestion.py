@@ -108,14 +108,18 @@ def test_discovery_filters_and_facets(tmp_db, monkeypatch):
     assert r.facets["companies"]["Anthropic"] == 2
 
     # company filter
-    assert discover(DiscoveryFilters(company="Anthropic")).total == 2
+    assert discover(DiscoveryFilters(company=["Anthropic"])).total == 2
     # source filter
     assert discover(DiscoveryFilters(source="ashby")).total == 1
     # location substring
     assert discover(DiscoveryFilters(location="ca")).total == 2   # SF + Santa Clara
-    # title keyword
+    # keyword matches title OR company
     assert discover(DiscoveryFilters(keyword="engineer")).total == 4
     assert discover(DiscoveryFilters(keyword="data")).total == 1
+    assert discover(DiscoveryFilters(keyword="nvidia")).total == 1   # company match
+    # multi-select company / level
+    assert discover(DiscoveryFilters(company=["Anthropic", "OpenAI"])).total == 3
+    assert discover(DiscoveryFilters(level=["senior", "staff"])).total == 1  # 'Staff Software Engineer'
     # pagination
     assert len(discover(DiscoveryFilters(limit=2)).jobs) == 2
 

@@ -20,14 +20,14 @@ from resumaker.persistence import db
 
 @dataclass
 class DiscoveryFilters:
-    company: str | None = None
+    company: list[str] | None = None  # multi-select: any of these companies
     source: str | None = None
     location: str | None = None       # substring, e.g. "boston" / "ny" / "remote"
-    keyword: str | None = None        # title substring, e.g. "machine learning"
+    keyword: str | None = None        # matches TITLE or COMPANY substring
     since_days: int | None = None     # only postings first seen within N days
     on_target: bool = False           # apply the preference gate (target roles, no avoid)
-    state: str | None = None          # US state code (e.g. "CA") or "OTHER" (unresolved/remote)
-    level: str | None = None          # intern | junior | mid | senior | staff | manager
+    state: list[str] | None = None    # multi-select: US state codes / "OTHER" (unresolved/remote)
+    level: list[str] | None = None    # multi-select: intern|junior|mid|senior|staff|manager
     order: str = "recent"             # recent | company | title
     limit: int = 50
     offset: int = 0
@@ -40,25 +40,29 @@ class DiscoveryResult:
     facets: dict
 
 
-def _match_state(job: JobRecord, state: str) -> bool:
-    states = us_states_of(job.location)
-    return not states if state == "OTHER" else state in states
+def _match_state(job: JobRecord, states_sel: list[str]) -> bool:
+    js = us_states_of(job.location)
+    return any((not js) if s == "OTHER" else s in js for s in states_sel)
 
 
-def _apply(rows: list[JobRecord], *, company: str | None, source: str | None,
-           on_target: bool, level: str | None, state: str | None) -> list[JobRecord]:
-    """Apply the in-memory filters. `location`/`keyword`/`since_days` are already applied in
-    SQL by the caller; company/source are done here (not SQL) so each facet can be computed
-    with its OWN dimension excluded -> the dropdowns stay switchable after a selection."""
+def _apply(rows: list[JobRecord], *, keyword: str | None, company: list[str] | None,
+           source: str | None, on_target: bool, level: list[str] | None,
+           state: list[str] | None) -> list[JobRecord]:
+    """Apply the in-memory filters (everything except location/since, which run in SQL). Done
+    here - not SQL - so each facet can be computed with its OWN dimension excluded, keeping the
+    dropdowns switchable after a selection. keyword matches TITLE or COMPANY."""
     out = rows
+    if keyword:
+        k = keyword.lower()
+        out = [r for r in out if k in r.title.lower() or k in r.company.lower()]
     if company:
-        out = [r for r in out if r.company == company]
+        out = [r for r in out if r.company in company]
     if source:
         out = [r for r in out if r.source == source]
     if on_target:
         out = [r for r in out if matches_preferences(r.title)]
     if level:
-        out = [r for r in out if title_level(r.title) == level]
+        out = [r for r in out if title_level(r.title) in level]
     if state:
         out = [r for r in out if _match_state(r, state)]
     return out
@@ -81,24 +85,24 @@ def discover(f: DiscoveryFilters) -> DiscoveryResult:
     filters are keyword/derived judgements applied in Python - so we pull the column-filtered
     set once and finish in memory (fine at single-user scale, a few thousand rows). Each facet
     is computed with its OWN filter excluded so the dropdowns still let you switch values."""
-    base = db.query_jobs(location_like=f.location, title_like=f.keyword,
-                         since_days=f.since_days, order=f.order, limit=100_000, offset=0)
+    base = db.query_jobs(location_like=f.location, since_days=f.since_days,
+                         order=f.order, limit=100_000, offset=0)
 
-    filtered = _apply(base, company=f.company, source=f.source, on_target=f.on_target,
-                      level=f.level, state=f.state)
+    filtered = _apply(base, keyword=f.keyword, company=f.company, source=f.source,
+                      on_target=f.on_target, level=f.level, state=f.state)
     total = len(filtered)
     page = filtered[f.offset:f.offset + f.limit]
 
     # Each facet is computed with ITS OWN dimension excluded, so selecting a value never
     # collapses that dropdown to a single option (you can always switch).
-    for_co = _apply(base, company=None, source=f.source, on_target=f.on_target,
-                    level=f.level, state=f.state)
-    for_src = _apply(base, company=f.company, source=None, on_target=f.on_target,
-                     level=f.level, state=f.state)
-    for_states = _apply(base, company=f.company, source=f.source, on_target=f.on_target,
-                        level=f.level, state=None)
-    for_levels = _apply(base, company=f.company, source=f.source, on_target=f.on_target,
-                        level=None, state=f.state)
+    for_co = _apply(base, keyword=f.keyword, company=None, source=f.source,
+                    on_target=f.on_target, level=f.level, state=f.state)
+    for_src = _apply(base, keyword=f.keyword, company=f.company, source=None,
+                     on_target=f.on_target, level=f.level, state=f.state)
+    for_states = _apply(base, keyword=f.keyword, company=f.company, source=f.source,
+                        on_target=f.on_target, level=f.level, state=None)
+    for_levels = _apply(base, keyword=f.keyword, company=f.company, source=f.source,
+                        on_target=f.on_target, level=None, state=f.state)
     facets = {
         "companies": dict(Counter(r.company for r in for_co).most_common()),
         "sources": dict(Counter(r.source for r in for_src).most_common()),

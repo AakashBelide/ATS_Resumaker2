@@ -4,7 +4,7 @@ frontend Tracker page renders this + advances the application `stage`.
 """
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from pydantic import BaseModel
 
 from apps.api.security import require_token
@@ -34,13 +34,18 @@ def list_tracked(stage: str | None = None) -> list[TrackerEntry]:
 
 
 @router.post("/tracker", response_model=TrackerEntry, status_code=201)
-def add_tracked(body: TrackAddIn) -> TrackerEntry:
-    """Add a job (by watchlist `job_id` or raw `url`) and run its match. Synchronous: the
-    match run takes ~1-2 min. `run_match=false` tracks without running the analysis."""
+def add_tracked(body: TrackAddIn, background_tasks: BackgroundTasks) -> TrackerEntry:
+    """Add a job (by watchlist `job_id` or raw `url`) INSTANTLY (stage=interested) and, when
+    `run_match` (default), schedule the ~1-2 min match in the background so the '+Track' click
+    never blocks. The entry appears immediately; fit/decision/sponsorship fill in shortly and
+    show on the next Tracker refresh."""
     try:
-        return tracker.add(job_id=body.job_id, url=body.url, run_match=body.run_match)
+        entry = tracker.add(job_id=body.job_id, url=body.url, run_match=False)
     except tracker.TrackerError as e:
         raise HTTPException(400, str(e)) from None
+    if body.run_match and entry.id is not None:
+        background_tasks.add_task(tracker.run_match_for, entry.id)
+    return entry
 
 
 @router.patch("/tracker/{entry_id}/stage", response_model=TrackerEntry)

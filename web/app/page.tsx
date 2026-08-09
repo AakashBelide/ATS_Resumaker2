@@ -4,11 +4,16 @@
 import { useCallback, useEffect, useState } from "react";
 
 import CompanyLogo from "@/components/CompanyLogo";
-import { addTracker, discovery, type Discovery, type DiscoveryQuery, type JobRecord } from "@/lib/api";
+import MultiSelect from "@/components/MultiSelect";
+import {
+  addTracker, discovery, listTracker, type Discovery, type DiscoveryQuery, type JobRecord,
+} from "@/lib/api";
 import { titleLevel } from "@/lib/logo";
 
 const LEVEL_ORDER = ["intern", "junior", "mid", "senior", "staff", "manager"];
 const PAGE_SIZES = [24, 48, 96];
+const STORE_KEY = "discovery.q";
+const DEFAULT_Q: DiscoveryQuery = { on_target: true, order: "recent", limit: 24, offset: 0 };
 
 function daysAgo(iso: string | null): string {
   if (!iso) return "";
@@ -49,12 +54,24 @@ function JobCard({ job, onTrack, tracked, busy }: {
 }
 
 export default function DiscoveryPage() {
-  const [q, setQ] = useState<DiscoveryQuery>({ on_target: true, order: "recent", limit: 24, offset: 0 });
+  const [q, setQ] = useState<DiscoveryQuery>(DEFAULT_Q);
+  const [restored, setRestored] = useState(false);
   const [data, setData] = useState<Discovery | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [tracking, setTracking] = useState<number | null>(null);
-  const [tracked, setTracked] = useState<Set<number>>(new Set());
+  const [tracked, setTracked] = useState<Set<string>>(new Set());  // tracked job URLs
+  const [kw, setKw] = useState("");
+
+  // restore persisted filters once on mount (survives nav to/from other pages)
+  useEffect(() => {
+    try {
+      const s = sessionStorage.getItem(STORE_KEY);
+      if (s) { const parsed = JSON.parse(s) as DiscoveryQuery; setQ(parsed); setKw(parsed.keyword ?? ""); }
+    } catch { /* ignore */ }
+    setRestored(true);
+    listTracker().then((rows) => setTracked(new Set(rows.map((r) => r.url)))).catch(() => {});
+  }, []);
 
   const load = useCallback(async (query: DiscoveryQuery) => {
     setLoading(true); setError("");
@@ -63,17 +80,32 @@ export default function DiscoveryPage() {
     finally { setLoading(false); }
   }, []);
 
-  useEffect(() => { load(q); }, [q, load]);
+  useEffect(() => {
+    if (!restored) return;
+    sessionStorage.setItem(STORE_KEY, JSON.stringify(q));
+    load(q);
+  }, [q, restored, load]);
+
+  // debounce the keyword box -> query
+  useEffect(() => {
+    if (!restored) return;
+    const t = setTimeout(() => { if ((q.keyword ?? "") !== kw) patch({ keyword: kw || undefined }); }, 350);
+    return () => clearTimeout(t);
+  }, [kw]);  // eslint-disable-line react-hooks/exhaustive-deps
 
   function patch(p: Partial<DiscoveryQuery>) { setQ((prev) => ({ ...prev, ...p, offset: 0 })); }
   function goPage(n: number) { setQ((prev) => ({ ...prev, offset: n * (prev.limit ?? 24) })); }
+  function clearFilters() {
+    setKw("");
+    setQ((prev) => ({ order: prev.order, limit: prev.limit, on_target: prev.on_target, offset: 0 }));
+  }
 
   async function onTrack(job: JobRecord) {
     if (job.id == null) return;
     setTracking(job.id);
     try {
-      await addTracker({ job_id: job.id });
-      setTracked((prev) => new Set(prev).add(job.id as number));
+      await addTracker({ job_id: job.id });     // instant add; match runs in the background
+      setTracked((prev) => new Set(prev).add(job.url));
     } catch (e) { setError(String(e)); }
     finally { setTracking(null); }
   }
@@ -85,12 +117,20 @@ export default function DiscoveryPage() {
   const from = data && data.total ? offset + 1 : 0;
   const to = data ? Math.min(offset + limit, data.total) : 0;
 
-  const companies = data ? Object.entries(data.facets.companies).sort((a, b) => b[1] - a[1]) : [];
-  const companiesAlpha = [...companies].sort((a, b) => a[0].localeCompare(b[0]));  // dropdown: A→Z
-  const states = data
-    ? Object.entries(data.facets.states).sort((a, b) => (a[0] === "OTHER" ? 1 : b[0] === "OTHER" ? -1 : a[0].localeCompare(b[0])))
+  const companyOpts = data
+    ? Object.entries(data.facets.companies).sort((a, b) => a[0].localeCompare(b[0])) as [string, number][]
     : [];
-  const levels = data ? data.facets.levels : {};
+  const stateOpts = data
+    ? (Object.entries(data.facets.states) as [string, number][])
+        .sort((a, b) => (a[0] === "OTHER" ? 1 : b[0] === "OTHER" ? -1 : a[0].localeCompare(b[0])))
+    : [];
+  const levelOpts = data
+    ? LEVEL_ORDER.filter((l) => data.facets.levels[l]).map((l) => [l, data.facets.levels[l]] as [string, number])
+    : [];
+
+  const activeFilters =
+    (q.company?.length ?? 0) + (q.state?.length ?? 0) + (q.level?.length ?? 0) +
+    (q.keyword ? 1 : 0) + (q.location ? 1 : 0) + (q.since_days ? 1 : 0);
 
   return (
     <>
@@ -106,43 +146,25 @@ export default function DiscoveryPage() {
       <div className="page">
         <div className="stat-row">
           <div className="stat"><div className="num">{data?.total?.toLocaleString() ?? "—"}</div><div className="cap">Matching postings</div></div>
-          <div className="stat"><div className="num accent">{companies.length || "—"}</div><div className="cap">Companies</div></div>
-          <div className="stat"><div className="num">{states.filter(([s]) => s !== "OTHER").length || "—"}</div><div className="cap">US states</div></div>
+          <div className="stat"><div className="num accent">{companyOpts.length || "—"}</div><div className="cap">Companies</div></div>
+          <div className="stat"><div className="num">{stateOpts.filter(([s]) => s !== "OTHER").length || "—"}</div><div className="cap">US states</div></div>
           <div className="stat"><div className="num">{q.on_target ? "ON" : "OFF"}</div><div className="cap">Target-role filter</div></div>
         </div>
 
         <div className="filters">
           <div className="field">
             <label>kw</label>
-            <input placeholder="title keyword" defaultValue={q.keyword ?? ""}
-                   onKeyDown={(e) => { if (e.key === "Enter") patch({ keyword: (e.target as HTMLInputElement).value }); }} />
+            <input placeholder="title or company" value={kw} onChange={(e) => setKw(e.target.value)} />
           </div>
           <div className="field">
             <label>loc</label>
             <input placeholder="e.g. boston" defaultValue={q.location ?? ""}
-                   onKeyDown={(e) => { if (e.key === "Enter") patch({ location: (e.target as HTMLInputElement).value }); }} />
+                   onKeyDown={(e) => { if (e.key === "Enter") patch({ location: (e.target as HTMLInputElement).value || undefined }); }} />
           </div>
-          <div className="field">
-            <label>company</label>
-            <select value={q.company ?? ""} onChange={(e) => patch({ company: e.target.value || undefined })}>
-              <option value="">all</option>
-              {companiesAlpha.map(([c, n]) => <option key={c} value={c}>{c} ({n})</option>)}
-            </select>
-          </div>
-          <div className="field">
-            <label>state</label>
-            <select value={q.state ?? ""} onChange={(e) => patch({ state: e.target.value || undefined })}>
-              <option value="">any</option>
-              {states.map(([s, n]) => <option key={s} value={s}>{s === "OTHER" ? "Remote / Other" : s} ({n})</option>)}
-            </select>
-          </div>
-          <div className="field">
-            <label>level</label>
-            <select value={q.level ?? ""} onChange={(e) => patch({ level: e.target.value || undefined })}>
-              <option value="">any</option>
-              {LEVEL_ORDER.filter((l) => levels[l]).map((l) => <option key={l} value={l}>{l} ({levels[l]})</option>)}
-            </select>
-          </div>
+          <MultiSelect label="company" options={companyOpts} selected={q.company ?? []} onChange={(v) => patch({ company: v })} />
+          <MultiSelect label="state" options={stateOpts} selected={q.state ?? []} onChange={(v) => patch({ state: v })}
+                       labelFor={(v) => (v === "OTHER" ? "Remote / Other" : v)} />
+          <MultiSelect label="level" options={levelOpts} selected={q.level ?? []} onChange={(v) => patch({ level: v })} />
           <div className="field">
             <label>since</label>
             <select value={q.since_days ?? ""} onChange={(e) => patch({ since_days: e.target.value ? Number(e.target.value) : undefined })}>
@@ -159,11 +181,14 @@ export default function DiscoveryPage() {
           <div className={`field toggle${q.on_target ? " on" : ""}`} onClick={() => patch({ on_target: !q.on_target })}>
             <label>on-target</label><span className="mono">{q.on_target ? "yes" : "no"}</span>
           </div>
+          {activeFilters > 0 && (
+            <button className="btn btn-sm clear-btn" onClick={clearFilters}>✕ clear {activeFilters}</button>
+          )}
         </div>
         <p className="hint">
-          <b>On-target</b> keeps only titles that match your <span className="mono">target roles</span> and none of your{" "}
-          <span className="mono">avoid roles</span> — a deterministic keyword filter from your Profile, no AI scoring.
-          <span className="muted"> Level &amp; state are derived from the title and location text.</span>
+          <b>On-target</b> keeps titles in your field (engineer / AI / ML / data / software / analyst / scientist …) and drops your{" "}
+          <span className="mono">avoid roles</span> — a deterministic keyword filter, no AI scoring.
+          <span className="muted"> Recency = when we first fetched it. Level &amp; state are derived from the title/location.</span>
         </p>
 
         {loading && <p className="loading">loading…</p>}
@@ -177,7 +202,7 @@ export default function DiscoveryPage() {
             <div className="cards">
               {data.jobs.map((j) => (
                 <JobCard key={`${j.source}:${j.external_id}`} job={j} onTrack={onTrack}
-                         tracked={j.id != null && tracked.has(j.id)} busy={tracking === j.id} />
+                         tracked={tracked.has(j.url)} busy={tracking === j.id} />
               ))}
             </div>
 

@@ -14,11 +14,18 @@ export type RunRecord = {
   recommend_apply: boolean | null; fit_0_100: number | null;
   ats_overall: number | null; fact_gate_pass: boolean | null;
   ats_verify_pass: boolean | null; page_count: number | null;
+  cost_usd: number; created_at: string | null; finished_at: string | null;
 };
 
 export async function listRuns(limit = 50): Promise<RunRecord[]> {
   const r = await fetch(`${BASE}/v1/runs?limit=${limit}`, { headers: headers() });
   if (!r.ok) throw new Error(`listRuns ${r.status}`);
+  return r.json();
+}
+
+export async function getRun(runId: string): Promise<RunRecord> {
+  const r = await fetch(`${BASE}/v1/runs/${encodeURIComponent(runId)}`, { headers: headers() });
+  if (!r.ok) throw new Error(`getRun ${r.status}`);
   return r.json();
 }
 
@@ -51,9 +58,14 @@ export async function costs(): Promise<Record<string, unknown>> {
 }
 
 // ---- shared helpers (RA platform) -------------------------------------------
-function qs(params: Record<string, string | number | boolean | undefined>): string {
+type QVal = string | number | boolean | string[] | undefined;
+function qs(params: Record<string, QVal>): string {
   const p = new URLSearchParams();
-  for (const [k, v] of Object.entries(params)) if (v !== undefined && v !== "") p.set(k, String(v));
+  for (const [k, v] of Object.entries(params)) {
+    if (v === undefined || v === "") continue;
+    if (Array.isArray(v)) { if (v.length) p.set(k, v.join(",")); }  // multi-select -> csv
+    else p.set(k, String(v));
+  }
   const s = p.toString();
   return s ? `?${s}` : "";
 }
@@ -75,8 +87,8 @@ export type DiscoveryFacets = {
 };
 export type Discovery = { total: number; jobs: JobRecord[]; facets: DiscoveryFacets };
 export type DiscoveryQuery = {
-  company?: string; source?: string; location?: string; keyword?: string;
-  since_days?: number; on_target?: boolean; state?: string; level?: string;
+  company?: string[]; source?: string; location?: string; keyword?: string;
+  since_days?: number; on_target?: boolean; state?: string[]; level?: string[];
   order?: string; limit?: number; offset?: number;
 };
 export function discovery(q: DiscoveryQuery = {}): Promise<Discovery> {
@@ -156,6 +168,8 @@ export type Report = {
   };
   sponsorship: { verdict: string; hard_blocker: boolean; source: string; needs_verification: boolean; reasons: string[] };
   decision: { recommend_apply: boolean; confidence: string; reasons: string[]; blockers: string[] };
+  // populated only by the FULL pipeline (null in a match-only run)
+  resume: unknown | null; cover_letter: unknown | null; ats: { overall?: number } | null;
   warnings: string[]; error: string | null;
 };
 export async function getReport(runId: string): Promise<Report> {

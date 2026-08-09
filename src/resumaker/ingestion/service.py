@@ -51,7 +51,16 @@ def ingest_company(company: Company, *, preferred_only: bool = False,
             stubs = get_source(board.source).list_postings(board.token, **board.extra)
         except Exception as e:  # noqa: BLE001 - one bad board must not sink the rest
             res.errors.append(f"{board.source}/{board.token}: {e}")
+            # Surface a blocked/misconfigured board (e.g. Microsoft TLS, Tesla 403) loudly so
+            # it's visibly distinct from a genuinely empty one - not a silent 0.
+            _log.error("board fetch failed", extra={"company": company.name,
+                       "source": board.source, "token": board.token, "error": str(e)[:200]})
             continue
+        if not stubs:
+            # Fetch succeeded but yielded nothing: could be a real empty board, or a soft
+            # failure (403/early-stop returning []). Flag it so it doesn't masquerade as 0.
+            _log.warning("board returned no postings", extra={"company": company.name,
+                         "source": board.source, "token": board.token})
         for stub in stubs:
             if tech_only and not is_tech_role(stub.title):
                 continue

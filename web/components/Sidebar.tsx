@@ -1,7 +1,9 @@
 "use client";
 // Left rail navigation for the 6 platform pages. Active state from the current path.
+// On small screens the rail becomes an off-canvas drawer toggled by a hamburger button.
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 
 const NAV = [
   { href: "/", label: "Discovery", idx: "01" },
@@ -14,8 +16,18 @@ const NAV = [
 
 export default function Sidebar() {
   const path = usePathname();
+  const [open, setOpen] = useState(false);
+  useEffect(() => { setOpen(false); }, [path]);   // close drawer on navigation
+
   return (
-    <nav className="rail">
+    <>
+      <button className="rail-toggle" aria-label="menu" onClick={() => setOpen((o) => !o)}>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" width="20" height="20">
+          <path d="M3 6h18M3 12h18M3 18h18" />
+        </svg>
+      </button>
+      {open && <div className="rail-backdrop" onClick={() => setOpen(false)} />}
+      <nav className="rail" data-open={open}>
       <div className="rail-brand">
         <span className="rail-hex" aria-hidden>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
@@ -46,7 +58,8 @@ export default function Sidebar() {
         );
       })}
 
-      <div className="rail-foot">v0.1 · self-hosted</div>
-    </nav>
+        <div className="rail-foot">v0.1 · self-hosted</div>
+      </nav>
+    </>
   );
 }

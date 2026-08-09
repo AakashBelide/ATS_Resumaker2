@@ -28,10 +28,19 @@ export default function TrackerPage() {
   const [limit, setLimit] = useState(10);
 
   const load = useCallback(async () => {
-    setLoading(true); setError("");
+    setError("");
     try { setRows(await listTracker()); } catch (e) { setError(String(e)); } finally { setLoading(false); }
   }, []);
   useEffect(() => { load(); }, [load]);
+
+  // a freshly-tracked entry's match runs in the background (run_id fills in when done);
+  // poll every 4s while any are still matching so fit/decision appear without a manual refresh.
+  const anyPending = rows.some((r) => !r.run_id && r.fit_0_100 == null);
+  useEffect(() => {
+    if (!anyPending) return;
+    const t = setTimeout(load, 4000);
+    return () => clearTimeout(t);
+  }, [anyPending, rows, load]);
 
   async function onStage(id: number, stage: string) {
     setRows((prev) => prev.map((r) => (r.id === id ? { ...r, stage } : r)));  // optimistic
@@ -101,7 +110,9 @@ export default function TrackerPage() {
                 </tr>
               </thead>
               <tbody>
-                {pageRows.map((e) => (
+                {pageRows.map((e) => {
+                  const pending = !e.run_id && e.fit_0_100 == null;
+                  return (
                   <tr key={e.id}>
                     <td>
                       <div className="cell-co">
@@ -117,7 +128,7 @@ export default function TrackerPage() {
                     <td className="c">
                       {e.fit_0_100 != null
                         ? <span className={`fit ${fitClass(e.fit_0_100)}`}>{Math.round(e.fit_0_100)}</span>
-                        : <span className="muted">—</span>}
+                        : pending ? <span className="matching mono">matching…</span> : <span className="muted">—</span>}
                     </td>
                     <td className="c">
                       {e.recommend_apply != null
@@ -138,7 +149,8 @@ export default function TrackerPage() {
                         : <span className="muted">—</span>}
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
 

@@ -232,9 +232,9 @@ def _cmd_discovery(args) -> int:
     from resumaker.persistence import db
     db.init_db()
     res = discover(DiscoveryFilters(
-        company=args.company, source=args.source, location=args.location,
-        keyword=args.keyword, since_days=args.since_days, on_target=args.on_target,
-        order=args.order, limit=args.limit, offset=args.offset))
+        company=[args.company] if args.company else None, source=args.source,
+        location=args.location, keyword=args.keyword, since_days=args.since_days,
+        on_target=args.on_target, order=args.order, limit=args.limit, offset=args.offset))
     if args.json:
         print(json.dumps({"total": res.total, "facets": res.facets,
                           "jobs": [j.model_dump(mode="json") for j in res.jobs]}, indent=1))
