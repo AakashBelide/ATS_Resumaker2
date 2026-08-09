@@ -145,9 +145,10 @@ def board_from_html(html: str) -> BoardRef | None:
 
 
 def discover_from_careers(name: str, careers_url: str) -> BoardRef | None:
-    """Parse an explicit careers URL for a supported ATS board. Browser fallback is
-    allowed here because it's a single, user-vetted URL (not a blind domain guess)."""
-    board = board_from_html(fetch_html(careers_url))
+    """Resolve a board from a careers URL. First parse the URL string itself (a direct
+    `*.myworkdayjobs.com` / greenhouse / lever / ashby link resolves with no fetch - and
+    Workday sites are JS SPAs that fetch empty anyway); else fetch + parse the page."""
+    board = board_from_html(careers_url) or board_from_html(fetch_html(careers_url))
     if board:
         _log.info("careers-page hit",
                   extra={"name": name, "url": careers_url, "source": board.source})
