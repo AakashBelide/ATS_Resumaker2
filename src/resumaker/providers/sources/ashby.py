@@ -5,9 +5,8 @@ Field notes (verified): the date field is `publishedAt` (there is no `publishedD
 and the API returns both listed and unlisted postings - we keep only `isListed` ones."""
 from __future__ import annotations
 
-import httpx
-
 from resumaker.providers.sources.base import PostingStub
+from resumaker.providers.sources.http import polite_get
 from resumaker.providers.sources.ua import UA
 
 
@@ -16,7 +15,7 @@ class AshbySource:
 
     def list_postings(self, token: str, **kwargs: str) -> list[PostingStub]:
         api = f"https://api.ashbyhq.com/posting-api/job-board/{token}?includeCompensation=true"
-        r = httpx.get(api, headers={"User-Agent": UA}, timeout=20, follow_redirects=True)
+        r = polite_get(api, {"User-Agent": UA})
         r.raise_for_status()
         out: list[PostingStub] = []
         for j in r.json().get("jobs", []) or []:

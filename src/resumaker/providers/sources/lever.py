@@ -2,9 +2,8 @@
 (`api.lever.co/v0/postings/{company}?mode=json`)."""
 from __future__ import annotations
 
-import httpx
-
 from resumaker.providers.sources.base import PostingStub
+from resumaker.providers.sources.http import polite_get
 from resumaker.providers.sources.ua import UA
 
 
@@ -13,7 +12,7 @@ class LeverSource:
 
     def list_postings(self, token: str, **kwargs: str) -> list[PostingStub]:
         api = f"https://api.lever.co/v0/postings/{token}?mode=json"
-        r = httpx.get(api, headers={"User-Agent": UA}, timeout=20, follow_redirects=True)
+        r = polite_get(api, {"User-Agent": UA})
         r.raise_for_status()
         out: list[PostingStub] = []
         for j in r.json() or []:

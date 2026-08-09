@@ -9,10 +9,9 @@ behaviorally identical to an unchanged board for dedupe.
 """
 from __future__ import annotations
 
-import httpx
-
 from resumaker.persistence import cache
 from resumaker.providers.sources.base import PostingStub
+from resumaker.providers.sources.http import polite_get
 from resumaker.providers.sources.ua import UA
 
 _ETAG_NS = "gh_etag"
@@ -28,7 +27,7 @@ class GreenhouseSource:
         prior = cache.get(_ETAG_NS, etag_key)
         if prior:
             headers["If-None-Match"] = prior
-        r = httpx.get(api, headers=headers, timeout=20, follow_redirects=True)
+        r = polite_get(api, headers)
         if r.status_code == 304:            # unchanged since last poll - nothing new
             return []
         r.raise_for_status()
