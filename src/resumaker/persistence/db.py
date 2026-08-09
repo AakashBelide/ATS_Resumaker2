@@ -49,6 +49,7 @@ CREATE TABLE IF NOT EXISTS jobs (
     content_hash TEXT NOT NULL DEFAULT '',
     status       TEXT NOT NULL DEFAULT 'new',
     posted_at    TEXT NOT NULL DEFAULT '',
+    comp         TEXT NOT NULL DEFAULT '',
     first_seen   TEXT NOT NULL,
     last_seen    TEXT NOT NULL,
     UNIQUE (source, external_id)
@@ -127,6 +128,8 @@ def _migrate(conn: sqlite3.Connection) -> None:
     cols = {r["name"] for r in conn.execute("PRAGMA table_info(jobs)").fetchall()}
     if "posted_at" not in cols:
         conn.execute("ALTER TABLE jobs ADD COLUMN posted_at TEXT NOT NULL DEFAULT ''")
+    if "comp" not in cols:
+        conn.execute("ALTER TABLE jobs ADD COLUMN comp TEXT NOT NULL DEFAULT ''")
 
 
 # ------------------------------------------------------------------ runs
@@ -181,16 +184,16 @@ def upsert_job(job: JobRecord) -> tuple[int, bool]:
         if existing is None:
             cur = conn.execute(
                 """INSERT INTO jobs (source, external_id, url, title, company, location,
-                       content_hash, status, posted_at, first_seen, last_seen)
-                   VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
+                       content_hash, status, posted_at, comp, first_seen, last_seen)
+                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?)""",
                 (job.source, job.external_id, job.url, job.title, job.company,
-                 job.location, job.content_hash, "new", job.posted_at, now, now))
+                 job.location, job.content_hash, "new", job.posted_at, job.comp, now, now))
             return int(cur.lastrowid or 0), True
         changed = existing["content_hash"] != job.content_hash
         conn.execute(
-            "UPDATE jobs SET last_seen=?, content_hash=?, url=?, title=?, location=? "
+            "UPDATE jobs SET last_seen=?, content_hash=?, url=?, title=?, location=?, comp=? "
             "WHERE id=?",
-            (now, job.content_hash, job.url, job.title, job.location, existing["id"]))
+            (now, job.content_hash, job.url, job.title, job.location, job.comp, existing["id"]))
         return int(existing["id"]), changed
 
 
@@ -475,4 +478,5 @@ def _job_from_row(r: sqlite3.Row) -> JobRecord:
         id=r["id"], source=r["source"], external_id=r["external_id"], url=r["url"],
         title=r["title"], company=r["company"], location=r["location"],
         content_hash=r["content_hash"], status=r["status"], posted_at=r["posted_at"],
+        comp=r["comp"],
         first_seen=_dt(r["first_seen"]), last_seen=_dt(r["last_seen"]))

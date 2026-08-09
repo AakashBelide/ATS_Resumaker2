@@ -79,7 +79,7 @@ async function get<T>(path: string): Promise<T> {
 export type JobRecord = {
   id: number | null; source: string; external_id: string; url: string; title: string;
   company: string; location: string; status: string; posted_at: string;
-  first_seen: string | null; last_seen: string | null;
+  comp: string; first_seen: string | null; last_seen: string | null;
 };
 export type DiscoveryFacets = {
   companies: Record<string, number>; sources: Record<string, number>;

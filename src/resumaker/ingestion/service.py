@@ -70,7 +70,8 @@ def ingest_company(company: Company, *, preferred_only: bool = False,
                 continue
             rec = JobRecord(source=stub.source, external_id=stub.external_id, url=stub.url,
                             title=stub.title, company=company.name, location=stub.location,
-                            content_hash=_content_hash(stub), posted_at=stub.updated_at)
+                            content_hash=_content_hash(stub), posted_at=stub.updated_at,
+                            comp=stub.comp)
             jid, changed = db.upsert_job(rec)
             if changed:
                 res.new += 1

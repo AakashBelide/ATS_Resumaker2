@@ -50,6 +50,7 @@ class JobRecord(BaseModel):
     location: str = ""
     content_hash: str = ""
     status: JobStatus = "new"
+    comp: str = ""                     # pay summary, only when the ATS states it (else empty)
     posted_at: str = ""                # source's publish/updated date when available
     first_seen: datetime | None = None  # when WE first saw it (reliable freshness proxy)
     last_seen: datetime | None = None

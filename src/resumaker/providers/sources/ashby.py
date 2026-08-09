@@ -21,6 +21,8 @@ class AshbySource:
         for j in r.json().get("jobs", []) or []:
             if j.get("isListed") is False:          # skip unlisted/draft postings
                 continue
+            # Ashby publishes a clean pay range in disclosure states; empty otherwise.
+            comp = str((j.get("compensation") or {}).get("compensationTierSummary") or "")
             out.append(PostingStub(
                 source=self.source,
                 external_id=str(j.get("id", "")),
@@ -28,5 +30,6 @@ class AshbySource:
                 title=j.get("title", ""),
                 location=j.get("location", ""),
                 updated_at=str(j.get("publishedAt", "")),
+                comp=comp,
             ))
         return out

@@ -20,6 +20,7 @@ class PostingStub:
     title: str = ""
     location: str = ""
     updated_at: str = ""
+    comp: str = ""                     # pay/salary summary, only when the ATS states it plainly
     extra: dict = field(default_factory=dict)
 
 

@@ -68,3 +68,12 @@ export function titleLevel(title: string): string {
   for (const [level, re] of LEVELS) if (re.test(t)) return level;
   return "mid";
 }
+
+// Work model derived from the location text (accurate only when the ATS states it plainly).
+// Returns "remote" | "hybrid" | "" (blank = onsite/unknown, no badge shown).
+export function workModel(location: string): string {
+  const l = (location || "").toLowerCase();
+  if (l.includes("remote")) return "remote";
+  if (l.includes("hybrid")) return "hybrid";
+  return "";
+}

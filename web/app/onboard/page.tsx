@@ -6,7 +6,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import CompanyLogo from "@/components/CompanyLogo";
-import { listCompanies, onboard, setCompanyActive, type Company, type OnboardResult } from "@/lib/api";
+import Donut from "@/components/Donut";
+import { discovery, listCompanies, onboard, setCompanyActive, type Company, type OnboardResult } from "@/lib/api";
 
 export default function OnboardPage() {
   const [name, setName] = useState("");
@@ -17,9 +18,15 @@ export default function OnboardPage() {
   const [companies, setCompanies] = useState<Company[]>([]);
   const [sourceFilter, setSourceFilter] = useState("");
   const [search, setSearch] = useState("");
+  const [postingsBySource, setPostingsBySource] = useState<[string, number][]>([]);
 
   const refresh = useCallback(() => { listCompanies().then(setCompanies).catch(() => {}); }, []);
   useEffect(() => { refresh(); }, [refresh]);
+  useEffect(() => {
+    discovery({ limit: 1 })
+      .then((d) => setPostingsBySource(Object.entries(d.facets.sources).sort((a, b) => b[1] - a[1])))
+      .catch(() => {});
+  }, []);
 
   async function submit() {
     if (!name.trim()) return;
@@ -54,6 +61,8 @@ export default function OnboardPage() {
   }, [companies, sourceFilter, search]);
 
   const active = companies.filter((c) => c.active).length;
+  const pmax = Math.max(1, ...postingsBySource.map(([, n]) => n));
+  const postingsTotal = postingsBySource.reduce((a, [, n]) => a + n, 0);
 
   return (
     <>
@@ -109,6 +118,33 @@ export default function OnboardPage() {
           </div>
         </div>
 
+        {/* composition: source donut (click to cross-filter) + postings-by-source */}
+        <div className="block">
+          <div className="block-head"><h2>Watchlist composition</h2>
+            <span className="count">{companies.length} companies · {postingsTotal.toLocaleString()} postings</span></div>
+          <div className="dash-2col">
+            <div className="panel">
+              <p className="kicker" style={{ marginBottom: 8 }}>Companies by source · click to filter</p>
+              <Donut data={bySource} unit="companies" active={sourceFilter}
+                     onSlice={(s) => setSourceFilter(sourceFilter === s ? "" : s)} />
+            </div>
+            <div className="panel">
+              <p className="kicker" style={{ marginBottom: 14 }}>Postings ingested by source</p>
+              {postingsBySource.length === 0 ? <p className="muted" style={{ fontSize: 13 }}>—</p> : (
+                <div className="bars">
+                  {postingsBySource.map(([s, n]) => (
+                    <div className="bar" key={s}>
+                      <span className="lbl">{s}</span>
+                      <span className="track"><span className="fill" style={{ width: `${(n / pmax) * 100}%` }} /></span>
+                      <span className="val">{n}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
         {/* watchlist */}
         <div className="block">
           <div className="block-head"><h2>On the watchlist</h2><span className="count">{filtered.length} shown</span></div>
@@ -117,12 +153,12 @@ export default function OnboardPage() {
             <span className="muted"> Paused companies are skipped by the ingest sweep; resuming picks up live postings from that day on (no backfill).</span>
           </p>
 
-          <div className="src-tabs">
-            <span className={`stab${sourceFilter === "" ? " on" : ""}`} onClick={() => setSourceFilter("")}>all <b>{companies.length}</b></span>
-            {bySource.map(([s, n]) => (
-              <span key={s} className={`stab${sourceFilter === s ? " on" : ""}`} onClick={() => setSourceFilter(s)}>{s} <b>{n}</b></span>
-            ))}
-          </div>
+          {sourceFilter && (
+            <div className="src-tabs">
+              <span className="stab on" onClick={() => setSourceFilter("")}>{sourceFilter}&nbsp;<b>✕</b></span>
+              <span className="muted" style={{ fontSize: 12.5, alignSelf: "center" }}>filtering by source — click to clear</span>
+            </div>
+          )}
 
           <div className="table-toolbar">
             <input className="search" placeholder="Search companies…" value={search} onChange={(e) => setSearch(e.target.value)} />

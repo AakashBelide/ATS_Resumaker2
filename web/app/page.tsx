@@ -9,7 +9,7 @@ import Select from "@/components/Select";
 import {
   addTracker, discovery, listTracker, type Discovery, type DiscoveryQuery, type JobRecord,
 } from "@/lib/api";
-import { titleLevel } from "@/lib/logo";
+import { titleLevel, workModel } from "@/lib/logo";
 
 const LEVEL_ORDER = ["intern", "junior", "mid", "senior", "staff", "manager"];
 const PAGE_SIZES = [24, 48, 96];
@@ -26,6 +26,7 @@ function JobCard({ job, onTrack, tracked, busy }: {
   job: JobRecord; onTrack: (j: JobRecord) => void; tracked: boolean; busy: boolean;
 }) {
   const level = titleLevel(job.title);
+  const wm = workModel(job.location);
   return (
     <div className="jobcard">
       <div className="jc-top">
@@ -38,9 +39,11 @@ function JobCard({ job, onTrack, tracked, busy }: {
       </div>
       <div className="jc-meta">
         {job.location ? <span title={job.location}>◍ {job.location}</span> : <span className="muted">◍ location n/a</span>}
+        {job.comp && <span className="jc-pay" title="pay stated by the employer">{job.comp}</span>}
       </div>
       <div className="jc-tags">
         <span className={`lvl ${level}`}>{level}</span>
+        {wm && <span className={`wm ${wm}`}>{wm}</span>}
         <span className="tag">{job.source}</span>
         {job.first_seen && <span className="seen">seen {daysAgo(job.first_seen)}</span>}
       </div>
