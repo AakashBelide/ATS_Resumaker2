@@ -241,8 +241,8 @@ ats-resumaker/
 | RA.1 | **Discovery backend** — query API over `jobs` (deterministic filters: role vs target/avoid, company, recency, location, pay-if-present; sort by recency/relevance). CLI + `GET /v1/discovery`. | ✅ Done | RI.1 | `db.query_jobs/count_jobs/job_facets` + `ingestion.discovery.discover()` (+on-target gate & gated facets); CLI `discovery`; `GET /v1/discovery`. No LLM/resume. Live: 359 on-target of 4,125. **Pay filter deferred** (needs a comp column captured at ingest). |
 | RA.2 | **Tracker backend** — add-to-tracker action runs fit+gap+sponsorship+keywords (LLM, **no** resume/cover); stores result + a status field (lifecycle). Manual trigger for resume/cover. CLI + `POST /v1/tracker`. | ✅ Done | RA.1, R4 stages | `run_pipeline(match_only=True)` (stops after apply-decision) + `tracker` table + `ingestion.tracker`; CLI `track add/list/stage/note/rm`; `/v1/tracker`. Lifecycle interested→applied→interview→offer→rejected/skipped; re-add preserves stage/notes. Live-verified (DoorDash Staff ML → fit 18/skip, no resume produced). |
 | RA.3 | **Profile page/enrichment surface** — view/edit profile; Tracker gap-analysis proposes profile enrichments (owner approves). CLI + `/v1/profile`. | ✅ Done | 1.13, RA.2 | `enrichment.proposals` mines tracked gap reports → `have_but_unlisted` (supportedByResume, safe) vs `recurring_gaps` (verify-first); never auto-adds. CLI `profile show/set/proposals`; API `/summary` (+skills+prefs), PATCH `/fact`, GET `/proposals`. Live-verified on the DoorDash match. |
-| RA.4 | **Dashboard** — analytics over `jobs`/`runs`/tracker: daily new listings, daily applications, per-company/role/keyword breakdowns, patterns. | ⬜ Todo | RA.2 | Data already in SQLite. |
-| RA.5 | **Metrics** — model calls, cost (Gemini cap + Claude usage), context/usage; suitable for CLI or API. | ⬜ Todo | R5 | Extends `observability/cost` + `/costs`. |
+| RA.4 | **Dashboard** — analytics over `jobs`/`runs`/tracker: daily new listings, daily applications, per-company/role/keyword breakdowns, patterns. | ✅ Done | RA.2 | `db.jobs_daily/tracker_funnel/run_stats` + `analytics.dashboard_stats`; CLI `dashboard`; `GET /v1/dashboard`. Live: 77 cos / 4,125 postings + funnel + run outcomes. |
+| RA.5 | **Metrics** — model calls, cost (Gemini cap + Claude usage), context/usage; suitable for CLI or API. | ✅ Done | R5 | `analytics.metrics_overview` (cost.summary per-provider calls/tokens/spend + Gemini headroom + run stats); CLI `metrics`; `GET /v1/metrics` (authed JSON; unauth Prometheus `/metrics` unchanged). Live: Gemini $0.0002/$5. |
 
 **Futures (parked — acknowledged, not built now):** (a) cold-outreach contact finder (option on Tracker jobs); (b) web-extension autofill from the tailored resume; (c) dynamic role-appropriate address generation (location-filter workaround); (d) interview-prep section (notes + AI research on company/culture/likely questions/resources) — hangs off the Tracker `interview` status.
 
@@ -295,3 +295,13 @@ ats-resumaker/
   verified end-to-end (DoorDash Staff ML → fit 18/skip/sponsorship likely, no resume produced).
   89 tests green, lint+mypy clean. **Next: RA.3 Profile/enrichment surface → RA.4 Dashboard →
   RA.5 Metrics; then Phase 5 frontend pages.**
+- **2026-08-09 — RA.3/RA.4/RA.5 done → the whole RA backend is complete (committed + pushed).**
+  **RA.3 Profile/enrichment**: `enrichment.proposals` mines tracked gap reports into honest
+  buckets (have-but-unlisted vs recurring-gaps; never auto-adds); CLI `profile show/set/
+  proposals` + API `/summary`,PATCH `/fact`,GET `/proposals`. **RA.4 Dashboard**: `analytics.
+  dashboard_stats` (watchlist/company/source/daily-trend/funnel/runs); CLI `dashboard` + `GET
+  /v1/dashboard`. **RA.5 Metrics**: `analytics.metrics_overview` (per-provider calls/tokens/
+  spend + Gemini headroom + runs); CLI `metrics` + `GET /v1/metrics`. 91 tests green, lint+
+  mypy clean; every commit secret/PII-scanned; `outputs/`+`data/` gitignored. The full
+  application platform backend (Discovery→Tracker→Profile→Dashboard→Metrics) is live via
+  CLI + API. **Next: Phase 5 frontend pages on top of the API.**
