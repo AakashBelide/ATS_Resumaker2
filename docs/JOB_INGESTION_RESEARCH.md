@@ -78,7 +78,7 @@ The "custom career site" tail was researched against live endpoints. Verdicts:
 | Qualcomm | `pcsx` (new) | `app.eightfold.ai/api/pcsx/search` (NOT `/apply/v2`) | Cloudflare | curl_cffi best-effort; may need `cf_clearance` |
 | FedEx | `paradox` (new) | `careers.fedex.com/api/get-jobs` (Paradox, NOT Phenom) | Akamai-style WAF | GET `/jobs` first for the `ct` cookie, then POST |
 | Meta | `meta` (new) | `metacareers.com/graphql` `CareersJobSearchResultsDataQuery` | FB edge (bare req → 400; rapid → IP block) | rotating `doc_id` scraped from JS bundle + `lsd` + full browser headers; residential IP |
-| Wayfair | — **deferred** | `wayfair.com/.../job_search_data` (Avature backend) | **PerimeterX/HUMAN** | **no** — 429 even with perfect browser headers; Greenhouse token 404s, SmartRecruiters stale. Needs a `_px` cookie from a real browser or a PX-solver. |
+| Wayfair | `wayfair` (new) | `wayfair.com/.../job_search_data` XHR (Avature backend) | **PerimeterX/HUMAN** | **yes, via curl_cffi** — plain httpx 429s, but Chrome TLS-impersonation + a warmed cookie jar (GET the careers page first) clears the PX fingerprint gate and the XHR returns all 329 US jobs. Live-verified. |
 
 Two more tail companies, both **clean** (200 from datacenter, no bot protection): **IBM** —
 bespoke Elasticsearch POST API (`www-api.ibm.com/search/api/v2`, `field_keyword_05` = country
@@ -90,8 +90,9 @@ the list, so `first_seen` synthesizes freshness.
 Takeaways that generalize: (1) the endpoint a compiled spec *assumes* is often wrong — always
 confirm live (Google's v3 REST is dead; Qualcomm is PCSX not SmartApply; FedEx is Paradox not
 Phenom). (2) "Bot-protected" ≠ "impossible": Akamai/Cloudflare TLS gates often yield to
-`curl_cffi` impersonation or a one-time cookie warmup; only an active JS-challenge WAF
-(PerimeterX on Wayfair) truly requires a browser. (3) A datacenter IP is the real blocker for
+`curl_cffi` impersonation or a one-time cookie warmup - even PerimeterX on Wayfair yielded to
+curl_cffi Chrome-TLS + a warmed cookie jar (no browser needed after all). (3) A datacenter IP
+is the real blocker for
 Meta/Tesla/Qualcomm/FedEx — the same adapters are expected to pass from the user's residential
 network, which is where they're verified. Parsers for all are fixture unit-tested regardless.
 

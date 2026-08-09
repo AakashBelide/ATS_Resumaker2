@@ -18,7 +18,7 @@ def test_sources_registered():
         "greenhouse", "lever", "ashby", "workday", "eightfold", "amazon", "oracle_cloud",
         "smartrecruiters", "mckinsey", "goldman", "phenom", "jibe", "radancy", "apple",
         "bytedance", "dassault", "microsoft", "google", "meta", "tesla", "pcsx", "paradox",
-        "ibm", "icims"}
+        "ibm", "icims", "wayfair"}
 
 
 def test_slug_candidates():
@@ -239,6 +239,21 @@ def test_icims_parse_page():
     assert stubs[0].external_id == "9597" and stubs[0].title == "General Superintendent"
     assert stubs[0].location == "Austin, TX, US"        # US-TX-Austin normalized, first of pipe list
     assert stubs[0].url.endswith("/general-superintendent/job")
+
+
+def test_wayfair_parse_response():
+    from resumaker.providers.sources.wayfair import parse_response
+    body = {"jobListData": [
+        {"id": 60428, "eid": "9812", "title": "Software Engineer",
+         "location": {"name": "Boston, MA", "city": "Boston", "state": "MA",
+                      "country": "US", "countryId": 1},
+         "applyLink": "https://wayfair.avature.net/en_US/careers?folderId=9812",
+         "lastUpdatedDate": "2026-05-05T12:47:10.933000"}]}
+    stubs = parse_response(body)
+    assert len(stubs) == 1
+    assert stubs[0].external_id == "60428" and stubs[0].title == "Software Engineer"
+    assert stubs[0].location == "Boston, MA"
+    assert "avature.net" in stubs[0].url and stubs[0].updated_at.startswith("2026")
 
 
 def test_microsoft_parse_response():
