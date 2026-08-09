@@ -1,63 +1,145 @@
 "use client";
-// Minimal dashboard scaffold: start a run from a JD URL, watch live progress (SSE), and
-// list past runs with their fit/ATS/gate outcomes + artifact links. Intentionally lean -
-// the full review/approve UI is built in the frontend pass; this proves the API contract.
-import { useEffect, useState } from "react";
-import { artifactUrl, listRuns, startRun, subscribe, type RunRecord } from "@/lib/api";
+// Discovery (RA.1): a filterable, deterministic feed of ingested postings. No fit-scoring
+// here (that happens on add-to-Tracker); Discovery is pure filtering over the watchlist.
+import { useCallback, useEffect, useState } from "react";
 
-export default function Dashboard() {
-  const [url, setUrl] = useState("");
-  const [runs, setRuns] = useState<RunRecord[]>([]);
-  const [live, setLive] = useState<string>("");
-  const [error, setError] = useState<string>("");
+import { addTracker, discovery, type Discovery, type DiscoveryQuery, type JobRecord } from "@/lib/api";
 
-  async function refresh() {
-    try { setRuns(await listRuns()); } catch (e) { setError(String(e)); }
+function daysAgo(iso: string | null): string {
+  if (!iso) return "";
+  const d = Math.floor((Date.now() - new Date(iso).getTime()) / 86400000);
+  return d <= 0 ? "today" : d === 1 ? "1d ago" : `${d}d ago`;
+}
+
+function JobCard({ job, onTrack }: { job: JobRecord; onTrack: (j: JobRecord) => void }) {
+  return (
+    <div className="jobcard">
+      <div className="jc-top">
+        <div>
+          <div className="jc-title">{job.title}</div>
+          <div className="jc-co">{job.company}</div>
+        </div>
+        {job.status === "new" && <span className="pill new" style={{ marginLeft: "auto" }}>new</span>}
+      </div>
+      <div className="jc-meta">
+        {job.location && <span>◍ {job.location}</span>}
+        <span className="mono">{job.source}</span>
+        {job.first_seen && <span>seen {daysAgo(job.first_seen)}</span>}
+      </div>
+      <div className="jc-foot">
+        <a className="btn btn-sm" href={job.url} target="_blank" rel="noreferrer">View JD ↗</a>
+        <button className="btn btn-sm btn-primary" onClick={() => onTrack(job)}>+ Track</button>
+      </div>
+    </div>
+  );
+}
+
+export default function DiscoveryPage() {
+  const [q, setQ] = useState<DiscoveryQuery>({ on_target: true, order: "recent", limit: 60 });
+  const [data, setData] = useState<Discovery | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [tracking, setTracking] = useState<number | null>(null);
+
+  const load = useCallback(async (query: DiscoveryQuery) => {
+    setLoading(true); setError("");
+    try { setData(await discovery(query)); }
+    catch (e) { setError(String(e)); }
+    finally { setLoading(false); }
+  }, []);
+
+  useEffect(() => { load(q); }, [q, load]);
+
+  function patch(p: Partial<DiscoveryQuery>) { setQ((prev) => ({ ...prev, ...p, offset: 0 })); }
+
+  async function onTrack(job: JobRecord) {
+    if (job.id == null) return;
+    setTracking(job.id);
+    try { await addTracker({ job_id: job.id }); }
+    catch (e) { setError(String(e)); }
+    finally { setTracking(null); }
   }
-  useEffect(() => { refresh(); }, []);
 
-  async function onStart() {
-    setError(""); setLive("starting...");
-    try {
-      const { run_id } = await startRun(url);
-      subscribe(run_id, (stage, status) => setLive(`${stage}: ${status}`));
-    } catch (e) { setError(String(e)); }
-  }
+  const companies = data ? Object.entries(data.facets.companies).sort((a, b) => b[1] - a[1]) : [];
 
   return (
-    <div>
-      <h1>resumaker</h1>
-      <p style={{ opacity: 0.7 }}>Paste a job-description URL to tailor a grounded, ATS-optimized resume.</p>
-      <div style={{ display: "flex", gap: 8, margin: "1rem 0" }}>
-        <input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://boards.greenhouse.io/.../jobs/123"
-               style={{ flex: 1, padding: 8, borderRadius: 6, border: "1px solid #333", background: "#11141b", color: "#e6e8ee" }} />
-        <button onClick={onStart} style={{ padding: "8px 16px", borderRadius: 6, background: "#3b82f6", color: "#fff", border: 0 }}>Tailor</button>
-      </div>
-      {live && <p style={{ color: "#facc15" }}>{live}</p>}
-      {error && <p style={{ color: "#f87171" }}>{error}</p>}
+    <>
+      <header className="topbar">
+        <div>
+          <div className="kicker">Discovery</div>
+          <h1 style={{ marginTop: 6 }}>New postings</h1>
+        </div>
+        <div className="topbar-spacer" />
+        <span className="mono muted">{data ? `${data.total} matches` : ""}</span>
+      </header>
 
-      <h2 style={{ marginTop: "2rem" }}>Runs</h2>
-      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
-        <thead><tr style={{ textAlign: "left", opacity: 0.6 }}>
-          <th>role</th><th>apply</th><th>fit</th><th>ATS</th><th>gate</th><th>pages</th><th>artifacts</th>
-        </tr></thead>
-        <tbody>
-          {runs.map((r) => (
-            <tr key={r.id} style={{ borderTop: "1px solid #222" }}>
-              <td>{r.url.split("/").slice(-1)[0] || r.id}</td>
-              <td>{r.recommend_apply === null ? "-" : r.recommend_apply ? "yes" : "no"}</td>
-              <td>{r.fit_0_100 ?? "-"}</td>
-              <td>{r.ats_overall ?? "-"}</td>
-              <td>{r.fact_gate_pass && r.ats_verify_pass ? "pass" : "-"}</td>
-              <td>{r.page_count ?? "-"}</td>
-              <td>
-                <a href={artifactUrl(r.id, "resume.pdf")} style={{ color: "#60a5fa" }}>pdf</a>{" · "}
-                <a href={artifactUrl(r.id, "cover_letter.txt")} style={{ color: "#60a5fa" }}>cover</a>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+      <div className="page">
+        <div className="stat-row">
+          <div className="stat"><div className="num">{data?.total ?? "—"}</div><div className="cap">Matching postings</div></div>
+          <div className="stat"><div className="num accent">{companies.length || "—"}</div><div className="cap">Companies</div></div>
+          <div className="stat"><div className="num">{q.on_target ? "ON" : "OFF"}</div><div className="cap">Target-role filter</div></div>
+        </div>
+
+        <div className="filters">
+          <div className="field">
+            <label>kw</label>
+            <input placeholder="title keyword" defaultValue={q.keyword ?? ""}
+                   onKeyDown={(e) => { if (e.key === "Enter") patch({ keyword: (e.target as HTMLInputElement).value }); }} />
+          </div>
+          <div className="field">
+            <label>loc</label>
+            <input placeholder="e.g. boston" defaultValue={q.location ?? ""}
+                   onKeyDown={(e) => { if (e.key === "Enter") patch({ location: (e.target as HTMLInputElement).value }); }} />
+          </div>
+          <div className="field">
+            <label>company</label>
+            <select value={q.company ?? ""} onChange={(e) => patch({ company: e.target.value || undefined })}>
+              <option value="">all</option>
+              {companies.map(([c, n]) => <option key={c} value={c}>{c} ({n})</option>)}
+            </select>
+          </div>
+          <div className="field">
+            <label>since</label>
+            <select value={q.since_days ?? ""} onChange={(e) => patch({ since_days: e.target.value ? Number(e.target.value) : undefined })}>
+              <option value="">any</option><option value="1">1d</option><option value="3">3d</option>
+              <option value="7">7d</option><option value="14">14d</option>
+            </select>
+          </div>
+          <div className="field">
+            <label>sort</label>
+            <select value={q.order} onChange={(e) => patch({ order: e.target.value })}>
+              <option value="recent">recent</option><option value="company">company</option><option value="title">title</option>
+            </select>
+          </div>
+          <div className={`field toggle${q.on_target ? " on" : ""}`} onClick={() => patch({ on_target: !q.on_target })}>
+            <label>on-target</label><span className="mono">{q.on_target ? "yes" : "no"}</span>
+          </div>
+        </div>
+
+        {loading && <p className="loading">loading…</p>}
+        {error && <p className="error">{error}</p>}
+        {!loading && data && data.jobs.length === 0 && (
+          <div className="empty">No postings match these filters.</div>
+        )}
+
+        {data && data.jobs.length > 0 && (
+          <div className="cards">
+            {data.jobs.map((j) => (
+              <div key={`${j.source}:${j.external_id}`} style={{ opacity: tracking === j.id ? 0.5 : 1 }}>
+                <JobCard job={j} onTrack={onTrack} />
+              </div>
+            ))}
+          </div>
+        )}
+
+        {companies.length > 0 && (
+          <div className="chips">
+            {companies.slice(0, 16).map(([c, n]) => (
+              <span key={c} className="chip" onClick={() => patch({ company: c })}>{c} <b>{n}</b></span>
+            ))}
+          </div>
+        )}
+      </div>
+    </>
   );
 }

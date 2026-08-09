@@ -1,10 +1,32 @@
-export const metadata = { title: "resumaker", description: "ATS resume tailoring dashboard" };
+import "./globals.css";
+
+import type { Metadata } from "next";
+import { Inter, Space_Grotesk, Space_Mono } from "next/font/google";
+
+import Sidebar from "@/components/Sidebar";
+
+const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
+const grotesk = Space_Grotesk({
+  subsets: ["latin"], weight: ["500", "600", "700"], variable: "--font-space-grotesk",
+});
+const mono = Space_Mono({
+  subsets: ["latin"], weight: ["400", "700"], variable: "--font-space-mono",
+});
+
+export const metadata: Metadata = {
+  title: "resumaker",
+  description: "Grounded, ATS-optimized job discovery + application tracking.",
+};
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
-      <body style={{ fontFamily: "system-ui, sans-serif", margin: 0, background: "#0b0d12", color: "#e6e8ee" }}>
-        <main style={{ maxWidth: 900, margin: "0 auto", padding: "2rem 1.5rem" }}>{children}</main>
+    <html lang="en" className={`${inter.variable} ${grotesk.variable} ${mono.variable}`}>
+      <body>
+        <div className="glow-bg" />
+        <div className="app">
+          <Sidebar />
+          <div className="content">{children}</div>
+        </div>
       </body>
     </html>
   );

@@ -1,0 +1,10 @@
+# dependencies / build
+/node_modules
+/.next
+/out
+# next generated
+next-env.d.ts
+# local env (points at your API; may hold a token)
+.env.local
+# os
+.DS_Store
