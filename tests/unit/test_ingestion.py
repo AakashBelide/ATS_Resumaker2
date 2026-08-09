@@ -14,7 +14,7 @@ from resumaker.providers.sources.base import PostingStub
 def test_sources_registered():
     assert set(available_sources()) == {
         "greenhouse", "lever", "ashby", "workday", "eightfold", "amazon", "oracle_cloud",
-        "smartrecruiters", "mckinsey", "goldman", "phenom"}
+        "smartrecruiters", "mckinsey", "goldman", "phenom", "jibe"}
 
 
 def test_slug_candidates():

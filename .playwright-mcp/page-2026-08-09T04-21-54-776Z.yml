@@ -1,0 +1,534 @@
+- generic [active] [ref=f15e1]:
+  - link "Skip to main content" [ref=f15e2] [cursor=pointer]:
+    - /url: "#main"
+  - banner [ref=f15e3]:
+    - button "Select Language (English Español Français (Canada) Français Deutsch Italiano 日本語 (日本) 한국어 (대한민국) Nederland Polska Português ไทย (ประเทศไทย) Tiếng Việt (Việt Nam) 中文 简体 (中国) 中文 繁體 (台灣))" [ref=f15e11] [cursor=pointer]:
+      - generic [ref=f15e12]: English
+    - generic [ref=f15e18]:
+      - generic [ref=f15e19]:
+        - generic [ref=f15e20]:
+          - link [ref=f15e21] [cursor=pointer]:
+            - /url: /
+            - img "logo" [ref=f15e22]
+          - navigation [ref=f15e23]:
+            - list [ref=f15e24]:
+              - listitem [ref=f15e25]:
+                - button "Career Areas" [ref=f15e26] [cursor=pointer]
+              - listitem [ref=f15e28]:
+                - link "Life at FedEx" [ref=f15e29] [cursor=pointer]:
+                  - /url: /life-at-fedex
+              - listitem [ref=f15e30]:
+                - link "Hiring & Development" [ref=f15e31] [cursor=pointer]:
+                  - /url: /hiring-and-development
+              - listitem [ref=f15e32]:
+                - button [ref=f15e33] [cursor=pointer]
+        - link "Career Search" [ref=f15e37] [cursor=pointer]:
+          - /url: /jobs
+      - text:  
+    - generic [ref=f15e41]:
+      - link "FedEx Careers" [ref=f15e42] [cursor=pointer]:
+        - /url: /
+      - link "Career Search" [ref=f15e46] [cursor=pointer]:
+        - /url: /jobs
+  - main [ref=f15e47]:
+    - generic [ref=f15e49]:
+      - heading "Career Search" [level=1] [ref=f15e57]
+      - generic [ref=f15e61]:
+        - generic [ref=f15e62]:
+          - generic [ref=f15e63]: Filters
+          - generic [ref=f15e69]:
+            - combobox "Keyword Search" [ref=f15e73]
+            - generic [ref=f15e75]:
+              - generic [ref=f15e76]: 
+              - combobox "Location Search" [ref=f15e78]
+              - generic [ref=f15e79]:
+                - button "Use your location" [ref=f15e81] [cursor=pointer]
+                - button "Commute" [ref=f15e84] [cursor=pointer]
+            - button "Search" [ref=f15e91] [cursor=pointer]
+            - alert [ref=f15e92]: 3299 related jobs displayed
+        - generic [ref=f15e93]:
+          - generic:
+            - generic:
+              - list
+      - generic [ref=f15e97]:
+        - generic [ref=f15e98]:
+          - generic [ref=f15e101]:
+            - text: Showing
+            - generic [ref=f15e102]:
+              - generic [ref=f15e103]: 1-25 of
+              - text: 3299 jobs
+          - generic [ref=f15e106]:
+            - generic [ref=f15e107]: Sort By
+            - button "Sort By Most Recent" [ref=f15e109] [cursor=pointer]:
+              - generic [ref=f15e110]: Most Recent
+        - generic [ref=f15e111]:
+          - list [ref=f15e116]:
+            - listitem [ref=f15e117]:
+              - heading "Sr Operations Admin-4 Req ID:P25-354057-1" [level=3] [ref=f15e119]:
+                - link "Sr Operations Admin-4" [ref=f15e120] [cursor=pointer]:
+                  - /url: /sr-operations-admin-4/job/P25-354057-1
+                - generic [ref=f15e121]: Req ID:P25-354057-1
+              - generic [ref=f15e122]:
+                - generic [ref=f15e123]:
+                  - generic [ref=f15e124]: Location 95 Hutchins Drive, Portland, ME, US
+                  - generic [ref=f15e127]: Company Federal Express Corporation
+                  - generic [ref=f15e129]: Employment Part Time
+                - link "VIEW JOB, Sr Operations Admin-4" [ref=f15e131] [cursor=pointer]:
+                  - /url: /sr-operations-admin-4/job/P25-354057-1
+                  - generic [ref=f15e132]: VIEW JOB
+            - listitem [ref=f15e133]:
+              - heading "Sr Operations Admin-3 Req ID:P25-354056-1" [level=3] [ref=f15e135]:
+                - link "Sr Operations Admin-3" [ref=f15e136] [cursor=pointer]:
+                  - /url: /sr-operations-admin-3/job/P25-354056-1
+                - generic [ref=f15e137]: Req ID:P25-354056-1
+              - generic [ref=f15e138]:
+                - generic [ref=f15e139]:
+                  - generic [ref=f15e140]: Location 95 Hutchins Drive, Portland, ME, US
+                  - generic [ref=f15e143]: Company Federal Express Corporation
+                  - generic [ref=f15e145]: Employment Part Time
+                - link "VIEW JOB, Sr Operations Admin-3" [ref=f15e147] [cursor=pointer]:
+                  - /url: /sr-operations-admin-3/job/P25-354056-1
+                  - generic [ref=f15e148]: VIEW JOB
+            - listitem [ref=f15e149]:
+              - heading "Sr Operations Admin-2 Req ID:P25-354055-1" [level=3] [ref=f15e151]:
+                - link "Sr Operations Admin-2" [ref=f15e152] [cursor=pointer]:
+                  - /url: /sr-operations-admin-2/job/P25-354055-1
+                - generic [ref=f15e153]: Req ID:P25-354055-1
+              - generic [ref=f15e154]:
+                - generic [ref=f15e155]:
+                  - generic [ref=f15e156]: Location 95 Hutchins Drive, Portland, ME, US
+                  - generic [ref=f15e159]: Company Federal Express Corporation
+                  - generic [ref=f15e161]: Employment Part Time
+                - link "VIEW JOB, Sr Operations Admin-2" [ref=f15e163] [cursor=pointer]:
+                  - /url: /sr-operations-admin-2/job/P25-354055-1
+                  - generic [ref=f15e164]: VIEW JOB
+            - listitem [ref=f15e165]:
+              - heading "Sr Operations Admin-1 Req ID:P25-354054-1" [level=3] [ref=f15e167]:
+                - link "Sr Operations Admin-1" [ref=f15e168] [cursor=pointer]:
+                  - /url: /sr-operations-admin-1/job/P25-354054-1
+                - generic [ref=f15e169]: Req ID:P25-354054-1
+              - generic [ref=f15e170]:
+                - generic [ref=f15e171]:
+                  - generic [ref=f15e172]: Location 95 Hutchins Drive, Portland, ME, US
+                  - generic [ref=f15e175]: Company Federal Express Corporation
+                  - generic [ref=f15e177]: Employment Part Time
+                - link "VIEW JOB, Sr Operations Admin-1" [ref=f15e179] [cursor=pointer]:
+                  - /url: /sr-operations-admin-1/job/P25-354054-1
+                  - generic [ref=f15e180]: VIEW JOB
+            - listitem [ref=f15e181]:
+              - heading "Sr Operations Admin-1 Req ID:P25-353442-1" [level=3] [ref=f15e183]:
+                - link "Sr Operations Admin-1" [ref=f15e184] [cursor=pointer]:
+                  - /url: /sr-operations-admin-1/job/P25-353442-1
+                - generic [ref=f15e185]: Req ID:P25-353442-1
+              - generic [ref=f15e186]:
+                - generic [ref=f15e187]:
+                  - generic [ref=f15e188]: Location 124 Banair Road, Bangor, ME, US
+                  - generic [ref=f15e191]: Company Federal Express Corporation
+                  - generic [ref=f15e193]: Employment Full Time
+                - link "VIEW JOB, Sr Operations Admin-1" [ref=f15e195] [cursor=pointer]:
+                  - /url: /sr-operations-admin-1/job/P25-353442-1
+                  - generic [ref=f15e196]: VIEW JOB
+            - listitem [ref=f15e197]:
+              - heading "Sr Operations Admin-2 Req ID:P25-353441-1" [level=3] [ref=f15e199]:
+                - link "Sr Operations Admin-2" [ref=f15e200] [cursor=pointer]:
+                  - /url: /sr-operations-admin-2/job/P25-353441-1
+                - generic [ref=f15e201]: Req ID:P25-353441-1
+              - generic [ref=f15e202]:
+                - generic [ref=f15e203]:
+                  - generic [ref=f15e204]: Location 124 Banair Road, Bangor, ME, US
+                  - generic [ref=f15e207]: Company Federal Express Corporation
+                  - generic [ref=f15e209]: Employment Full Time
+                - link "VIEW JOB, Sr Operations Admin-2" [ref=f15e211] [cursor=pointer]:
+                  - /url: /sr-operations-admin-2/job/P25-353441-1
+                  - generic [ref=f15e212]: VIEW JOB
+            - listitem [ref=f15e213]:
+              - heading "Package Handler (Warehouse like) Req ID:P25-336915-1" [level=3] [ref=f15e215]:
+                - link "Package Handler (Warehouse like)" [ref=f15e216] [cursor=pointer]:
+                  - /url: /package-handler-warehouse-like/job/P25-336915-1
+                - generic [ref=f15e217]: Req ID:P25-336915-1
+              - generic [ref=f15e218]:
+                - generic [ref=f15e219]:
+                  - generic [ref=f15e220]: Location 124 Banair Road, Bangor, ME, US
+                  - generic [ref=f15e223]: Company Federal Express Corporation
+                  - generic [ref=f15e225]: Employment
+                - link "VIEW JOB, Package Handler (Warehouse like)" [ref=f15e227] [cursor=pointer]:
+                  - /url: /package-handler-warehouse-like/job/P25-336915-1
+                  - generic [ref=f15e228]: VIEW JOB
+            - listitem [ref=f15e229]:
+              - heading "Package Handler - Part Time (Warehouse like) Req ID:P25-336917-1" [level=3] [ref=f15e231]:
+                - link "Package Handler - Part Time (Warehouse like)" [ref=f15e232] [cursor=pointer]:
+                  - /url: /package-handler-part-time-warehouse-like/job/P25-336917-1
+                - generic [ref=f15e233]: Req ID:P25-336917-1
+              - generic [ref=f15e234]:
+                - generic [ref=f15e235]:
+                  - generic [ref=f15e236]: Location 95 Hutchins Drive, Portland, ME, US
+                  - generic [ref=f15e239]: Company Federal Express Corporation
+                  - generic [ref=f15e241]: Employment
+                - link "VIEW JOB, Package Handler - Part Time (Warehouse like)" [ref=f15e243] [cursor=pointer]:
+                  - /url: /package-handler-part-time-warehouse-like/job/P25-336917-1
+                  - generic [ref=f15e244]: VIEW JOB
+            - listitem [ref=f15e245]:
+              - heading "Courier/DOT Req ID:P25-361877-1" [level=3] [ref=f15e247]:
+                - link "Courier/DOT" [ref=f15e248] [cursor=pointer]:
+                  - /url: /courier-dot/job/P25-361877-1
+                - generic [ref=f15e249]: Req ID:P25-361877-1
+              - generic [ref=f15e250]:
+                - generic [ref=f15e251]:
+                  - generic [ref=f15e252]: Location 2560 Bertelkamp Lane, KNOXVILLE, TN, US
+                  - generic [ref=f15e255]: Company Federal Express Corporation
+                  - generic [ref=f15e257]: Employment Full Time
+                - link "VIEW JOB, Courier/DOT" [ref=f15e259] [cursor=pointer]:
+                  - /url: /courier-dot/job/P25-361877-1
+                  - generic [ref=f15e260]: VIEW JOB
+            - listitem [ref=f15e261]:
+              - heading "Retail Customer Service Associate Req ID:P25-361262-1" [level=3] [ref=f15e263]:
+                - link "Retail Customer Service Associate" [ref=f15e264] [cursor=pointer]:
+                  - /url: /retail-customer-service-associate/job/P25-361262-1
+                - generic [ref=f15e265]: Req ID:P25-361262-1
+              - generic [ref=f15e266]:
+                - generic [ref=f15e267]:
+                  - generic [ref=f15e268]: Location 118 E John Carpenter Fwy, IRVING, TX, US
+                  - generic [ref=f15e271]: Company FedEx Office
+                  - generic [ref=f15e273]: Employment Full Time
+                - link "VIEW JOB, Retail Customer Service Associate" [ref=f15e275] [cursor=pointer]:
+                  - /url: /retail-customer-service-associate/job/P25-361262-1
+                  - generic [ref=f15e276]: VIEW JOB
+            - listitem [ref=f15e277]:
+              - heading "Retail Customer Service Associate Req ID:P25-358243-1" [level=3] [ref=f15e279]:
+                - link "Retail Customer Service Associate" [ref=f15e280] [cursor=pointer]:
+                  - /url: /retail-customer-service-associate/job/P25-358243-1
+                - generic [ref=f15e281]: Req ID:P25-358243-1
+              - generic [ref=f15e282]:
+                - generic [ref=f15e283]:
+                  - generic [ref=f15e284]: Location 118 E John Carpenter Fwy, IRVING, TX, US
+                  - generic [ref=f15e287]: Company FedEx Office
+                  - generic [ref=f15e289]: Employment Part Time
+                - link "VIEW JOB, Retail Customer Service Associate" [ref=f15e291] [cursor=pointer]:
+                  - /url: /retail-customer-service-associate/job/P25-358243-1
+                  - generic [ref=f15e292]: VIEW JOB
+            - listitem [ref=f15e293]:
+              - heading "Events Solutions Consultant Req ID:P25-356517-1" [level=3] [ref=f15e295]:
+                - link "Events Solutions Consultant" [ref=f15e296] [cursor=pointer]:
+                  - /url: /events-solutions-consultant/job/P25-356517-1
+                - generic [ref=f15e297]: Req ID:P25-356517-1
+              - generic [ref=f15e298]:
+                - generic [ref=f15e299]:
+                  - generic [ref=f15e300]: Location 333 West Harbor Drive, San Diego, CA, US
+                  - generic [ref=f15e303]: Company Federal Express Corporation
+                  - generic [ref=f15e305]: Employment Full Time
+                - link "VIEW JOB, Events Solutions Consultant" [ref=f15e307] [cursor=pointer]:
+                  - /url: /events-solutions-consultant/job/P25-356517-1
+                  - generic [ref=f15e308]: VIEW JOB
+            - listitem [ref=f15e309]:
+              - heading "Quality & Compliance Specialist Req ID:P25-356076-2" [level=3] [ref=f15e311]:
+                - link "Quality & Compliance Specialist" [ref=f15e312] [cursor=pointer]:
+                  - /url: /quality-compliance-specialist/job/P25-356076-2
+                - generic [ref=f15e313]: Req ID:P25-356076-2
+              - generic [ref=f15e314]:
+                - generic [ref=f15e315]:
+                  - generic [ref=f15e316]: Location 145 Lt George W. Lee, Memphis, TN, US
+                  - generic [ref=f15e319]: Company FedEx Logistics
+                  - generic [ref=f15e321]: Employment Full Time
+                - link "VIEW JOB, Quality & Compliance Specialist" [ref=f15e323] [cursor=pointer]:
+                  - /url: /quality-compliance-specialist/job/P25-356076-2
+                  - generic [ref=f15e324]: VIEW JOB
+            - listitem [ref=f15e325]:
+              - heading "Retail Store Manager I Req ID:P25-355699-1" [level=3] [ref=f15e327]:
+                - link "Retail Store Manager I" [ref=f15e328] [cursor=pointer]:
+                  - /url: /retail-store-manager-i/job/P25-355699-1
+                - generic [ref=f15e329]: Req ID:P25-355699-1
+              - generic [ref=f15e330]:
+                - generic [ref=f15e331]:
+                  - generic [ref=f15e332]: Location 1714 Burlington St, Columbia, MO, US
+                  - generic [ref=f15e335]: Company FedEx Office
+                  - generic [ref=f15e337]: Employment Full Time
+                - link "VIEW JOB, Retail Store Manager I" [ref=f15e339] [cursor=pointer]:
+                  - /url: /retail-store-manager-i/job/P25-355699-1
+                  - generic [ref=f15e340]: VIEW JOB
+            - listitem [ref=f15e341]:
+              - heading "Project Management Analyst Req ID:P25-355397-1" [level=3] [ref=f15e343]:
+                - link "Project Management Analyst" [ref=f15e344] [cursor=pointer]:
+                  - /url: /project-management-analyst/job/P25-355397-1
+                - generic [ref=f15e345]: Req ID:P25-355397-1
+              - generic [ref=f15e346]:
+                - generic [ref=f15e347]:
+                  - generic [ref=f15e348]: Location 145 Lt George W. Lee, Memphis, TN, US
+                  - generic [ref=f15e351]: Company FedEx Logistics
+                  - generic [ref=f15e353]: Employment Full Time
+                - link "VIEW JOB, Project Management Analyst" [ref=f15e355] [cursor=pointer]:
+                  - /url: /project-management-analyst/job/P25-355397-1
+                  - generic [ref=f15e356]: VIEW JOB
+            - listitem [ref=f15e357]:
+              - heading "Project Management Advisor Req ID:P25-355045-1" [level=3] [ref=f15e359]:
+                - link "Project Management Advisor" [ref=f15e360] [cursor=pointer]:
+                  - /url: /project-management-advisor/job/P25-355045-1
+                - generic [ref=f15e361]: Req ID:P25-355045-1
+              - generic [ref=f15e362]:
+                - generic [ref=f15e363]:
+                  - generic [ref=f15e364]: Location 145 Lt George W. Lee, Memphis, TN, US
+                  - generic [ref=f15e367]: Company FedEx Logistics
+                  - generic [ref=f15e369]: Employment Full Time
+                - link "VIEW JOB, Project Management Advisor" [ref=f15e371] [cursor=pointer]:
+                  - /url: /project-management-advisor/job/P25-355045-1
+                  - generic [ref=f15e372]: VIEW JOB
+            - listitem [ref=f15e373]:
+              - heading "Project Management Advisor Req ID:P25-355043-1" [level=3] [ref=f15e375]:
+                - link "Project Management Advisor" [ref=f15e376] [cursor=pointer]:
+                  - /url: /project-management-advisor/job/P25-355043-1
+                - generic [ref=f15e377]: Req ID:P25-355043-1
+              - generic [ref=f15e378]:
+                - generic [ref=f15e379]:
+                  - generic [ref=f15e380]: Location 145 Lt George W. Lee, Memphis, TN, US
+                  - generic [ref=f15e383]: Company FedEx Logistics
+                  - generic [ref=f15e385]: Employment Full Time
+                - link "VIEW JOB, Project Management Advisor" [ref=f15e387] [cursor=pointer]:
+                  - /url: /project-management-advisor/job/P25-355043-1
+                  - generic [ref=f15e388]: VIEW JOB
+            - listitem [ref=f15e389]:
+              - heading "Part-Time Shipping and Retail Associate Req ID:P25-351642-1" [level=3] [ref=f15e391]:
+                - link "Part-Time Shipping and Retail Associate" [ref=f15e392] [cursor=pointer]:
+                  - /url: /part-time-shipping-and-retail-associate/job/P25-351642-1
+                - generic [ref=f15e393]: Req ID:P25-351642-1
+              - generic [ref=f15e394]:
+                - generic [ref=f15e395]:
+                  - generic [ref=f15e396]: Location 8303 N Stemmons Fwy Ste 120, DALLAS, TX, US
+                  - generic [ref=f15e399]: Company FedEx Office
+                  - generic [ref=f15e401]: Employment Part Time
+                - link "VIEW JOB, Part-Time Shipping and Retail Associate" [ref=f15e403] [cursor=pointer]:
+                  - /url: /part-time-shipping-and-retail-associate/job/P25-351642-1
+                  - generic [ref=f15e404]: VIEW JOB
+            - listitem [ref=f15e405]:
+              - heading "Part-Time Shipping and Retail Associate Req ID:P25-349559-1" [level=3] [ref=f15e407]:
+                - link "Part-Time Shipping and Retail Associate" [ref=f15e408] [cursor=pointer]:
+                  - /url: /part-time-shipping-and-retail-associate/job/P25-349559-1
+                - generic [ref=f15e409]: Req ID:P25-349559-1
+              - generic [ref=f15e410]:
+                - generic [ref=f15e411]:
+                  - generic [ref=f15e412]: Location 2410 Augusta Rd Ste 110, WEST COLUMBIA, SC, US
+                  - generic [ref=f15e415]: Company FedEx Office
+                  - generic [ref=f15e417]: Employment Part Time
+                - link "VIEW JOB, Part-Time Shipping and Retail Associate" [ref=f15e419] [cursor=pointer]:
+                  - /url: /part-time-shipping-and-retail-associate/job/P25-349559-1
+                  - generic [ref=f15e420]: VIEW JOB
+            - listitem [ref=f15e421]:
+              - heading "Courier/Non-DOT Req ID:P25-342994-1" [level=3] [ref=f15e423]:
+                - link "Courier/Non-DOT" [ref=f15e424] [cursor=pointer]:
+                  - /url: /courier-non-dot/job/P25-342994-1
+                - generic [ref=f15e425]: Req ID:P25-342994-1
+              - generic [ref=f15e426]:
+                - generic [ref=f15e427]:
+                  - generic [ref=f15e428]: Location 7303 Cushing Road, MANASSAS, VA, US
+                  - generic [ref=f15e431]: Company Federal Express Corporation
+                  - generic [ref=f15e433]: Employment Part Time
+                - link "VIEW JOB, Courier/Non-DOT" [ref=f15e435] [cursor=pointer]:
+                  - /url: /courier-non-dot/job/P25-342994-1
+                  - generic [ref=f15e436]: VIEW JOB
+            - listitem [ref=f15e437]:
+              - heading "Courier/DOT-20 Req ID:P25-342925-1" [level=3] [ref=f15e439]:
+                - link "Courier/DOT-20" [ref=f15e440] [cursor=pointer]:
+                  - /url: /courier-dot-20/job/P25-342925-1
+                - generic [ref=f15e441]: Req ID:P25-342925-1
+              - generic [ref=f15e442]:
+                - generic [ref=f15e443]:
+                  - generic [ref=f15e444]: Location 3410 South 51st Avenue, Phoenix, AZ, US
+                  - generic [ref=f15e447]: Company Federal Express Corporation
+                  - generic [ref=f15e449]: Employment Part Time
+                - link "VIEW JOB, Courier/DOT-20" [ref=f15e451] [cursor=pointer]:
+                  - /url: /courier-dot-20/job/P25-342925-1
+                  - generic [ref=f15e452]: VIEW JOB
+            - listitem [ref=f15e453]:
+              - heading "Courier/DOT-15 Req ID:P25-342515-1" [level=3] [ref=f15e455]:
+                - link "Courier/DOT-15" [ref=f15e456] [cursor=pointer]:
+                  - /url: /courier-dot-15/job/P25-342515-1
+                - generic [ref=f15e457]: Req ID:P25-342515-1
+              - generic [ref=f15e458]:
+                - generic [ref=f15e459]:
+                  - generic [ref=f15e460]: Location 23000 N. 7th Ave, Phoenix, AZ, US
+                  - generic [ref=f15e463]: Company Federal Express Corporation
+                  - generic [ref=f15e465]: Employment Part Time
+                - link "VIEW JOB, Courier/DOT-15" [ref=f15e467] [cursor=pointer]:
+                  - /url: /courier-dot-15/job/P25-342515-1
+                  - generic [ref=f15e468]: VIEW JOB
+            - listitem [ref=f15e469]:
+              - heading "Courier/Swing Drvr/DOT-4 Req ID:P25-342507-1" [level=3] [ref=f15e471]:
+                - link "Courier/Swing Drvr/DOT-4" [ref=f15e472] [cursor=pointer]:
+                  - /url: /courier-swing-drvr-dot-4/job/P25-342507-1
+                - generic [ref=f15e473]: Req ID:P25-342507-1
+              - generic [ref=f15e474]:
+                - generic [ref=f15e475]:
+                  - generic [ref=f15e476]: Location 23000 N. 7th Ave, Phoenix, AZ, US
+                  - generic [ref=f15e479]: Company Federal Express Corporation
+                  - generic [ref=f15e481]: Employment Part Time
+                - link "VIEW JOB, Courier/Swing Drvr/DOT-4" [ref=f15e483] [cursor=pointer]:
+                  - /url: /courier-swing-drvr-dot-4/job/P25-342507-1
+                  - generic [ref=f15e484]: VIEW JOB
+            - listitem [ref=f15e485]:
+              - heading "Events Solutions Consultant Req ID:P25-331826-2" [level=3] [ref=f15e487]:
+                - link "Events Solutions Consultant" [ref=f15e488] [cursor=pointer]:
+                  - /url: /events-solutions-consultant/job/P25-331826-2
+                - generic [ref=f15e489]: Req ID:P25-331826-2
+              - generic [ref=f15e490]:
+                - generic [ref=f15e491]:
+                  - generic [ref=f15e492]: Location 3708 Las Vegas Blvd S Level 3, Las Vegas, NV, US
+                  - generic [ref=f15e495]: Company Federal Express Corporation
+                  - generic [ref=f15e497]: Employment Full Time
+                - link "VIEW JOB, Events Solutions Consultant" [ref=f15e499] [cursor=pointer]:
+                  - /url: /events-solutions-consultant/job/P25-331826-2
+                  - generic [ref=f15e500]: VIEW JOB
+            - listitem [ref=f15e501]:
+              - heading "Events Solutions Consultant Req ID:P25-320868-2" [level=3] [ref=f15e503]:
+                - link "Events Solutions Consultant" [ref=f15e504] [cursor=pointer]:
+                  - /url: /events-solutions-consultant/job/P25-320868-2
+                - generic [ref=f15e505]: Req ID:P25-320868-2
+              - generic [ref=f15e506]:
+                - generic [ref=f15e507]:
+                  - generic [ref=f15e508]: Location 3667 Las Vegas Blvd S, Las Vegas, NV, US
+                  - generic [ref=f15e511]: Company Federal Express Corporation
+                  - generic [ref=f15e513]: Employment Full Time
+                - link "VIEW JOB, Events Solutions Consultant" [ref=f15e515] [cursor=pointer]:
+                  - /url: /events-solutions-consultant/job/P25-320868-2
+                  - generic [ref=f15e516]: VIEW JOB
+          - region "Page Navigation Controls" [ref=f15e519]:
+            - navigation "Pagination" [ref=f15e520]:
+              - list [ref=f15e521]:
+                - listitem
+                - listitem
+                - listitem [ref=f15e522]:
+                  - link "Page 1" [ref=f15e523] [cursor=pointer]:
+                    - /url: /jobs/page/1
+                    - text: "1"
+                - listitem [ref=f15e524]:
+                  - link "Page 2" [ref=f15e525] [cursor=pointer]:
+                    - /url: /jobs/page/2
+                    - text: "2"
+                - listitem [ref=f15e526]:
+                  - link "Page 3" [ref=f15e527] [cursor=pointer]:
+                    - /url: /jobs/page/3
+                    - text: "3"
+                - listitem [ref=f15e528]:
+                  - link "Page 4" [ref=f15e529] [cursor=pointer]:
+                    - /url: /jobs/page/4
+                    - text: "4"
+                - listitem [ref=f15e530]:
+                  - link "Page 5" [ref=f15e531] [cursor=pointer]:
+                    - /url: /jobs/page/5
+                    - text: "5"
+                - listitem [ref=f15e532]:
+                  - link "Page 6" [ref=f15e533] [cursor=pointer]:
+                    - /url: /jobs/page/6
+                    - text: "6"
+                - listitem [ref=f15e534]:
+                  - link "Page 7" [ref=f15e535] [cursor=pointer]:
+                    - /url: /jobs/page/7
+                    - text: "7"
+                - listitem [ref=f15e536]:
+                  - link "Page 8" [ref=f15e537] [cursor=pointer]:
+                    - /url: /jobs/page/8
+                    - text: "8"
+                - listitem [ref=f15e538]:
+                  - link "Page 9" [ref=f15e539] [cursor=pointer]:
+                    - /url: /jobs/page/9
+                    - text: "9"
+                - listitem [ref=f15e540]:
+                  - link "Page 10" [ref=f15e541] [cursor=pointer]:
+                    - /url: /jobs/page/10
+                    - text: "10"
+                - listitem [ref=f15e542]:
+                  - link "Next Page" [ref=f15e543]:
+                    - /url: /jobs/page/2
+                    - img "Go to next page"
+                - listitem [ref=f15e544]:
+                  - link "Last page" [ref=f15e545]:
+                    - /url: /jobs/page/132
+                    - img "Go to last page"
+            - generic [ref=f15e546]: Jobs per page
+            - combobox "25 50 100" [ref=f15e547]:
+              - option "25" [selected]
+              - option "50"
+              - option "100"
+  - contentinfo [ref=f15e548]:
+    - generic [ref=f15e551]:
+      - generic [ref=f15e553]:
+        - generic [ref=f15e554]: FEDEX CAREERS
+        - list [ref=f15e555]:
+          - listitem [ref=f15e556]:
+            - link "Career Areas" [ref=f15e557] [cursor=pointer]:
+              - /url: /#career-areas
+          - listitem [ref=f15e558]:
+            - link "Life at FedEx" [ref=f15e559] [cursor=pointer]:
+              - /url: /life-at-fedex
+          - listitem [ref=f15e560]:
+            - link "Hiring & Development" [ref=f15e561] [cursor=pointer]:
+              - /url: /hiring-and-development
+          - listitem [ref=f15e562]:
+            - link "International Opportunities" [ref=f15e563] [cursor=pointer]:
+              - /url: /international/
+          - listitem [ref=f15e564]:
+            - link "Career Search" [ref=f15e565] [cursor=pointer]:
+              - /url: /jobs
+          - listitem [ref=f15e566]:
+            - link "Benefits" [ref=f15e567] [cursor=pointer]:
+              - /url: /life-at-fedex#benefits
+          - listitem [ref=f15e568]:
+            - link "US Military" [ref=f15e569] [cursor=pointer]:
+              - /url: /international/us-and-canada-operations/us-military
+          - listitem [ref=f15e570]:
+            - link "Talent Community" [ref=f15e571] [cursor=pointer]:
+              - /url: https://fedex.paradox.ai/co/FedEx2/TalentCommunity
+      - generic [ref=f15e573]:
+        - generic [ref=f15e574]: Fedex.com
+        - list [ref=f15e575]:
+          - listitem [ref=f15e576]:
+            - link "About FedEx" [ref=f15e577] [cursor=pointer]:
+              - /url: https://www.fedex.com/en-us/about.html
+          - listitem [ref=f15e578]:
+            - link "Corporate Responsibility" [ref=f15e579] [cursor=pointer]:
+              - /url: https://www.fedex.com/en-us/about/corporate-social-responsibility.html
+          - listitem [ref=f15e580]:
+            - link "Equality, Opportunity and Diversity" [ref=f15e581] [cursor=pointer]:
+              - /url: https://www.fedex.com/en-us/about/diversity-inclusion.html
+      - generic [ref=f15e582]:
+        - generic [ref=f15e583]: LANGUAGE
+        - button "Select Language (English Español Français (Canada) Français Deutsch Italiano 日本語 (日本) 한국어 (대한민국) Nederland Polska Português ไทย (ประเทศไทย) Tiếng Việt (Việt Nam) 中文 简体 (中国) 中文 繁體 (台灣))" [ref=f15e586] [cursor=pointer]:
+          - generic [ref=f15e587]: English
+    - generic [ref=f15e593]:
+      - generic [ref=f15e594]: FOLLOW FEDEX
+      - generic [ref=f15e595]:
+        - link "LinkedIn" [ref=f15e597] [cursor=pointer]:
+          - /url: https://www.linkedin.com/company/fedex/
+          - img "LinkedIn"
+        - link "Twitter" [ref=f15e599] [cursor=pointer]:
+          - /url: https://twitter.com/fedex
+          - img "Twitter"
+        - link "Facebook" [ref=f15e601] [cursor=pointer]:
+          - /url: https://www.facebook.com/FedEx
+          - img "Facebook"
+        - link "Youtube" [ref=f15e603] [cursor=pointer]:
+          - /url: https://www.youtube.com/user/fedex/custom
+          - img "Youtube"
+        - link "Instagram" [ref=f15e605] [cursor=pointer]:
+          - /url: https://www.instagram.com/fedex
+          - img "Instagram"
+        - link "TikTok" [ref=f15e607] [cursor=pointer]:
+          - /url: https://www.tiktok.com/@fedex
+          - img "TikTok"
+    - generic [ref=f15e610]:
+      - paragraph [ref=f15e613]: ©FedEx 1995 - 2026
+      - list [ref=f15e616]:
+        - listitem [ref=f15e617]:
+          - link "Cookie Consent" [ref=f15e618] [cursor=pointer]:
+            - /url: javascript:void(0);
+          - text: "|"
+        - listitem [ref=f15e619]:
+          - link "Terms of Use" [ref=f15e620] [cursor=pointer]:
+            - /url: https://www.fedex.com/en-us/terms-of-use.html
+          - text: "|"
+        - listitem [ref=f15e621]:
+          - link "Privacy Policy" [ref=f15e622] [cursor=pointer]:
+            - /url: https://www.fedex.com/en-us/trust-center.html
+          - text: "|"
+        - listitem [ref=f15e623]:
+          - link "Applicant Privacy Notice" [ref=f15e624] [cursor=pointer]:
+            - /url: https://d2xra9v1z0mbwm.cloudfront.net/oms/2650/document/2025/10/VWVM9_17618425015033836applicantprivacynotice/17618425015033836applicantprivacynotice.pdf
+  - link "Back to top" [ref=f15e625] [cursor=pointer]:
+    - /url: "#main"

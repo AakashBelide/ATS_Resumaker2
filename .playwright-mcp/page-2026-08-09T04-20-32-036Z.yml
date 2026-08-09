@@ -1,0 +1,414 @@
+- generic [active] [ref=e1]:
+  - navigation "link navigation":
+    - link "Skip to Main Content" [ref=e2] [cursor=pointer]
+  - main [ref=e3]:
+    - paragraph [ref=e6]:
+      - text: "Fraud Alert: Our recruiters never use personal emails, ask for fees, make offers via text, charge for resume reviews, or request personal ID documents during the application process. Learn how to protect yourself from job scams and report suspicious activity"
+      - link "here" [ref=e7] [cursor=pointer]:
+        - /url: https://reportfraud.ftc.gov
+      - text: .
+    - navigation [ref=e8]:
+      - generic [ref=e12]:
+        - link [ref=e13] [cursor=pointer]:
+          - /url: https://www.amd.com/en/corporate/careers.html
+          - img "logo" [ref=e14]
+        - link "Careers" [ref=e15] [cursor=pointer]:
+          - /url: https://www.amd.com/en/corporate/careers.html
+      - navigation [ref=e16]:
+        - list [ref=e18]:
+          - listitem [ref=e19]:
+            - link "Careers Home" [ref=e20] [cursor=pointer]:
+              - /url: https://www.amd.com/en/corporate/careers.html
+          - listitem [ref=e21]:
+            - link "Student Programs" [ref=e22] [cursor=pointer]:
+              - /url: https://www.amd.com/en/corporate/careers/student-programs.html
+          - listitem [ref=e23]:
+            - link "Benefits" [ref=e24] [cursor=pointer]:
+              - /url: https://www.amd.com/en/corporate/careers/benefits.html
+          - listitem [ref=e25]:
+            - paragraph [ref=e26] [cursor=pointer]:
+              - text: Job Categories
+              - generic [ref=e27]: 
+          - listitem [ref=e28]:
+            - paragraph [ref=e29] [cursor=pointer]:
+              - text: Global Jobs
+              - generic [ref=e30]: 
+          - listitem [ref=e31]:
+            - link "Returning User Login" [ref=e32] [cursor=pointer]:
+              - /url: https://careers-amd.icims.com/jobs/login?loginOnly=1&redirect=&in_iframe=1&hashed=-625942636
+    - generic [ref=e34]:
+      - heading "Job Search Page" [level=1] [ref=e35]
+      - generic [ref=e37]:
+        - generic [ref=e40]:
+          - generic [ref=e46]:
+            - combobox "Keyword Search" [ref=e47]
+            - combobox "Keyword Search"
+          - generic [ref=e48]:
+            - generic [ref=e50]:
+              - group "Search By Options" [ref=e52]:
+                - button [pressed] [ref=e53] [cursor=pointer]:
+                  - img "Search Location" [ref=e55]
+                - button [ref=e67] [cursor=pointer]:
+                  - img "Search by Commute" [ref=e69]: access_time
+              - combobox "Search Location" [ref=e74]
+            - combobox "Distance" [ref=e82] [cursor=pointer]:
+              - generic [ref=e86]:
+                - text: 10 Miles
+                - generic [ref=e87]: Use LEFT and RIGHT arrow keys to select KM or MILES
+          - generic "View All Jobs" [ref=e90]:
+            - button "Conduct Search":
+              - generic:
+                - img: search
+        - generic [ref=e93]:
+          - generic [ref=e98]: Filters
+          - generic [ref=e105] [cursor=pointer]:
+            - combobox "Region/Location" [ref=e106]
+            - generic: Region/Location
+          - generic [ref=e117] [cursor=pointer]:
+            - combobox "City" [ref=e118]
+            - generic: City
+          - generic [ref=e129] [cursor=pointer]:
+            - combobox "Categories" [ref=e130]
+            - generic: Categories
+          - generic [ref=e141] [cursor=pointer]:
+            - combobox "Recent Graduate" [ref=e142]
+            - generic: Recent Graduate
+      - generic [ref=e149]:
+        - generic [ref=e150]:
+          - generic [ref=e151]:
+            - generic [ref=e152]:
+              - heading "1066 results" [level=2] [ref=e153]
+              - generic:
+                - grid "Filters Selected are:"
+            - generic [ref=e158] [cursor=pointer]:
+              - combobox [ref=e160]:
+                - generic [ref=e161]: Relevance
+              - generic: Sort by
+          - generic [ref=e169]:
+            - 'link "Sr. Product Manager - AI Infrastructure and Solutions Req ID: 86338 Location US,TX,Austin 7171 Southwest Parkway Austin, Texas US Categories Engineering Apply Now : Sr. Product Manager - AI Infrastructure and Solutions" [ref=e171] [cursor=pointer]':
+              - generic [ref=e172]:
+                - generic [ref=e173]:
+                  - paragraph [ref=e174]:
+                    - link "Sr. Product Manager - AI Infrastructure and Solutions" [ref=e175]:
+                      - /url: /careers-home/jobs/86338?lang=en-us
+                  - paragraph [ref=e176]: "Req ID: 86338"
+                - generic [ref=e178]:
+                  - paragraph [ref=e181]:
+                    - generic "Location" [ref=e182]
+                    - generic [ref=e183]: US,TX,Austin 7171 Southwest Parkway Austin, Texas US
+                  - paragraph [ref=e186]:
+                    - generic "Categories" [ref=e187]
+                    - generic [ref=e188]: Engineering
+                - 'link "Apply Now : Sr. Product Manager - AI Infrastructure and Solutions" [ref=e190]':
+                  - /url: https://careers-amd.icims.com/jobs/86338/login
+                  - generic [ref=e191]: Apply Now
+            - 'link "Sr. Product Manager - AI Infrastructure and Solutions Req ID: 86339 Location US,CA,Santa Clara 2485 Augustine Drive Santa Clara, California US Categories Engineering Apply Now : Sr. Product Manager - AI Infrastructure and Solutions" [ref=e194] [cursor=pointer]':
+              - generic [ref=e195]:
+                - generic [ref=e196]:
+                  - paragraph [ref=e197]:
+                    - link "Sr. Product Manager - AI Infrastructure and Solutions" [ref=e198]:
+                      - /url: /careers-home/jobs/86339?lang=en-us
+                  - paragraph [ref=e199]: "Req ID: 86339"
+                - generic [ref=e201]:
+                  - paragraph [ref=e204]:
+                    - generic "Location" [ref=e205]
+                    - generic [ref=e206]: US,CA,Santa Clara 2485 Augustine Drive Santa Clara, California US
+                  - paragraph [ref=e209]:
+                    - generic "Categories" [ref=e210]
+                    - generic [ref=e211]: Engineering
+                - 'link "Apply Now : Sr. Product Manager - AI Infrastructure and Solutions" [ref=e213]':
+                  - /url: https://careers-amd.icims.com/jobs/86339/login
+                  - generic [ref=e214]: Apply Now
+            - 'link "Principal Mechanical Design Engineer (Server, GPU) Req ID: 88456 Location US,TX,Austin_Research Park 12301 Research Blvd,Suite 300 Austin, Texas US Categories Engineering Apply Now : Principal Mechanical Design Engineer (Server, GPU)" [ref=e217] [cursor=pointer]':
+              - generic [ref=e218]:
+                - generic [ref=e219]:
+                  - paragraph [ref=e220]:
+                    - link "Principal Mechanical Design Engineer (Server, GPU)" [ref=e221]:
+                      - /url: /careers-home/jobs/88456?lang=en-us
+                  - paragraph [ref=e222]: "Req ID: 88456"
+                - generic [ref=e224]:
+                  - paragraph [ref=e227]:
+                    - generic "Location" [ref=e228]
+                    - generic [ref=e229]: US,TX,Austin_Research Park 12301 Research Blvd,Suite 300 Austin, Texas US
+                  - paragraph [ref=e232]:
+                    - generic "Categories" [ref=e233]
+                    - generic [ref=e234]: Engineering
+                - 'link "Apply Now : Principal Mechanical Design Engineer (Server, GPU)" [ref=e236]':
+                  - /url: https://careers-amd.icims.com/jobs/88456/login
+                  - generic [ref=e237]: Apply Now
+            - 'link "Sr. Software Engineer - AI Triton Kernels Req ID: 86744 Location US,CA,San Jose 2100 Logic Drive San Jose, California US Categories Engineering Apply Now : Sr. Software Engineer - AI Triton Kernels" [ref=e240] [cursor=pointer]':
+              - generic [ref=e241]:
+                - generic [ref=e242]:
+                  - paragraph [ref=e243]:
+                    - link "Sr. Software Engineer - AI Triton Kernels" [ref=e244]:
+                      - /url: /careers-home/jobs/86744?lang=en-us
+                  - paragraph [ref=e245]: "Req ID: 86744"
+                - generic [ref=e247]:
+                  - paragraph [ref=e250]:
+                    - generic "Location" [ref=e251]
+                    - generic [ref=e252]: US,CA,San Jose 2100 Logic Drive San Jose, California US
+                  - paragraph [ref=e255]:
+                    - generic "Categories" [ref=e256]
+                    - generic [ref=e257]: Engineering
+                - 'link "Apply Now : Sr. Software Engineer - AI Triton Kernels" [ref=e259]':
+                  - /url: https://careers-amd.icims.com/jobs/86744/login
+                  - generic [ref=e260]: Apply Now
+            - 'link "Rack Expansion Program Manager Req ID: 89627 Location US,TX,Austin 7171 Southwest Parkway Austin, Texas US Categories Engineering Apply Now : Rack Expansion Program Manager" [ref=e263] [cursor=pointer]':
+              - generic [ref=e264]:
+                - generic [ref=e265]:
+                  - paragraph [ref=e266]:
+                    - link "Rack Expansion Program Manager" [ref=e267]:
+                      - /url: /careers-home/jobs/89627?lang=en-us
+                  - paragraph [ref=e268]: "Req ID: 89627"
+                - generic [ref=e270]:
+                  - paragraph [ref=e273]:
+                    - generic "Location" [ref=e274]
+                    - generic [ref=e275]: US,TX,Austin 7171 Southwest Parkway Austin, Texas US
+                  - paragraph [ref=e278]:
+                    - generic "Categories" [ref=e279]
+                    - generic [ref=e280]: Engineering
+                - 'link "Apply Now : Rack Expansion Program Manager" [ref=e282]':
+                  - /url: https://careers-amd.icims.com/jobs/89627/login
+                  - generic [ref=e283]: Apply Now
+            - 'link "Design Verification Engineer Req ID: 88877 Location CA,ON,Markham-1CV 1 Commerce Valley Drive MARKHAM, Ontario CA Categories Engineering Apply Now : Design Verification Engineer" [ref=e286] [cursor=pointer]':
+              - generic [ref=e287]:
+                - generic [ref=e288]:
+                  - paragraph [ref=e289]:
+                    - link "Design Verification Engineer" [ref=e290]:
+                      - /url: /careers-home/jobs/88877?lang=en-us
+                  - paragraph [ref=e291]: "Req ID: 88877"
+                - generic [ref=e293]:
+                  - paragraph [ref=e296]:
+                    - generic "Location" [ref=e297]
+                    - generic [ref=e298]: CA,ON,Markham-1CV 1 Commerce Valley Drive MARKHAM, Ontario CA
+                  - paragraph [ref=e301]:
+                    - generic "Categories" [ref=e302]
+                    - generic [ref=e303]: Engineering
+                - 'link "Apply Now : Design Verification Engineer" [ref=e305]':
+                  - /url: https://canadacareers-amd.icims.com/jobs/88877/login
+                  - generic [ref=e306]: Apply Now
+            - 'link "Principal Software Development Engineer Req ID: 89969 Location CA,BC,Vancouver 2930 Virtual Way Ste. 300 VANCOUVER, British Columbia CA Categories Engineering Apply Now : Principal Software Development Engineer" [ref=e309] [cursor=pointer]':
+              - generic [ref=e310]:
+                - generic [ref=e311]:
+                  - paragraph [ref=e312]:
+                    - link "Principal Software Development Engineer" [ref=e313]:
+                      - /url: /careers-home/jobs/89969?lang=en-us
+                  - paragraph [ref=e314]: "Req ID: 89969"
+                - generic [ref=e316]:
+                  - paragraph [ref=e319]:
+                    - generic "Location" [ref=e320]
+                    - generic [ref=e321]: CA,BC,Vancouver 2930 Virtual Way Ste. 300 VANCOUVER, British Columbia CA
+                  - paragraph [ref=e324]:
+                    - generic "Categories" [ref=e325]
+                    - generic [ref=e326]: Engineering
+                - 'link "Apply Now : Principal Software Development Engineer" [ref=e328]':
+                  - /url: https://canadacareers-amd.icims.com/jobs/89969/login
+                  - generic [ref=e329]: Apply Now
+            - 'link "Senior Corporate Counsel Legal- Real Estate Req ID: 89565 Location US,TX,Austin 7171 Southwest Parkway Austin, Texas US Categories General Management/ Administration/ Support Apply Now : Senior Corporate Counsel Legal- Real Estate" [ref=e332] [cursor=pointer]':
+              - generic [ref=e333]:
+                - generic [ref=e334]:
+                  - paragraph [ref=e335]:
+                    - link "Senior Corporate Counsel Legal- Real Estate" [ref=e336]:
+                      - /url: /careers-home/jobs/89565?lang=en-us
+                  - paragraph [ref=e337]: "Req ID: 89565"
+                - generic [ref=e339]:
+                  - paragraph [ref=e342]:
+                    - generic "Location" [ref=e343]
+                    - generic [ref=e344]: US,TX,Austin 7171 Southwest Parkway Austin, Texas US
+                  - paragraph [ref=e347]:
+                    - generic "Categories" [ref=e348]
+                    - generic [ref=e349]: General Management/ Administration/ Support
+                - 'link "Apply Now : Senior Corporate Counsel Legal- Real Estate" [ref=e351]':
+                  - /url: https://careers-amd.icims.com/jobs/89565/login
+                  - generic [ref=e352]: Apply Now
+            - 'link "Manager, Supply Planning Req ID: 89682 Location US,TX,Austin 7171 Southwest Parkway Austin, Texas US Categories General Management/ Administration/ Support Apply Now : Manager, Supply Planning" [ref=e355] [cursor=pointer]':
+              - generic [ref=e356]:
+                - generic [ref=e357]:
+                  - paragraph [ref=e358]:
+                    - link "Manager, Supply Planning" [ref=e359]:
+                      - /url: /careers-home/jobs/89682?lang=en-us
+                  - paragraph [ref=e360]: "Req ID: 89682"
+                - generic [ref=e362]:
+                  - paragraph [ref=e365]:
+                    - generic "Location" [ref=e366]
+                    - generic [ref=e367]: US,TX,Austin 7171 Southwest Parkway Austin, Texas US
+                  - paragraph [ref=e370]:
+                    - generic "Categories" [ref=e371]
+                    - generic [ref=e372]: General Management/ Administration/ Support
+                - 'link "Apply Now : Manager, Supply Planning" [ref=e374]':
+                  - /url: https://careers-amd.icims.com/jobs/89682/login
+                  - generic [ref=e375]: Apply Now
+            - 'link "Sr. Software Engineer - AI Triton Communication Req ID: 89764 Location US,CA,San Jose 2100 Logic Drive San Jose, California US Categories Engineering Apply Now : Sr. Software Engineer - AI Triton Communication" [ref=e378] [cursor=pointer]':
+              - generic [ref=e379]:
+                - generic [ref=e380]:
+                  - paragraph [ref=e381]:
+                    - link "Sr. Software Engineer - AI Triton Communication" [ref=e382]:
+                      - /url: /careers-home/jobs/89764?lang=en-us
+                  - paragraph [ref=e383]: "Req ID: 89764"
+                - generic [ref=e385]:
+                  - paragraph [ref=e388]:
+                    - generic "Location" [ref=e389]
+                    - generic [ref=e390]: US,CA,San Jose 2100 Logic Drive San Jose, California US
+                  - paragraph [ref=e393]:
+                    - generic "Categories" [ref=e394]
+                    - generic [ref=e395]: Engineering
+                - 'link "Apply Now : Sr. Software Engineer - AI Triton Communication" [ref=e397]':
+                  - /url: https://careers-amd.icims.com/jobs/89764/login
+                  - generic [ref=e398]: Apply Now
+        - generic [ref=e403]:
+          - generic [ref=e404]:
+            - generic [ref=e405]: Items per page
+            - combobox "Items per page 10 selected" [ref=e410] [cursor=pointer]:
+              - generic [ref=e411]: "10"
+          - generic [ref=e416]:
+            - generic "1 – 10 of 1066 Total Jobs" [ref=e417]: 1 – 10 of 1066
+            - button "Previous Page of Job Search Results" [disabled] [ref=e418]
+            - button "Next Page of Job Search Results" [ref=e422] [cursor=pointer]
+    - generic [ref=e427]:
+      - heading "Not ready to apply?" [level=2] [ref=e428]
+      - paragraph [ref=e429]: Let’s stay in touch!
+      - link "Connect With Us" [ref=e430] [cursor=pointer]:
+        - /url: /talent-network/talentcommunity
+    - generic [ref=e432]:
+      - generic [ref=e433]:
+        - link "Join Our Talent Community" [ref=e436] [cursor=pointer]:
+          - /url: https://careers.amd.com/talent-network/talentcommunity
+        - list [ref=e438]:
+          - listitem [ref=e439]:
+            - link "amd linkedin" [ref=e440] [cursor=pointer]:
+              - /url: https://www.linkedin.com/company/amd
+              - generic [ref=e441]: 
+          - listitem [ref=e442]:
+            - link "amd twitter" [ref=e444] [cursor=pointer]:
+              - /url: javascript:void(0)
+          - listitem [ref=e447]:
+            - link "amd instagram" [ref=e448] [cursor=pointer]:
+              - /url: https://www.instagram.com/amd
+              - generic [ref=e449]: 
+          - listitem [ref=e450]:
+            - link "amd youtube" [ref=e452] [cursor=pointer]:
+              - /url: javascript:void(0)
+          - listitem [ref=e455]:
+            - link "amd facebook" [ref=e456] [cursor=pointer]:
+              - /url: http://www.facebook.com/amd
+              - generic [ref=e457]: 
+          - listitem [ref=e458]:
+            - link [ref=e460] [cursor=pointer]:
+              - /url: javascript:void(0)
+              - img "discord-logo" [ref=e461]
+      - generic [ref=e463]:
+        - generic [ref=e464]:
+          - heading "Company" [level=2] [ref=e465]
+          - list [ref=e466]:
+            - listitem [ref=e467]:
+              - link "About AMD" [ref=e468] [cursor=pointer]:
+                - /url: https://www.amd.com/en/corporate.html
+            - listitem [ref=e469]:
+              - link "Management Team" [ref=e470] [cursor=pointer]:
+                - /url: https://www.amd.com/en/corporate/leadership.html
+            - listitem [ref=e471]:
+              - link "Corporate Responsibility" [ref=e472] [cursor=pointer]:
+                - /url: https://www.amd.com/en/corporate/corporate-responsibility.html
+            - listitem [ref=e473]:
+              - link "Careers" [ref=e474] [cursor=pointer]:
+                - /url: https://www.amd.com/en/corporate/careers.html
+            - listitem [ref=e475]:
+              - link "Contact Us" [ref=e476] [cursor=pointer]:
+                - /url: https://www.amd.com/en/corporate/contacts.html
+        - generic [ref=e477]:
+          - heading "News & Events" [level=2] [ref=e478]
+          - list [ref=e479]:
+            - listitem [ref=e480]:
+              - link "Newsroom" [ref=e481] [cursor=pointer]:
+                - /url: https://www.amd.com/en/newsroom.html
+            - listitem [ref=e482]:
+              - link "Events" [ref=e483] [cursor=pointer]:
+                - /url: https://www.amd.com/en/corporate/events.html
+            - listitem [ref=e484]:
+              - link "Media Library" [ref=e485] [cursor=pointer]:
+                - /url: https://www.amd.com/en/newsroom/media-library.html
+        - generic [ref=e486]:
+          - heading "Resources" [level=2] [ref=e487]
+          - list [ref=e488]:
+            - listitem [ref=e489]:
+              - link "Developer Central" [ref=e490] [cursor=pointer]:
+                - /url: https://www.amd.com/en/developer.html
+            - listitem [ref=e491]:
+              - link "Blogs" [ref=e492] [cursor=pointer]:
+                - /url: https://www.amd.com/en/blogs.html
+            - listitem [ref=e493]:
+              - link "Case Studies" [ref=e494] [cursor=pointer]:
+                - /url: https://www.amd.com/en/resources/case-studies.html
+            - listitem [ref=e495]:
+              - link "Webinars" [ref=e496] [cursor=pointer]:
+                - /url: https://webinar.amd.com/meet-the-experts-hub/en/home
+        - generic [ref=e497]:
+          - heading "Partners" [level=2] [ref=e498]
+          - list [ref=e499]:
+            - listitem [ref=e500]:
+              - link "AMD Partner Hub" [ref=e501] [cursor=pointer]:
+                - /url: https://www.amd.com/en/partner.html
+            - listitem [ref=e502]:
+              - link "Authorized Distributors" [ref=e503] [cursor=pointer]:
+                - /url: https://www.amd.com/en/partner/about-partners/authorized-distributors.html
+            - listitem [ref=e504]:
+              - link "AMD University Program" [ref=e505] [cursor=pointer]:
+                - /url: https://www.amd.com/en/corporate/university-program.html
+        - generic [ref=e506]:
+          - heading "Investors" [level=2] [ref=e507]
+          - list [ref=e508]:
+            - listitem [ref=e509]:
+              - link "Investor Relations" [ref=e510] [cursor=pointer]:
+                - /url: https://ir.amd.com/
+            - listitem [ref=e511]:
+              - link "Financial Information" [ref=e512] [cursor=pointer]:
+                - /url: https://ir.amd.com/financial-information
+            - listitem [ref=e513]:
+              - link "Board of Directors" [ref=e514] [cursor=pointer]:
+                - /url: https://ir.amd.com/leadership-governance/board-of-directors
+            - listitem [ref=e515]:
+              - link "Governance Documents" [ref=e516] [cursor=pointer]:
+                - /url: https://ir.amd.com/leadership-governance/governance-documents
+            - listitem [ref=e517]:
+              - link "SEC Filings" [ref=e518] [cursor=pointer]:
+                - /url: https://ir.amd.com/sec-filings
+      - list [ref=e519]:
+        - listitem [ref=e520]:
+          - link "Terms and Conditions" [ref=e521] [cursor=pointer]:
+            - /url: https://www.amd.com/en/corporate/copyright
+        - listitem [ref=e522]:
+          - link "Privacy" [ref=e523] [cursor=pointer]:
+            - /url: https://www.amd.com/en/legal/privacy.html
+        - listitem [ref=e524]:
+          - link "Trademarks" [ref=e525] [cursor=pointer]:
+            - /url: https://www.amd.com/en/legal/trademarks.html
+        - listitem [ref=e526]:
+          - link "Supply Chain Transparency" [ref=e527] [cursor=pointer]:
+            - /url: https://www.amd.com/content/dam/amd/en/documents/corporate/cr/supply-chain-transparency.pdf
+        - listitem [ref=e528]:
+          - link "Fair & Open Competition" [ref=e529] [cursor=pointer]:
+            - /url: https://www.amd.com/en/legal/competition.html
+        - listitem [ref=e530]:
+          - link "UK Tax Strategy" [ref=e531] [cursor=pointer]:
+            - /url: https://www.amd.com/system/files/documents/amd-uk-tax-strategy.pdf
+        - listitem [ref=e532]:
+          - link "Cookies Policy" [ref=e533] [cursor=pointer]:
+            - /url: https://www.amd.com/en/legal/cookies.html
+        - listitem [ref=e534]:
+          - button "Cookie Settings" [ref=e535] [cursor=pointer]
+      - paragraph [ref=e536]: ©2026 Advanced Micro Devices, Inc.
+  - dialog "Cookie Notice" [ref=e540]:
+    - generic [ref=e542]:
+      - generic [ref=e544]:
+        - heading "Cookie Notice" [level=2] [ref=e545]
+        - generic [ref=e546]:
+          - text: This site uses cookies from us and our partners to make your browsing experience more efficient, relevant, convenient and personal. In some cases, they are essential to making the site work properly. By accessing this site, you direct us to use and consent to the use of cookies. You can change your settings by clicking on the Cookie Settings link. For more information, refer to AMD's
+          - link "privacy notice" [ref=e547] [cursor=pointer]:
+            - /url: https://www.amd.com/en/legal/privacy.html
+          - text: and
+          - link "cookie policy" [ref=e548] [cursor=pointer]:
+            - /url: https://www.amd.com/en/legal/cookies.html
+          - text: .
+      - generic [ref=e550]:
+        - button "Cookie Settings, Opens the preference center dialog" [ref=e551] [cursor=pointer]: Cookie Settings
+        - button "Accept Cookies" [ref=e552] [cursor=pointer]

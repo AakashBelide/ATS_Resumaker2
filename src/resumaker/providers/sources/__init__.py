@@ -5,6 +5,7 @@ from resumaker.providers.sources.base import PostingStub, SourceAdapter
 from resumaker.providers.sources.eightfold import EightfoldSource
 from resumaker.providers.sources.goldman import GoldmanSource
 from resumaker.providers.sources.greenhouse import GreenhouseSource
+from resumaker.providers.sources.jibe import JibeApplySource
 from resumaker.providers.sources.lever import LeverSource
 from resumaker.providers.sources.mckinsey import McKinseySource
 from resumaker.providers.sources.oracle_cloud import OracleCloudSource
@@ -24,6 +25,7 @@ _SOURCES: dict[str, SourceAdapter] = {
     McKinseySource.source: McKinseySource(),
     GoldmanSource.source: GoldmanSource(),
     PhenomSource.source: PhenomSource(),
+    JibeApplySource.source: JibeApplySource(),
 }
 
 

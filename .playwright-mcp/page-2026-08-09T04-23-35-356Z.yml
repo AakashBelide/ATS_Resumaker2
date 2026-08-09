@@ -1,0 +1,186 @@
+- generic [ref=f20e3]:
+  - banner:
+    - navigation "site" [ref=f20e4]:
+      - link "Skip to main content" [ref=f20e5] [cursor=pointer]:
+        - /url: "#main-content"
+      - generic [ref=f20e6]:
+        - link "Qualcomm logo, link to Positions Home" [ref=f20e9] [cursor=pointer]:
+          - /url: https://careers.qualcomm.com/careers
+        - generic [ref=f20e11]:
+          - button "Our Company" [ref=f20e13] [cursor=pointer]
+          - button "Our Business" [ref=f20e19] [cursor=pointer]
+          - link "Search for Jobs" [ref=f20e24] [cursor=pointer]:
+            - /url: /careers
+          - link "Join Talent Network" [ref=f20e27] [cursor=pointer]:
+            - /url: /careers/join
+          - link "FAQs" [ref=f20e30] [cursor=pointer]:
+            - /url: https://www.qualcomm.com/company/careers/faqs
+          - button "Profile" [ref=f20e34] [cursor=pointer]
+          - button "Language switcher" [ref=f20e40] [cursor=pointer]:
+            - generic [ref=f20e41]: English
+          - link "Sign In" [ref=f20e45] [cursor=pointer]:
+            - /url: /careers/login
+  - main [ref=f20e52]:
+    - heading "Jobs" [level=1] [ref=f20e53]
+    - generic [ref=f20e56]:
+      - generic [ref=f20e57]:
+        - generic [ref=f20e58]:
+          - generic [ref=f20e59]:
+            - generic [ref=f20e61]:
+              - status [ref=f20e62]
+              - combobox "Search for job title or keywords" [ref=f20e66]
+            - generic [ref=f20e70]:
+              - status [ref=f20e71]
+              - combobox "Search for location" [ref=f20e75]
+            - generic [ref=f20e79]:
+              - generic [ref=f20e80]:
+                - button "Use current location" [disabled]
+              - button "Search jobs" [ref=f20e81] [cursor=pointer]
+              - button "Job Cart 0 job(s) added" [disabled] [ref=f20e84]:
+                - generic [ref=f20e88]:
+                  - text: Job Cart
+                  - generic [ref=f20e89]: "0"
+          - generic [ref=f20e90]:
+            - button "All filters" [ref=f20e91] [cursor=pointer]:
+              - generic [ref=f20e92]: All Filters
+            - button "Clear all selected filters" [ref=f20e97] [cursor=pointer]:
+              - generic [ref=f20e98]: Clear All
+        - generic [ref=f20e102]:
+          - generic [ref=f20e103]:
+            - heading "Get personalized job recommendations" [level=1] [ref=f20e104]
+            - generic [ref=f20e105]: Use AI to see how you match and get help on your career journey
+          - button "Upload your resume to get personalized job recommendations" [ref=f20e107] [cursor=pointer]:
+            - generic [ref=f20e108]: Upload your resume
+      - generic [ref=f20e110]:
+        - generic [ref=f20e111]:
+          - heading "1960 jobs" [level=2] [ref=f20e113]
+          - generic [ref=f20e114]:
+            - 'button "Sort by: Latest" [ref=f20e116] [cursor=pointer]':
+              - generic [ref=f20e117]: "Sort: Latest"
+            - button "Show map" [ref=f20e121] [cursor=pointer]
+          - generic [ref=f20e126]:
+            - generic [ref=f20e127] [cursor=pointer]:
+              - generic:
+                - switch "Turn on job alerts for this search" [disabled]
+                - generic: Turn on job alerts for this search
+            - link "Manage" [ref=f20e128] [cursor=pointer]:
+              - /url: /careers/settings
+          - generic [ref=f20e129]:
+            - generic [ref=f20e130]:
+              - 'button "View job: Optical System Engineer, Senior Staff" [ref=f20e131] [cursor=pointer]':
+                - generic [ref=f20e132]:
+                  - generic [ref=f20e133]: Optical System Engineer, Senior Staff
+                  - generic [ref=f20e135]:
+                    - generic [ref=f20e136]: Ottawa, Ontario, Canada
+                    - generic [ref=f20e140]: Systems Engineering
+                  - generic [ref=f20e142]: Posted a day ago
+              - button "Save Optical System Engineer, Senior Staff" [ref=f20e143] [cursor=pointer]
+            - generic [ref=f20e146]:
+              - 'button "View job: Senior Engineer - 5G Systems Engineer" [ref=f20e147] [cursor=pointer]':
+                - generic [ref=f20e148]:
+                  - generic [ref=f20e149]: Senior Engineer - 5G Systems Engineer
+                  - generic [ref=f20e151]:
+                    - generic [ref=f20e152]: Mumbai, Mahārāshtra, India
+                    - generic [ref=f20e156]: Systems Engineering
+                  - generic [ref=f20e158]: Posted 2 days ago
+              - button "Save Senior Engineer - 5G Systems Engineer" [ref=f20e159] [cursor=pointer]
+            - generic [ref=f20e162]:
+              - 'button "View job: Lead Team Center Developer" [ref=f20e163] [cursor=pointer]':
+                - generic [ref=f20e164]:
+                  - generic [ref=f20e165]: Lead Team Center Developer
+                  - generic [ref=f20e167]:
+                    - generic [ref=f20e168]: Hyderabad, Telangāna, India
+                    - generic [ref=f20e172]: IT Software Developer
+                  - generic [ref=f20e174]: Posted 2 days ago
+              - button "Save Lead Team Center Developer" [ref=f20e175] [cursor=pointer]
+            - generic [ref=f20e178]:
+              - 'button "View job: Laboratory Technician" [ref=f20e179] [cursor=pointer]':
+                - generic [ref=f20e180]:
+                  - generic [ref=f20e181]: Laboratory Technician
+                  - generic [ref=f20e183]:
+                    - generic [ref=f20e184]: Markham, Ontario, Canada
+                    - generic [ref=f20e188]: Support Engineering
+                  - generic [ref=f20e190]: Posted 2 days ago
+              - button "Save Laboratory Technician" [ref=f20e191] [cursor=pointer]
+            - generic [ref=f20e194]:
+              - 'button "View job: Engineer" [ref=f20e195] [cursor=pointer]':
+                - generic [ref=f20e196]:
+                  - generic [ref=f20e197]: Engineer
+                  - generic [ref=f20e199]:
+                    - generic [ref=f20e200]: Hyderabad, Telangāna, India
+                    - generic [ref=f20e204]: Software Engineering
+                  - generic [ref=f20e206]: Posted 2 days ago
+              - button "Save Engineer" [ref=f20e207] [cursor=pointer]
+            - generic [ref=f20e210]:
+              - 'button "View job: Compute DSP/AI Subsystem Validation Engineer" [ref=f20e211] [cursor=pointer]':
+                - generic [ref=f20e212]:
+                  - generic [ref=f20e213]: Compute DSP/AI Subsystem Validation Engineer
+                  - generic [ref=f20e215]:
+                    - generic [ref=f20e216]: Markham, Ontario, Canada
+                    - generic [ref=f20e220]: ASICS Engineering
+                  - generic [ref=f20e222]: Posted 2 days ago
+              - button "Save Compute DSP/AI Subsystem Validation Engineer" [ref=f20e223] [cursor=pointer]
+            - generic [ref=f20e226]:
+              - 'button "View job: CPU RTL Design Engineer (Senior/Staff) - Cambridge, UK" [ref=f20e227] [cursor=pointer]':
+                - generic [ref=f20e228]:
+                  - generic [ref=f20e229]: CPU RTL Design Engineer (Senior/Staff) - Cambridge, UK
+                  - generic [ref=f20e231]:
+                    - generic [ref=f20e232]: Cambridge, United Kingdom
+                    - generic [ref=f20e236]: ASICS Engineering
+                  - generic [ref=f20e238]: Posted 2 days ago
+              - button "Save CPU RTL Design Engineer (Senior/Staff) - Cambridge, UK" [ref=f20e239] [cursor=pointer]
+            - generic [ref=f20e242]:
+              - 'button "View job: USB-Design Verification Senior Engineer" [ref=f20e243] [cursor=pointer]':
+                - generic [ref=f20e244]:
+                  - generic [ref=f20e245]: USB-Design Verification Senior Engineer
+                  - generic [ref=f20e247]:
+                    - generic [ref=f20e248]: Bangalore, India
+                    - generic [ref=f20e252]: Hardware Engineering
+                  - generic [ref=f20e254]: Posted 2 days ago
+              - button "Save USB-Design Verification Senior Engineer" [ref=f20e255] [cursor=pointer]
+            - generic [ref=f20e258]:
+              - 'button "View job: CPU Formal Verification Engineer" [ref=f20e259] [cursor=pointer]':
+                - generic [ref=f20e260]:
+                  - generic [ref=f20e261]: CPU Formal Verification Engineer
+                  - generic [ref=f20e263]:
+                    - generic [ref=f20e264]: Santa Clara, California, United States of America
+                    - generic [ref=f20e268]: CPU Engineering
+                  - generic [ref=f20e270]: Posted 2 days ago
+              - button "Save CPU Formal Verification Engineer" [ref=f20e271] [cursor=pointer]
+            - generic [ref=f20e274]:
+              - 'button "View job: Engineer" [ref=f20e275] [cursor=pointer]':
+                - generic [ref=f20e276]:
+                  - generic [ref=f20e277]: Engineer
+                  - generic [ref=f20e279]:
+                    - generic [ref=f20e280]: Hyderabad, Telangāna, India
+                    - generic [ref=f20e284]: Software Engineering
+                  - generic [ref=f20e286]: Posted 2 days ago
+              - button "Save Engineer" [ref=f20e287] [cursor=pointer]
+          - generic [ref=f20e290]: Page 1 of 196
+          - navigation "Jobs pagination" [ref=f20e291]:
+            - button "Previous jobs" [disabled] [ref=f20e292]
+            - generic [ref=f20e295]:
+              - generic [ref=f20e296]: "1"
+              - generic [ref=f20e297]: of
+              - generic [ref=f20e298]: "196"
+            - button "Next jobs" [ref=f20e299] [cursor=pointer]
+        - generic [ref=f20e303]:
+          - generic [ref=f20e304]:
+            - generic [ref=f20e305]:
+              - heading "Optical System Engineer, Senior Staff" [level=2] [ref=f20e306]
+              - generic [ref=f20e307]: Ottawa, Ontario, Canada
+              - link "Apply Now" [ref=f20e312] [cursor=pointer]:
+                - /url: /careers/apply?pid=446720282042
+            - generic [ref=f20e314]:
+              - button "Favourite this job" [ref=f20e315] [cursor=pointer]
+              - button "Share position, Optical System Engineer, Senior Staff" [ref=f20e319] [cursor=pointer]
+          - generic [ref=f20e323]:
+            - generic [ref=f20e324]: Find out how well you match with this job
+            - button "Upload your resume" [ref=f20e325] [cursor=pointer]
+          - tablist [ref=f20e333]:
+            - tab "Job description" [selected] [ref=f20e334] [cursor=pointer]
+            - tab "Company and benefits" [ref=f20e337] [cursor=pointer]
+  - contentinfo [ref=f20e346]:
+    - paragraph [ref=f20e348]:
+      - 'link "Powered by eightfold.ai #WhatsNextForYou" [ref=f20e349] [cursor=pointer]':
+        - /url: https://eightfold.ai
