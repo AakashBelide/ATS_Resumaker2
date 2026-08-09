@@ -9,6 +9,8 @@ from resumaker.providers.sources.eightfold import EightfoldSource
 from resumaker.providers.sources.goldman import GoldmanSource
 from resumaker.providers.sources.google import GoogleSource
 from resumaker.providers.sources.greenhouse import GreenhouseSource
+from resumaker.providers.sources.ibm import IBMSource
+from resumaker.providers.sources.icims import ICIMSSource
 from resumaker.providers.sources.jibe import JibeApplySource
 from resumaker.providers.sources.lever import LeverSource
 from resumaker.providers.sources.mckinsey import McKinseySource
@@ -46,6 +48,8 @@ _SOURCES: dict[str, SourceAdapter] = {
     TeslaSource.source: TeslaSource(),
     PcsxSource.source: PcsxSource(),
     ParadoxSource.source: ParadoxSource(),
+    IBMSource.source: IBMSource(),
+    ICIMSSource.source: ICIMSSource(),
 }
 
 

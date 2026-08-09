@@ -80,6 +80,13 @@ The "custom career site" tail was researched against live endpoints. Verdicts:
 | Meta | `meta` (new) | `metacareers.com/graphql` `CareersJobSearchResultsDataQuery` | FB edge (bare req → 400; rapid → IP block) | rotating `doc_id` scraped from JS bundle + `lsd` + full browser headers; residential IP |
 | Wayfair | — **deferred** | `wayfair.com/.../job_search_data` (Avature backend) | **PerimeterX/HUMAN** | **no** — 429 even with perfect browser headers; Greenhouse token 404s, SmartRecruiters stale. Needs a `_px` cookie from a real browser or a PX-solver. |
 
+Two more tail companies, both **clean** (200 from datacenter, no bot protection): **IBM** —
+bespoke Elasticsearch POST API (`www-api.ibm.com/search/api/v2`, `field_keyword_05` = country
+facet), new `ibm` adapter, live-verified (140 US). **Suffolk** — iCIMS *classic* HTML portal
+(`careers-suffolkconstruction.icims.com`, no JSON on this tenant), new `icims` adapter that
+parses the `in_iframe=1` rows, live-verified (283 postings). Neither exposes a posting date in
+the list, so `first_seen` synthesizes freshness.
+
 Takeaways that generalize: (1) the endpoint a compiled spec *assumes* is often wrong — always
 confirm live (Google's v3 REST is dead; Qualcomm is PCSX not SmartApply; FedEx is Paradox not
 Phenom). (2) "Bot-protected" ≠ "impossible": Akamai/Cloudflare TLS gates often yield to

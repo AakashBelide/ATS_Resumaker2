@@ -17,7 +17,8 @@ def test_sources_registered():
     assert set(available_sources()) == {
         "greenhouse", "lever", "ashby", "workday", "eightfold", "amazon", "oracle_cloud",
         "smartrecruiters", "mckinsey", "goldman", "phenom", "jibe", "radancy", "apple",
-        "bytedance", "dassault", "microsoft", "google", "meta", "tesla", "pcsx", "paradox"}
+        "bytedance", "dassault", "microsoft", "google", "meta", "tesla", "pcsx", "paradox",
+        "ibm", "icims"}
 
 
 def test_slug_candidates():
@@ -211,6 +212,33 @@ def test_paradox_parse_response():
     assert total == 2363 and len(stubs) == 1
     assert stubs[0].external_id == "PDX_FEC_ABC" and stubs[0].title == "Software Engineer"
     assert stubs[0].location == "Memphis, TN, US" and stubs[0].updated_at == "2026-08-07"
+
+
+def test_ibm_parse_response():
+    from resumaker.providers.sources.ibm import parse_response
+    body = {"hits": {"total": {"value": 140, "relation": "eq"}, "hits": [
+        {"_id": "sha", "_source": {"id": "sha", "title": "Senior Software Engineer",
+         "url": "https://careers.ibm.com/careers/JobDetail?jobId=127642",
+         "field_keyword_05": "United States", "field_keyword_19": "Austin, US"}}]}}
+    stubs, total = parse_response(body)
+    assert total == 140 and len(stubs) == 1
+    assert stubs[0].external_id == "127642"            # numeric jobId lifted from the url
+    assert stubs[0].title == "Senior Software Engineer" and stubs[0].location == "Austin, US"
+
+
+def test_icims_parse_page():
+    from resumaker.providers.sources.icims import parse_page, total_pages
+    row = ('<div class="row"><a class="iCIMS_Anchor" '
+           'href="https://careers-suffolkconstruction.icims.com/jobs/9597/general-superintendent/job?x=1" '
+           'title="9597 - General Superintendent"><h3>General Superintendent</h3></a>'
+           '<span class="glyphicons-map-marker"></span><dd>US-TX-Austin | US-TX-Wilmer</dd></div>')
+    html = f'<span>Page 1 of 15</span>{row}'
+    assert total_pages(html) == 15
+    stubs = parse_page(html)
+    assert len(stubs) == 1
+    assert stubs[0].external_id == "9597" and stubs[0].title == "General Superintendent"
+    assert stubs[0].location == "Austin, TX, US"        # US-TX-Austin normalized, first of pipe list
+    assert stubs[0].url.endswith("/general-superintendent/job")
 
 
 def test_microsoft_parse_response():

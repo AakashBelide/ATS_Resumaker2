@@ -18,10 +18,12 @@ from resumaker.observability.logging import get_logger
 
 _log = get_logger("resumaker.ingestion.scheduler")
 
-# Clean public JSON/SSR APIs with no/low bot protection -> poll often (hourly). `jibe` also
-# serves Atlassian; `google` is the unprotected careers SSR blob.
+# Clean public JSON/SSR/HTML APIs with no/low bot protection -> poll often (hourly). `jibe`
+# also serves Atlassian; `google` is the unprotected careers SSR blob; `ibm` is a clean ES
+# API; `icims` is the scrape-friendly classic iCIMS portal (Suffolk).
 _FAST_SOURCES = {"greenhouse", "lever", "ashby", "amazon", "eightfold", "oracle_cloud",
-                 "smartrecruiters", "mckinsey", "goldman", "jibe", "apple", "google"}
+                 "smartrecruiters", "mckinsey", "goldman", "jibe", "apple", "google",
+                 "ibm", "icims"}
 
 
 def _slow_sources() -> set[str]:
