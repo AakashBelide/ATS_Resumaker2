@@ -112,13 +112,14 @@ Project plan + task tracker. Companion to [RESUME_SYSTEM_BLUEPRINT.md](RESUME_SY
 
 | # | Task | Status | Deps | Owner | Observations |
 |---|------|--------|------|-------|--------------|
-| 5.1 | Discovery page (filter feed) | ⬜ Todo | RA.1 | — | Deterministic filters; no auto-fit-ranking. |
-| 5.2 | Onboarding page (name + URL → agent) | ⬜ Todo | RI.0 | — | Background/batch agents; CLI still works. |
-| 5.3 | Tracker page (status lifecycle + match results) | ⬜ Todo | RA.2 | — | Manual resume/cover trigger. |
-| 5.4 | Dashboard (stats/patterns) | ⬜ Todo | RA.4 | — | |
-| 5.5 | Metrics (model calls/costs/usage) | ⬜ Todo | RA.5 | — | |
-| 5.6 | Profile page (view/edit + enrichment) | ⬜ Todo | RA.3 | — | Keystone. |
-| 5.7 | MV3 extension (capture JD → add-to-Tracker) | ⬜ Todo | RA.2 | — | |
+| 5.0 | Design system + app shell (dark-technical) | ✅ Done | — | — | Owner chose the dark navy + electric-blue/cyan style.css language; ported to globals.css + next/font (Space Grotesk/Inter/Space Mono). Left rail + glass topbar + Sidebar. |
+| 5.1 | Discovery page (filter feed) | ✅ Done | RA.1 | — | Filters/facets/stat cards/job cards + one-click Track. No auto-fit-ranking. Live-verified. |
+| 5.2 | Onboarding page (name + URL → resolve) | ✅ Done | RI.0 | — | Form → POST /v1/onboard (resolved/manual) + current watchlist. |
+| 5.3 | Tracker page (status lifecycle + match results) | ✅ Done | RA.2 | — | Stage-column board + inline stage change + match-report link. Manual resume/cover. Live-verified. |
+| 5.4 | Dashboard (stats/patterns) | ✅ Done | RA.4 | — | Stat cards + sparkline + funnel + company/source bars. Live-verified. |
+| 5.5 | Metrics (model calls/costs/usage) | ✅ Done | RA.5 | — | Per-provider table + Gemini budget bar + runs. |
+| 5.6 | Profile page (view + enrichment proposals) | ✅ Done | RA.3 | — | Signals + prefs + skills + proposals (accept via CLI). |
+| 5.7 | MV3 extension (capture JD → add-to-Tracker) | ⬜ Todo | RA.2 | — | Scaffold exists; wire to /v1/tracker later. |
 
 ---
 
