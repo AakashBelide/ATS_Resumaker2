@@ -1,0 +1,42 @@
+# resumaker deploy stack: the API behind Caddy (auto-HTTPS). Run from repo root:
+#   docker compose -f deploy/docker-compose.yml up -d --build
+services:
+  api:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    env_file: ../.env
+    environment:
+      RESUMAKER_DATA_DIR: /data
+      RESUMAKER_OUTPUT_DIR: /outputs
+    volumes:
+      - ../data:/data          # SQLite + profile (PII) persist on the host (gitignored)
+      - ../outputs:/outputs     # generated resumes/cover letters
+    restart: unless-stopped
+    expose:
+      - "8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/health').status==200 else 1)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  caddy:
+    image: caddy:2-alpine
+    depends_on:
+      - api
+    environment:
+      # Set DOMAIN=your.host in .env for automatic HTTPS; defaults to plain :80 locally.
+      DOMAIN: ${DOMAIN:-:80}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    restart: unless-stopped
+
+volumes:
+  caddy_data:
+  caddy_config:

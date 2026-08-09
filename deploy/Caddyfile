@@ -1,0 +1,9 @@
+# Caddy reverse proxy. With DOMAIN=your.host set, Caddy provisions a Let's Encrypt cert
+# automatically; with the default (:80) it just serves plain HTTP for local/VM testing.
+{$DOMAIN} {
+	encode gzip
+	# Long-lived SSE stream for run progress must not be buffered/timed out.
+	reverse_proxy api:8000 {
+		flush_interval -1
+	}
+}

@@ -1,0 +1,20 @@
+# Non-Docker option: run the API directly on a VM under systemd.
+#   sudo cp deploy/systemd/resumaker.service /etc/systemd/system/
+#   sudo systemctl daemon-reload && sudo systemctl enable --now resumaker
+# Adjust User/WorkingDirectory/paths to your host. Secrets come from the EnvironmentFile.
+[Unit]
+Description=resumaker API
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=resumaker
+WorkingDirectory=/opt/resumaker
+EnvironmentFile=/opt/resumaker/.env
+ExecStart=/usr/local/bin/uv run --no-sync uvicorn apps.api.main:app --host 0.0.0.0 --port 8000
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
