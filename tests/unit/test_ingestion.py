@@ -14,7 +14,7 @@ from resumaker.providers.sources.base import PostingStub
 def test_sources_registered():
     assert set(available_sources()) == {
         "greenhouse", "lever", "ashby", "workday", "eightfold", "amazon", "oracle_cloud",
-        "smartrecruiters", "mckinsey", "goldman", "phenom", "jibe", "radancy", "apple", "bytedance"}
+        "smartrecruiters", "mckinsey", "goldman", "phenom", "jibe", "radancy", "apple", "bytedance", "dassault", "microsoft"}
 
 
 def test_slug_candidates():
@@ -121,3 +121,19 @@ def test_preference_filter(monkeypatch):
     assert service.matches_preferences("Machine Learning Engineer") is True
     assert service.matches_preferences("Sales Engineer") is False   # avoid wins
     assert service.matches_preferences("Product Manager") is False  # no target kw
+
+
+def test_microsoft_parse_response():
+    from resumaker.providers.sources.microsoft import parse_response
+    body = {"operationResult": {"result": {"totalJobs": 2, "jobs": [
+        {"jobId": "1846000", "title": "Senior Software Engineer",
+         "properties": {"locations": ["Redmond, Washington, United States"],
+                        "postingDate": "2026-08-08T00:00:00Z"}},
+        {"jobId": "1846001", "title": "Data Scientist",
+         "properties": {"primaryLocation": "Remote, US", "postingDate": "2026-08-07"}},
+    ]}}}
+    stubs, total = parse_response(body)
+    assert total == 2 and len(stubs) == 2
+    assert stubs[0].external_id == "1846000" and "Redmond" in stubs[0].location
+    assert stubs[0].title == "Senior Software Engineer" and stubs[0].updated_at.startswith("2026")
+    assert stubs[1].location == "Remote, US"

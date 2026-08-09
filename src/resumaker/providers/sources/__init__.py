@@ -4,12 +4,14 @@ from resumaker.providers.sources.apple import AppleSource
 from resumaker.providers.sources.ashby import AshbySource
 from resumaker.providers.sources.base import PostingStub, SourceAdapter
 from resumaker.providers.sources.bytedance import ByteDanceSource
+from resumaker.providers.sources.dassault import DassaultSource
 from resumaker.providers.sources.eightfold import EightfoldSource
 from resumaker.providers.sources.goldman import GoldmanSource
 from resumaker.providers.sources.greenhouse import GreenhouseSource
 from resumaker.providers.sources.jibe import JibeApplySource
 from resumaker.providers.sources.lever import LeverSource
 from resumaker.providers.sources.mckinsey import McKinseySource
+from resumaker.providers.sources.microsoft import MicrosoftSource
 from resumaker.providers.sources.oracle_cloud import OracleCloudSource
 from resumaker.providers.sources.phenom import PhenomSource
 from resumaker.providers.sources.radancy import RadancySource
@@ -32,6 +34,8 @@ _SOURCES: dict[str, SourceAdapter] = {
     RadancySource.source: RadancySource(),
     AppleSource.source: AppleSource(),
     ByteDanceSource.source: ByteDanceSource(),
+    DassaultSource.source: DassaultSource(),
+    MicrosoftSource.source: MicrosoftSource(),
 }
 
 
