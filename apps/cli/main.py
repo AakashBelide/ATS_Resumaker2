@@ -251,6 +251,76 @@ def _cmd_discovery(args) -> int:
     return 0
 
 
+def _fmt_tracked(e) -> str:
+    fit = f"{e.fit_0_100:.0f}" if e.fit_0_100 is not None else "--"
+    app = "" if e.recommend_apply is None else ("apply" if e.recommend_apply else "skip")
+    return (f"  #{e.id:<4} [{e.stage:10}] fit={fit:>3} {app:5} "
+            f"{e.title[:40]:40} {e.company[:16]:16} {e.sponsorship}")
+
+
+def _cmd_track_add(args) -> int:
+    """Add a job to the tracker; runs the match pipeline (fit/gap/sponsorship, no resume)."""
+    from resumaker.ingestion import tracker
+    from resumaker.persistence import db
+    db.init_db()
+    if not args.no_match:
+        print("Running match (scrape -> structure -> keywords|gap|sponsorship -> fit -> apply)...")
+    try:
+        e = tracker.add(job_id=args.job_id, url=args.url, run_match=not args.no_match)
+    except tracker.TrackerError as err:
+        print(f"ERROR: {err}")
+        return 2
+    print("Tracked:\n" + _fmt_tracked(e))
+    if e.run_id:
+        print(f"  match artifacts: outputs/{e.run_id}/")
+    return 0
+
+
+def _cmd_track_list(args) -> int:
+    from resumaker.ingestion import tracker
+    from resumaker.persistence import db
+    db.init_db()
+    rows = tracker.list_tracked(stage=args.stage)
+    print(f"TRACKER - {len(rows)} job(s)" + (f" in stage '{args.stage}'" if args.stage else ""))
+    for e in rows:
+        print(_fmt_tracked(e))
+    return 0
+
+
+def _cmd_track_stage(args) -> int:
+    from resumaker.ingestion import tracker
+    from resumaker.persistence import db
+    db.init_db()
+    try:
+        e = tracker.set_stage(args.id, args.stage)
+    except tracker.TrackerError as err:
+        print(f"ERROR: {err}")
+        return 2
+    print(f"#{e.id} -> {e.stage}")
+    return 0
+
+
+def _cmd_track_note(args) -> int:
+    from resumaker.ingestion import tracker
+    from resumaker.persistence import db
+    db.init_db()
+    try:
+        tracker.set_notes(args.id, args.text)
+    except tracker.TrackerError as err:
+        print(f"ERROR: {err}")
+        return 2
+    print(f"#{args.id} note saved")
+    return 0
+
+
+def _cmd_track_rm(args) -> int:
+    from resumaker.ingestion import tracker
+    from resumaker.persistence import db
+    db.init_db()
+    print(f"removed {tracker.remove(args.id)} entry")
+    return 0
+
+
 def _cmd_remove(args) -> int:
     """Remove a company from the watchlist."""
     from resumaker.persistence import db
@@ -344,6 +414,28 @@ def main(argv: list[str] | None = None) -> int:
     dc.add_argument("--offset", type=int, default=0)
     dc.add_argument("--json", action="store_true")
     dc.set_defaults(func=_cmd_discovery)
+
+    tk = sub.add_parser("track", help="tracker: jobs you're pursuing (add runs the match)")
+    tksub = tk.add_subparsers(dest="track_cmd", required=True)
+    ta = tksub.add_parser("add", help="add a job (--job-id from discovery, or --url)")
+    ta.add_argument("--job-id", type=int, default=None, dest="job_id")
+    ta.add_argument("--url", default=None)
+    ta.add_argument("--no-match", action="store_true", help="skip the match run (just track)")
+    ta.set_defaults(func=_cmd_track_add)
+    tl = tksub.add_parser("list", help="list tracked jobs")
+    tl.add_argument("--stage", default=None)
+    tl.set_defaults(func=_cmd_track_list)
+    ts = tksub.add_parser("stage", help="advance a job's application stage")
+    ts.add_argument("id", type=int)
+    ts.add_argument("stage", help="interested|applied|interview|offer|rejected|skipped")
+    ts.set_defaults(func=_cmd_track_stage)
+    tn = tksub.add_parser("note", help="set notes on a tracked job")
+    tn.add_argument("id", type=int)
+    tn.add_argument("text")
+    tn.set_defaults(func=_cmd_track_note)
+    tr = tksub.add_parser("rm", help="remove a tracked job")
+    tr.add_argument("id", type=int)
+    tr.set_defaults(func=_cmd_track_rm)
 
     rm = sub.add_parser("remove", help="remove a company from the watchlist")
     rm.add_argument("name", help="company name (exact)")

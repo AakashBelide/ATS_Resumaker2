@@ -14,7 +14,11 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 JobStatus = Literal["new", "seen", "queued", "processed", "applied", "skipped"]
-RunStatus = Literal["pending", "running", "done", "error", "gated_out"]
+RunStatus = Literal["pending", "running", "done", "error", "gated_out", "matched"]
+# Application lifecycle for a tracked job (RA.2). `interested` = added, match run done.
+TrackerStage = Literal["interested", "applied", "interview", "offer", "rejected", "skipped"]
+TRACKER_STAGES: tuple[str, ...] = (
+    "interested", "applied", "interview", "offer", "rejected", "skipped")
 
 
 class BoardRef(BaseModel):
@@ -73,3 +77,23 @@ class RunRecord(BaseModel):
     error: str = ""
     created_at: datetime | None = None
     finished_at: datetime | None = None
+
+
+class TrackerEntry(BaseModel):
+    """A job the owner is actively pursuing (RA.2). Added from Discovery / the extension;
+    on add we run the match pipeline (fit/gap/sponsorship/keywords, NO resume/cover) and
+    store the outcome + an application-lifecycle `stage`. Resume/cover are triggered later
+    by hand. Files under the match run's `out_dir` stay canonical; this row indexes them."""
+    id: int | None = None
+    job_id: int | None = None          # FK to jobs when added from the watchlist
+    url: str = ""
+    company: str = ""
+    title: str = ""
+    stage: TrackerStage = "interested"
+    run_id: str = ""                   # the match RunRecord.id (fit/gap/sponsorship/keywords)
+    fit_0_100: float | None = None
+    recommend_apply: bool | None = None
+    sponsorship: str = ""              # resolved verdict, e.g. "likely" / "not_eligible"
+    notes: str = ""
+    created_at: datetime | None = None
+    updated_at: datetime | None = None

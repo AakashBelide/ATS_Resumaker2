@@ -120,6 +120,53 @@ def test_discovery_filters_and_facets(tmp_db, monkeypatch):
     assert len(discover(DiscoveryFilters(limit=2)).jobs) == 2
 
 
+def test_tracker_add_runs_match_and_lifecycle(tmp_db, monkeypatch):
+    from resumaker.domain import JobRecord
+    from resumaker.ingestion import tracker
+    from resumaker.persistence import db
+
+    jid, _ = db.upsert_job(JobRecord(source="greenhouse", external_id="1",
+                                     title="ML Engineer", company="Anthropic",
+                                     location="SF, CA", url="https://x/jobs/1", content_hash="1"))
+
+    # stub the match pipeline (no network/LLM) with a PipelineResult-like object
+    from types import SimpleNamespace
+    res = SimpleNamespace(
+        error="",
+        job=SimpleNamespace(company="Anthropic", title="Machine Learning Engineer"),
+        fit=SimpleNamespace(final_0_100=78.0),
+        decision=SimpleNamespace(recommend_apply=True),
+        sponsorship={"verdict": "likely"},
+        out_dir="/tmp/outputs/anthropic-mle")
+    monkeypatch.setattr("resumaker.pipeline.run_pipeline", lambda **kw: res)
+
+    e = tracker.add(job_id=jid)
+    assert e.stage == "interested" and e.fit_0_100 == 78.0 and e.recommend_apply is True
+    assert e.sponsorship == "likely" and e.run_id == "anthropic-mle"
+    assert e.title == "Machine Learning Engineer"      # structured JD title preferred
+
+    # lifecycle
+    assert tracker.set_stage(e.id, "applied").stage == "applied"
+    with pytest.raises(tracker.TrackerError):
+        tracker.set_stage(e.id, "bogus")
+    tracker.set_notes(e.id, "referred by X")
+    assert db.get_tracker(e.id).notes == "referred by X"
+
+    # re-add refreshes match but preserves stage + notes (keyed on url)
+    e2 = tracker.add(job_id=jid)
+    assert e2.id == e.id and e2.stage == "applied" and e2.notes == "referred by X"
+
+    assert len(tracker.list_tracked()) == 1
+    assert len(tracker.list_tracked(stage="applied")) == 1
+    assert len(tracker.list_tracked(stage="interested")) == 0
+
+
+def test_tracker_add_requires_target(tmp_db):
+    from resumaker.ingestion import tracker
+    with pytest.raises(tracker.TrackerError):
+        tracker.add(run_match=False)
+
+
 def test_discovery_on_target_gate(tmp_db, monkeypatch):
     from resumaker.domain import JobRecord
     from resumaker.ingestion import DiscoveryFilters, discover

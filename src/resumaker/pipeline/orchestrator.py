@@ -49,6 +49,7 @@ def _noop(stage: str, status: str, detail: str = "") -> None:
 
 def run_pipeline(url: str | None = None, *, job=None, out_dir: str | None = None,
                  run_id: str | None = None, target_pages: int = 1, gate: bool = False,
+                 match_only: bool = False,
                  parallel: bool = True, make_cover_letter: bool = True,
                  semantic_method: str = "lexical",
                  on_progress: Progress | None = None) -> PipelineResult:
@@ -59,6 +60,10 @@ def run_pipeline(url: str | None = None, *, job=None, out_dir: str | None = None
     run_id         : stable id for this run (the API supplies one up front so SSE +
                      artifacts route immediately); defaults to the company-role slug.
     gate           : if True, stop before resume/cover when apply-decision is negative.
+    match_only     : if True, stop after the apply decision - run the full analysis
+                     (keywords/gap/sponsorship/fit/apply) but NEVER resume/cover. This is
+                     the Tracker's on-add path (RA.2): cheap, LLM-bounded, human triggers
+                     resume/cover later. Takes precedence over `gate`.
     parallel       : fan out keywords/gap/sponsorship concurrently.
     on_progress    : callback(stage, status, detail); status in start|done|skip|error.
     """
@@ -127,6 +132,15 @@ def run_pipeline(url: str | None = None, *, job=None, out_dir: str | None = None
         verdict = timed("sponsorship_resolve", lambda: resolve_sponsorship(job, sig))
         res.sponsorship = dict(verdict.__dict__)
         res.decision = timed("apply", lambda: decide_apply(job, res.fit, verdict))
+
+        # 3b) match-only stop (RA.2 Tracker): full analysis done, never resume/cover.
+        if match_only:
+            res.timings = timings
+            reporter.emit("match_only", "done", "analysis complete; resume/cover on demand")
+            _save(res, url, job, out_dir)
+            _index_run(slug, res, status="matched")
+            reporter.finish()
+            return res
 
         # 4) apply gate (optional): don't spend generation compute on a hard no
         if gate and not res.decision.recommend_apply:

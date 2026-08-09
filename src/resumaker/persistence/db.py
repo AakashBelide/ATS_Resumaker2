@@ -16,7 +16,13 @@ from contextlib import contextmanager
 from datetime import UTC, datetime, timedelta
 
 from resumaker.config import get_settings
-from resumaker.domain.ingestion import BoardRef, Company, JobRecord, RunRecord
+from resumaker.domain.ingestion import (
+    BoardRef,
+    Company,
+    JobRecord,
+    RunRecord,
+    TrackerEntry,
+)
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS companies (
@@ -64,8 +70,25 @@ CREATE TABLE IF NOT EXISTS runs (
     created_at       TEXT NOT NULL,
     finished_at      TEXT
 );
+CREATE TABLE IF NOT EXISTS tracker (
+    id               INTEGER PRIMARY KEY AUTOINCREMENT,
+    job_id           INTEGER REFERENCES jobs(id) ON DELETE SET NULL,
+    url              TEXT NOT NULL DEFAULT '',
+    company          TEXT NOT NULL DEFAULT '',
+    title            TEXT NOT NULL DEFAULT '',
+    stage            TEXT NOT NULL DEFAULT 'interested',
+    run_id           TEXT NOT NULL DEFAULT '',
+    fit_0_100        REAL,
+    recommend_apply  INTEGER,
+    sponsorship      TEXT NOT NULL DEFAULT '',
+    notes            TEXT NOT NULL DEFAULT '',
+    created_at       TEXT NOT NULL,
+    updated_at       TEXT NOT NULL,
+    UNIQUE (url)
+);
 CREATE INDEX IF NOT EXISTS idx_runs_created ON runs(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_jobs_status ON jobs(status);
+CREATE INDEX IF NOT EXISTS idx_tracker_stage ON tracker(stage);
 """
 
 
@@ -174,6 +197,12 @@ def upsert_job(job: JobRecord) -> tuple[int, bool]:
 def set_job_status(job_id: int, status: str) -> None:
     with connect() as conn:
         conn.execute("UPDATE jobs SET status=? WHERE id=?", (status, job_id))
+
+
+def get_job(job_id: int) -> JobRecord | None:
+    with connect() as conn:
+        row = conn.execute("SELECT * FROM jobs WHERE id=?", (job_id,)).fetchone()
+    return _job_from_row(row) if row else None
 
 
 def list_jobs(status: str | None = None, limit: int = 100) -> list[JobRecord]:
@@ -299,6 +328,67 @@ def list_companies(active_only: bool = True) -> list[Company]:
     return out
 
 
+# ------------------------------------------------------------------ tracker (RA.2)
+def upsert_tracker(entry: TrackerEntry) -> int:
+    """Insert a tracked job or refresh its match fields (keyed on url). Preserves `stage`
+    and `notes` on re-add (a re-match shouldn't reset the owner's lifecycle/notes)."""
+    now = _now()
+    with connect() as conn:
+        cur = conn.execute(
+            """INSERT INTO tracker (job_id, url, company, title, stage, run_id, fit_0_100,
+                   recommend_apply, sponsorship, notes, created_at, updated_at)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
+               ON CONFLICT(url) DO UPDATE SET
+                   job_id=excluded.job_id, company=excluded.company, title=excluded.title,
+                   run_id=excluded.run_id, fit_0_100=excluded.fit_0_100,
+                   recommend_apply=excluded.recommend_apply, sponsorship=excluded.sponsorship,
+                   updated_at=excluded.updated_at
+               RETURNING id""",
+            (entry.job_id, entry.url, entry.company, entry.title, entry.stage, entry.run_id,
+             entry.fit_0_100, _b(entry.recommend_apply), entry.sponsorship, entry.notes,
+             now, now))
+        row = cur.fetchone()
+        assert row is not None
+        return int(row["id"])
+
+
+def list_tracker(stage: str | None = None) -> list[TrackerEntry]:
+    q = "SELECT * FROM tracker"
+    args: list = []
+    if stage:
+        q += " WHERE stage=?"
+        args.append(stage)
+    q += " ORDER BY updated_at DESC"
+    with connect() as conn:
+        rows = conn.execute(q, args).fetchall()
+    return [_tracker_from_row(r) for r in rows]
+
+
+def get_tracker(entry_id: int) -> TrackerEntry | None:
+    with connect() as conn:
+        row = conn.execute("SELECT * FROM tracker WHERE id=?", (entry_id,)).fetchone()
+    return _tracker_from_row(row) if row else None
+
+
+def set_tracker_stage(entry_id: int, stage: str) -> bool:
+    with connect() as conn:
+        cur = conn.execute("UPDATE tracker SET stage=?, updated_at=? WHERE id=?",
+                           (stage, _now(), entry_id))
+        return cur.rowcount > 0
+
+
+def set_tracker_notes(entry_id: int, notes: str) -> bool:
+    with connect() as conn:
+        cur = conn.execute("UPDATE tracker SET notes=?, updated_at=? WHERE id=?",
+                           (notes, _now(), entry_id))
+        return cur.rowcount > 0
+
+
+def remove_tracker(entry_id: int) -> int:
+    with connect() as conn:
+        return conn.execute("DELETE FROM tracker WHERE id=?", (entry_id,)).rowcount
+
+
 # ------------------------------------------------------------------ row mappers
 def _b(v: bool | None) -> int | None:
     return None if v is None else int(v)
@@ -327,6 +417,15 @@ def _run_from_row(r: sqlite3.Row) -> RunRecord:
         ats_verify_pass=None if r["ats_verify_pass"] is None else bool(r["ats_verify_pass"]),
         page_count=r["page_count"], cost_usd=r["cost_usd"], error=r["error"],
         created_at=_dt(r["created_at"]), finished_at=_dt(r["finished_at"]))
+
+
+def _tracker_from_row(r: sqlite3.Row) -> TrackerEntry:
+    return TrackerEntry(
+        id=r["id"], job_id=r["job_id"], url=r["url"], company=r["company"], title=r["title"],
+        stage=r["stage"], run_id=r["run_id"], fit_0_100=r["fit_0_100"],
+        recommend_apply=None if r["recommend_apply"] is None else bool(r["recommend_apply"]),
+        sponsorship=r["sponsorship"], notes=r["notes"],
+        created_at=_dt(r["created_at"]), updated_at=_dt(r["updated_at"]))
 
 
 def _job_from_row(r: sqlite3.Row) -> JobRecord:
