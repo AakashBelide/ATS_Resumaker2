@@ -3,6 +3,7 @@ from resumaker.providers.sources.amazon import AmazonJobsSource
 from resumaker.providers.sources.apple import AppleSource
 from resumaker.providers.sources.ashby import AshbySource
 from resumaker.providers.sources.base import PostingStub, SourceAdapter
+from resumaker.providers.sources.bytedance import ByteDanceSource
 from resumaker.providers.sources.eightfold import EightfoldSource
 from resumaker.providers.sources.goldman import GoldmanSource
 from resumaker.providers.sources.greenhouse import GreenhouseSource
@@ -30,6 +31,7 @@ _SOURCES: dict[str, SourceAdapter] = {
     JibeApplySource.source: JibeApplySource(),
     RadancySource.source: RadancySource(),
     AppleSource.source: AppleSource(),
+    ByteDanceSource.source: ByteDanceSource(),
 }
 
 
