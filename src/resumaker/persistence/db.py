@@ -207,6 +207,13 @@ def add_company(company: Company) -> int:
     return cid
 
 
+def remove_company(name: str) -> int:
+    """Delete a company (and its boards, via cascade) from the watchlist. Returns rows removed."""
+    with connect() as conn:
+        cur = conn.execute("DELETE FROM companies WHERE name=?", (name,))
+        return cur.rowcount
+
+
 def list_companies(active_only: bool = True) -> list[Company]:
     with connect() as conn:
         q = "SELECT * FROM companies" + (" WHERE active=1" if active_only else "")

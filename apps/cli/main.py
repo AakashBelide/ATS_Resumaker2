@@ -226,6 +226,14 @@ def _cmd_onboard_seed(args) -> int:
     return 0
 
 
+def _cmd_remove(args) -> int:
+    """Remove a company from the watchlist."""
+    from resumaker.persistence import db
+    n = db.remove_company(args.name)
+    print(f"removed {n} row(s) for {args.name!r}")
+    return 0
+
+
 def _cmd_schedule(args) -> int:
     """Run the watchlist poll once (--once) or start the recurring scheduler (blocking)."""
     from resumaker.ingestion.scheduler import run_tick
@@ -297,6 +305,10 @@ def main(argv: list[str] | None = None) -> int:
     os_ = sub.add_parser("onboard-seed", help="onboard every company in a JSON list; report resolved/manual")
     os_.add_argument("file", help="JSON list of company names (or {name, careers_url} objects)")
     os_.set_defaults(func=_cmd_onboard_seed)
+
+    rm = sub.add_parser("remove", help="remove a company from the watchlist")
+    rm.add_argument("name", help="company name (exact)")
+    rm.set_defaults(func=_cmd_remove)
 
     sc = sub.add_parser("schedule", help="poll the watchlist (--once) or run the recurring scheduler")
     sc.add_argument("--once", action="store_true", help="run a single ingest tick and exit")
