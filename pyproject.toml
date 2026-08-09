@@ -39,6 +39,12 @@ api = [
 scrape = [
     "playwright>=1.62.0",
 ]
+# NOTE: a headless/stealth tier (for Tesla/Meta/Qualcomm/Google - bot-protected custom
+# career sites) was evaluated with Scrapling and deliberately NOT included: it pins an
+# older playwright (conflicts with our `scrape` extra), needs a heavy camoufox/patchright
+# browser stack, and per research still needs a residential IP to clear Akamai/DataDome.
+# It fights the lightweight/self-hostable goal for ~5 companies. If you want that tier,
+# run it out-of-band on your own machine; see docs/JOB_INGESTION_RESEARCH.md.
 dev = [
     "ruff>=0.7.0",
     "mypy>=1.13.0",
