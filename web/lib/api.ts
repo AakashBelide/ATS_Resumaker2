@@ -121,3 +121,23 @@ export type Dashboard = {
 };
 export const dashboard = (days = 14) => get<Dashboard>(`/v1/dashboard${qs({ days })}`);
 export const metrics = () => get<{ cost: Record<string, any>; runs: Dashboard["runs"] }>("/v1/metrics");
+
+export async function setTrackerNotes(id: number, notes: string): Promise<TrackerEntry> {
+  const r = await fetch(`${BASE}/v1/tracker/${id}/notes`, {
+    method: "PATCH", headers: headers(), body: JSON.stringify({ notes }),
+  });
+  if (!r.ok) throw new Error(`setTrackerNotes → ${r.status}`);
+  return r.json();
+}
+
+// ---- Onboarding (RI.0) ------------------------------------------------------
+export type Company = { id: number | null; name: string; active: boolean; boards: { source: string; token: string; extra: Record<string, string> }[] };
+export type OnboardResult = { name: string; resolved: boolean; method: string; boards: { source: string; token: string; extra: Record<string, string> }[]; note: string; tried: string[] };
+export const listCompanies = () => get<Company[]>("/v1/companies");
+export async function onboard(name: string, careers_url?: string, add = true): Promise<OnboardResult> {
+  const r = await fetch(`${BASE}/v1/onboard`, {
+    method: "POST", headers: headers(), body: JSON.stringify({ name, careers_url, add }),
+  });
+  if (!r.ok) throw new Error(`onboard → ${r.status}`);
+  return r.json();
+}
