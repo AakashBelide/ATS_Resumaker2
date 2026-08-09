@@ -8,7 +8,9 @@ are flagged. A preference filter (target vs avoid role keywords) narrows what we
 """
 from __future__ import annotations
 
+import random
 import re
+import time
 from dataclasses import dataclass, field
 
 from resumaker.domain import Company, JobRecord
@@ -34,13 +36,16 @@ def _content_hash(stub) -> str:
 
 
 def ingest_company(company: Company, *, preferred_only: bool = False,
-                   us_only: bool = True) -> IngestResult:
+                   us_only: bool = True, sources: set[str] | None = None) -> IngestResult:
     """List every board of `company`, dedupe into `jobs`, return counts + the new rows.
     `preferred_only` keeps only titles matching job-search preferences; `us_only` (default)
-    drops postings whose location is clearly outside the US (the candidate is US-based and
-    relocates within the US, so global boards like Workday must be geo-filtered)."""
+    drops postings whose location is clearly outside the US; `sources` (optional) limits to
+    boards on those ATSs (lets the scheduler poll Workday and the fast boards on different
+    cadences)."""
     res = IngestResult(company=company.name)
     for board in company.boards:
+        if sources is not None and board.source not in sources:
+            continue
         try:
             stubs = get_source(board.source).list_postings(board.token, **board.extra)
         except Exception as e:  # noqa: BLE001 - one bad board must not sink the rest
@@ -67,9 +72,19 @@ def ingest_company(company: Company, *, preferred_only: bool = False,
     return res
 
 
-def ingest_all(*, preferred_only: bool = False) -> list[IngestResult]:
-    return [ingest_company(c, preferred_only=preferred_only)
-            for c in db.list_companies(active_only=True)]
+def ingest_all(*, preferred_only: bool = False, us_only: bool = True,
+               sources: set[str] | None = None) -> list[IngestResult]:
+    """Ingest every active company, spacing requests with jitter so a full sweep across
+    the watchlist doesn't burst against any one ATS."""
+    companies = db.list_companies(active_only=True)
+    results: list[IngestResult] = []
+    for i, c in enumerate(companies):
+        if i:
+            time.sleep(random.uniform(0.5, 2.0))     # polite spacing between companies
+        r = ingest_company(c, preferred_only=preferred_only, us_only=us_only, sources=sources)
+        if sources is None or r.new or r.unchanged or r.errors:
+            results.append(r)
+    return results
 
 
 _US_STATES = {

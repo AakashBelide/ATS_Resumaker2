@@ -1,0 +1,15 @@
+- generic [ref=f1e3]:
+  - banner [ref=f1e4]:
+    - img "Workday" [ref=f1e7]
+  - main [ref=f1e8]:
+    - generic [ref=f1e10]:
+      - generic [ref=f1e11] [cursor=pointer]: English
+      - generic [ref=f1e14]:
+        - heading "Workday is currently unavailable." [level=2] [ref=f1e15]
+        - paragraph [ref=f1e16]
+      - generic [ref=f1e18]:
+        - paragraph [ref=f1e19]: We are experiencing a service interruption.
+        - paragraph [ref=f1e20]: Your service will be restored as quickly as possible.
+      - paragraph [ref=f1e23]: We apologize for the inconvenience. If you are a Workday customer and require additional assistance please contact the Workday Administrator within your organization. Otherwise, please check back later.
+  - contentinfo [ref=f1e24]:
+    - generic [ref=f1e25]: © 2026 Workday, Inc. All rights reserved.

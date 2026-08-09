@@ -64,7 +64,10 @@ class Settings(BaseSettings):
 
     # -- watchlist ingestion + scheduler (RI) --------------------------------
     scheduler_enabled: bool = False       # if True, the API polls the watchlist on a cadence
+    # Clean public JSON boards (Greenhouse/Lever/Ashby) have no bot protection - poll often.
     scheduler_interval_minutes: int = 60
+    # Workday sits behind Akamai + throttles; poll it gently (daily) to avoid blocks.
+    scheduler_workday_interval_minutes: int = 1440
     notify_webhook: str | None = None     # optional: POST a JSON digest of new jobs here
 
     @model_validator(mode="after")
