@@ -1,0 +1,10 @@
+{
+  "manifest_version": 3,
+  "name": "resumaker",
+  "version": "0.1.0",
+  "description": "Capture the current job posting and tailor a grounded, ATS-optimized resume via the resumaker API.",
+  "permissions": ["activeTab", "storage", "scripting"],
+  "host_permissions": ["http://localhost:8000/*", "https://*/*"],
+  "action": { "default_popup": "popup.html", "default_title": "resumaker" },
+  "background": { "service_worker": "background.js", "type": "module" }
+}

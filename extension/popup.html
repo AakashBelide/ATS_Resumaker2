@@ -1,0 +1,26 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <style>
+      body { font: 13px system-ui, sans-serif; width: 320px; margin: 0; padding: 12px; background: #0b0d12; color: #e6e8ee; }
+      input { width: 100%; box-sizing: border-box; padding: 6px; margin: 4px 0; background: #11141b; color: #e6e8ee; border: 1px solid #333; border-radius: 4px; }
+      button { width: 100%; padding: 8px; margin-top: 6px; background: #3b82f6; color: #fff; border: 0; border-radius: 4px; cursor: pointer; }
+      .muted { opacity: 0.6; } .ok { color: #4ade80; } .err { color: #f87171; }
+      details { margin-top: 10px; } summary { cursor: pointer; opacity: 0.7; }
+    </style>
+  </head>
+  <body>
+    <strong>resumaker</strong>
+    <p class="muted" id="url">reading current tab…</p>
+    <button id="go">Tailor for this JD</button>
+    <p id="status"></p>
+    <details>
+      <summary>Settings</summary>
+      <input id="apiBase" placeholder="API base (http://localhost:8000)" />
+      <input id="apiToken" placeholder="API token" type="password" />
+      <button id="save">Save</button>
+    </details>
+    <script src="popup.js"></script>
+  </body>
+</html>
