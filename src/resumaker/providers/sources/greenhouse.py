@@ -1,16 +1,21 @@
 """Greenhouse board-listing adapter. Lists every open posting for a board token via the
 public boards API (`boards-api.greenhouse.io/v1/boards/{token}/jobs`). The full JD is then
-fetched on demand by `scrape/` using the per-job URL. This is the reference adapter proving
-the `sources/` seam; Lever/Ashby/Workday follow the same shape in the RI phase.
+fetched on demand by `scrape/` using the per-job URL.
+
+Bandwidth: Greenhouse supports conditional GET (ETag -> 304 Not Modified) and gzip, so on
+an unchanged board we send `If-None-Match` and get a cheap 304 - the recommended way to
+"avoid re-fetching old postings". A 304 returns [] (nothing new to ingest), which is
+behaviorally identical to an unchanged board for dedupe.
 """
 from __future__ import annotations
 
 import httpx
 
+from resumaker.persistence import cache
 from resumaker.providers.sources.base import PostingStub
+from resumaker.providers.sources.ua import UA
 
-_UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
-       "(KHTML, like Gecko) Chrome/124.0 Safari/537.36")
+_ETAG_NS = "gh_etag"
 
 
 class GreenhouseSource:
@@ -18,8 +23,17 @@ class GreenhouseSource:
 
     def list_postings(self, token: str, **kwargs: str) -> list[PostingStub]:
         api = f"https://boards-api.greenhouse.io/v1/boards/{token}/jobs"
-        r = httpx.get(api, headers={"User-Agent": _UA}, timeout=20, follow_redirects=True)
+        headers = {"User-Agent": UA, "Accept-Encoding": "gzip"}
+        etag_key = cache.make_key(token)
+        prior = cache.get(_ETAG_NS, etag_key)
+        if prior:
+            headers["If-None-Match"] = prior
+        r = httpx.get(api, headers=headers, timeout=20, follow_redirects=True)
+        if r.status_code == 304:            # unchanged since last poll - nothing new
+            return []
         r.raise_for_status()
+        if r.headers.get("ETag"):
+            cache.put(_ETAG_NS, etag_key, r.headers["ETag"])
         out: list[PostingStub] = []
         for j in r.json().get("jobs", []) or []:
             jid = str(j.get("id", ""))

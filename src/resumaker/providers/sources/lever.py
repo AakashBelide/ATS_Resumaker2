@@ -5,9 +5,7 @@ from __future__ import annotations
 import httpx
 
 from resumaker.providers.sources.base import PostingStub
-
-_UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
-       "(KHTML, like Gecko) Chrome/124.0 Safari/537.36")
+from resumaker.providers.sources.ua import UA
 
 
 class LeverSource:
@@ -15,7 +13,7 @@ class LeverSource:
 
     def list_postings(self, token: str, **kwargs: str) -> list[PostingStub]:
         api = f"https://api.lever.co/v0/postings/{token}?mode=json"
-        r = httpx.get(api, headers={"User-Agent": _UA}, timeout=20, follow_redirects=True)
+        r = httpx.get(api, headers={"User-Agent": UA}, timeout=20, follow_redirects=True)
         r.raise_for_status()
         out: list[PostingStub] = []
         for j in r.json() or []:

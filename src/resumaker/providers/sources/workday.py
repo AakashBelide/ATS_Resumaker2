@@ -69,7 +69,10 @@ class WorkdaySource:
             if r.status_code == 200:
                 return r.json() or {}
             if r.status_code in (429, 403):                   # throttled - back off and retry
-                time.sleep(2.0 * (attempt + 1) + random.uniform(0, 1))
+                retry_after = r.headers.get("Retry-After")    # honor server's hint if given
+                delay = (float(retry_after) if (retry_after or "").isdigit()
+                         else 2.0 * (attempt + 1) + random.uniform(0, 1))
+                time.sleep(delay)
                 continue
             return None                                       # 404/5xx etc. - stop this board
         _log.warning("workday throttled, giving up", extra={"cxs": cxs, "offset": offset})
