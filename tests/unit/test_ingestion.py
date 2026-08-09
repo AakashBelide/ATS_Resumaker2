@@ -82,6 +82,18 @@ def test_service_dedupes_on_reingest(tmp_db, monkeypatch):
     assert r3.new == 1 and r3.unchanged == 1
 
 
+@pytest.mark.parametrize("loc,is_us", [
+    ("Boston, MA", True), ("New York, NY", True), ("Chicago, IL", True),
+    ("Remote - US", True), ("United States", True), ("San Francisco, California", True),
+    ("Dublin, CA", True),                         # Dublin, California (US abbr wins)
+    ("", True),                                    # unknown -> keep
+    ("Bengaluru, India", False), ("Krakow, Poland", False), ("London, United Kingdom", False),
+    ("Toronto, ON, Canada", False), ("Gdansk, Poland", False), ("Singapore", False),
+])
+def test_is_us_location(loc, is_us):
+    assert service.is_us_location(loc) is is_us
+
+
 def test_preference_filter(monkeypatch):
     monkeypatch.setattr("resumaker.enrichment.preferences",
                         lambda: {"target_roles": ["engineer"], "avoid_roles": ["sales"]})

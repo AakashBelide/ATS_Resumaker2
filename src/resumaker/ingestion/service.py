@@ -8,6 +8,7 @@ are flagged. A preference filter (target vs avoid role keywords) narrows what we
 """
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 
 from resumaker.domain import Company, JobRecord
@@ -32,9 +33,12 @@ def _content_hash(stub) -> str:
     return cache.make_key(stub.title, stub.location, stub.updated_at)
 
 
-def ingest_company(company: Company, *, preferred_only: bool = False) -> IngestResult:
+def ingest_company(company: Company, *, preferred_only: bool = False,
+                   us_only: bool = True) -> IngestResult:
     """List every board of `company`, dedupe into `jobs`, return counts + the new rows.
-    `preferred_only` keeps only postings whose title matches job-search preferences."""
+    `preferred_only` keeps only titles matching job-search preferences; `us_only` (default)
+    drops postings whose location is clearly outside the US (the candidate is US-based and
+    relocates within the US, so global boards like Workday must be geo-filtered)."""
     res = IngestResult(company=company.name)
     for board in company.boards:
         try:
@@ -44,6 +48,8 @@ def ingest_company(company: Company, *, preferred_only: bool = False) -> IngestR
             continue
         for stub in stubs:
             if preferred_only and not matches_preferences(stub.title):
+                continue
+            if us_only and not is_us_location(stub.location):
                 continue
             rec = JobRecord(source=stub.source, external_id=stub.external_id, url=stub.url,
                             title=stub.title, company=company.name, location=stub.location,
@@ -64,6 +70,58 @@ def ingest_company(company: Company, *, preferred_only: bool = False) -> IngestR
 def ingest_all(*, preferred_only: bool = False) -> list[IngestResult]:
     return [ingest_company(c, preferred_only=preferred_only)
             for c in db.list_companies(active_only=True)]
+
+
+_US_STATES = {
+    "al", "ak", "az", "ar", "ca", "co", "ct", "de", "fl", "ga", "hi", "id", "il", "in",
+    "ia", "ks", "ky", "la", "me", "md", "ma", "mi", "mn", "ms", "mo", "mt", "ne", "nv",
+    "nh", "nj", "nm", "ny", "nc", "nd", "oh", "ok", "or", "pa", "ri", "sc", "sd", "tn",
+    "tx", "ut", "vt", "va", "wa", "wv", "wi", "wy", "dc",
+}
+_US_STATE_NAMES = {
+    "alabama", "alaska", "arizona", "arkansas", "california", "colorado", "connecticut",
+    "delaware", "florida", "georgia", "hawaii", "idaho", "illinois", "indiana", "iowa",
+    "kansas", "kentucky", "louisiana", "maine", "maryland", "massachusetts", "michigan",
+    "minnesota", "mississippi", "missouri", "montana", "nebraska", "nevada", "ohio",
+    "oklahoma", "oregon", "pennsylvania", "tennessee", "texas", "utah", "vermont",
+    "virginia", "washington", "wisconsin", "wyoming", "new york", "new jersey",
+    "new mexico", "new hampshire", "north carolina", "north dakota", "south carolina",
+    "south dakota", "rhode island", "west virginia",
+}
+_US_TERMS = ("united states", "u.s.a", "usa", " us", "us ", "u.s.", "remote us",
+             "remote - us", "remote, us", "remote (us")
+# Clearly-foreign markers: if present (and no explicit US state), treat as non-US.
+_FOREIGN = {
+    "india", "poland", "canada", "united kingdom", "uk", "ireland", "germany", "france",
+    "spain", "italy", "netherlands", "sweden", "switzerland", "singapore", "australia",
+    "china", "japan", "hong kong", "korea", "brazil", "mexico", "argentina", "israel",
+    "philippines", "vietnam", "indonesia", "malaysia", "thailand", "romania", "portugal",
+    "belgium", "denmark", "norway", "finland", "austria", "czech", "hungary", "greece",
+    "turkey", "egypt", "south africa", "nigeria", "kenya", "uae", "dubai", "saudi",
+    "new zealand", "colombia", "chile", "peru", "costa rica", "bangalore", "bengaluru",
+    "hyderabad", "mumbai", "pune", "chennai", "gurgaon", "gurugram", "noida", "delhi",
+    "london", "toronto", "vancouver", "montreal", "dublin", "krakow", "gdansk", "warsaw",
+    "paris", "berlin", "munich", "amsterdam", "tokyo", "sydney", "bangkok", "manila",
+}
+
+
+def is_us_location(location: str) -> bool:
+    """Heuristic: is this posting US-based? Empty/unknown counts as US (keep - the JD will
+    clarify). An explicit US state name or US term wins; a 2-letter state abbr is only
+    honored after a comma ('Boston, MA') to avoid matching prepositions like 'in'/'or';
+    a foreign country/city (without a US state abbr) marks it out."""
+    loc = (location or "").strip().lower()
+    if not loc:
+        return True
+    if any(name in loc for name in _US_STATE_NAMES):
+        return True
+    if any(term in f" {loc} " for term in _US_TERMS):
+        return True
+    m = re.search(r",\s*([a-z]{2})\b", loc)     # 'City, ST' pattern only
+    us_abbr = bool(m and m.group(1) in _US_STATES)
+    # Foreign country/city (without a US state abbr) is out; US abbr or a bare city stays.
+    is_foreign = any(f in loc for f in _FOREIGN) and not us_abbr
+    return not is_foreign
 
 
 def matches_preferences(title: str) -> bool:
