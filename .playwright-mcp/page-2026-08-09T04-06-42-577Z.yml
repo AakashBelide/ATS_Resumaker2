@@ -1,0 +1,162 @@
+- generic [active] [ref=f11e1]:
+  - list [ref=f11e2]:
+    - generic [ref=f11e3]:
+      - button [ref=f11e4] [cursor=pointer]
+      - link [ref=f11e13] [cursor=pointer]:
+        - /url: https://lifeattiktok.com/
+        - img "logo" [ref=f11e14]
+    - generic [ref=f11e15]:
+      - button "#LifeAtTikTok" [ref=f11e16] [cursor=pointer]
+      - button "Teams" [ref=f11e21] [cursor=pointer]
+      - button "How we hire" [ref=f11e26] [cursor=pointer]
+      - link "Locations" [ref=f11e32] [cursor=pointer]:
+        - /url: https://lifeattiktok.com/locations
+      - button "Early Careers" [ref=f11e33] [cursor=pointer]
+      - link "Blog" [ref=f11e39] [cursor=pointer]:
+        - /url: https://lifeattiktok.com/blog
+      - link "Jobs" [ref=f11e41] [cursor=pointer]:
+        - /url: https://lifeattiktok.com/search
+      - link [ref=f11e42] [cursor=pointer]:
+        - /url: https://careers.tiktok.com/position/application
+        - button "Apply" [ref=f11e43]
+    - generic [ref=f11e44]:
+      - generic [ref=f11e45]:
+        - button "Close sidebar" [ref=f11e47] [cursor=pointer]
+        - generic [ref=f11e55]:
+          - generic [ref=f11e56]:
+            - heading "Company" [level=4] [ref=f11e57]
+            - link "About TikTok" [ref=f11e58] [cursor=pointer]:
+              - /url: https://www.tiktok.com/about?lang=en
+            - link "Newsroom" [ref=f11e60] [cursor=pointer]:
+              - /url: https://newsroom.tiktok.com/en-us/
+            - link "Contact" [ref=f11e62] [cursor=pointer]:
+              - /url: https://www.tiktok.com/about/contact?lang=en
+          - generic [ref=f11e64]:
+            - heading "Programs" [level=4] [ref=f11e65]
+            - link "TikTok for Good" [ref=f11e66] [cursor=pointer]:
+              - /url: https://www.tiktok.com/for-good/
+            - link "TikTok for Developers" [ref=f11e68] [cursor=pointer]:
+              - /url: https://developers.tiktok.com/?refer=tiktok_web
+            - link "Effect House" [ref=f11e70] [cursor=pointer]:
+              - /url: https://effecthouse.tiktok.com/?utm_source=tiktok_web_article
+            - link "Advertise on TikTok" [ref=f11e72] [cursor=pointer]:
+              - /url: https://www.tiktok.com/business/&attr_source=tt_official_site&attr_medium=tt_official_site_guidance
+            - link "TikTok Rewards" [ref=f11e74] [cursor=pointer]:
+              - /url: https://www.tiktok.com/tiktok-rewards/eligibility/
+            - link "TikTok Browse" [ref=f11e76] [cursor=pointer]:
+              - /url: https://www.tiktok.com/browse
+            - link "TikTok Embeds" [ref=f11e78] [cursor=pointer]:
+              - /url: https://www.tiktok.com/embed
+          - generic [ref=f11e80]:
+            - heading "Resources" [level=4] [ref=f11e81]
+            - link "Help center" [ref=f11e82] [cursor=pointer]:
+              - /url: https://support.tiktok.com/en
+            - link "Safety Center" [ref=f11e84] [cursor=pointer]:
+              - /url: https://www.tiktok.com/safety/en/
+            - link "Creator Portal" [ref=f11e86] [cursor=pointer]:
+              - /url: https://www.tiktok.com/creator-academy
+            - link "Community Guidelines" [ref=f11e88] [cursor=pointer]:
+              - /url: https://www.tiktok.com/community-guidelines/en?lang=en
+            - link "Transparency" [ref=f11e90] [cursor=pointer]:
+              - /url: https://www.tiktok.com/transparency/en-au
+            - link "Accessibility" [ref=f11e92] [cursor=pointer]:
+              - /url: https://www.tiktok.com/accessibility/
+          - generic [ref=f11e94]:
+            - heading "Legal" [level=4] [ref=f11e95]
+            - link "Privacy Policy" [ref=f11e96] [cursor=pointer]:
+              - /url: https://www.tiktok.com/legal/page/us/privacy-policy/en
+            - link "Candidate Privacy Policy" [ref=f11e98] [cursor=pointer]:
+              - /url: https://lifeattiktok.com/private-policy
+            - link "Terms of Service" [ref=f11e100] [cursor=pointer]:
+              - /url: https://www.tiktok.com/legal/terms-of-service?lang=en
+      - generic [ref=f11e103] [cursor=pointer]:
+        - text: English
+        - img "triangle icon" [ref=f11e105]
+        - combobox [ref=f11e106]:
+          - option "English" [selected]
+          - option "日本語"
+  - generic [ref=f11e107]:
+    - generic [ref=f11e111]:
+      - heading [level=1]
+      - generic [ref=f11e112]:
+        - paragraph [ref=f11e113]: Start your search
+        - generic [ref=f11e114]:
+          - generic [ref=f11e115]:
+            - img "search icon" [ref=f11e116]
+            - textbox "Enter Title, Skill, or City" [ref=f11e117]: software
+          - button "Search now" [ref=f11e118] [cursor=pointer]
+    - img "icon" [ref=f11e120]
+  - generic [ref=f11e121]:
+    - contentinfo [ref=f11e124]:
+      - figure [ref=f11e125]
+      - generic [ref=f11e126]:
+        - generic [ref=f11e127]:
+          - paragraph [ref=f11e128]: Company
+          - link "About TikTok" [ref=f11e130] [cursor=pointer]:
+            - /url: https://www.tiktok.com/about?lang=en
+          - link "Newsroom" [ref=f11e133] [cursor=pointer]:
+            - /url: https://newsroom.tiktok.com/en-us/
+          - link "Contact" [ref=f11e136] [cursor=pointer]:
+            - /url: https://www.tiktok.com/about/contact?lang=en
+        - generic [ref=f11e138]:
+          - paragraph [ref=f11e139]: Programs
+          - link "TikTok for Good" [ref=f11e141] [cursor=pointer]:
+            - /url: https://www.tiktok.com/for-good/
+          - link "TikTok for Developers" [ref=f11e144] [cursor=pointer]:
+            - /url: https://developers.tiktok.com/?refer=tiktok_web
+          - link "Effect House" [ref=f11e147] [cursor=pointer]:
+            - /url: https://effecthouse.tiktok.com/?utm_source=tiktok_web_article
+          - link "Advertise on TikTok" [ref=f11e150] [cursor=pointer]:
+            - /url: https://www.tiktok.com/business/&attr_source=tt_official_site&attr_medium=tt_official_site_guidance
+          - link "TikTok Rewards" [ref=f11e153] [cursor=pointer]:
+            - /url: https://www.tiktok.com/tiktok-rewards/eligibility/
+          - link "TikTok Browse" [ref=f11e156] [cursor=pointer]:
+            - /url: https://www.tiktok.com/browse
+          - link "TikTok Embeds" [ref=f11e159] [cursor=pointer]:
+            - /url: https://www.tiktok.com/embed
+        - generic [ref=f11e161]:
+          - paragraph [ref=f11e162]: Resources
+          - link "Help center" [ref=f11e164] [cursor=pointer]:
+            - /url: https://support.tiktok.com/en
+          - link "Safety Center" [ref=f11e167] [cursor=pointer]:
+            - /url: https://www.tiktok.com/safety/en/
+          - link "Creator Portal" [ref=f11e170] [cursor=pointer]:
+            - /url: https://www.tiktok.com/creator-academy
+          - link "Community Guidelines" [ref=f11e173] [cursor=pointer]:
+            - /url: https://www.tiktok.com/community-guidelines/en?lang=en
+          - link "Transparency" [ref=f11e176] [cursor=pointer]:
+            - /url: https://www.tiktok.com/transparency/en-au
+          - link "Accessibility" [ref=f11e179] [cursor=pointer]:
+            - /url: https://www.tiktok.com/accessibility/
+        - generic [ref=f11e181]:
+          - paragraph [ref=f11e182]: Legal
+          - link "Privacy Policy" [ref=f11e184] [cursor=pointer]:
+            - /url: https://www.tiktok.com/legal/page/us/privacy-policy/en
+          - link "Candidate Privacy Policy" [ref=f11e187] [cursor=pointer]:
+            - /url: https://lifeattiktok.com/private-policy
+          - link "Terms of Service" [ref=f11e190] [cursor=pointer]:
+            - /url: https://www.tiktok.com/legal/terms-of-service?lang=en
+    - generic [ref=f11e193]:
+      - generic [ref=f11e195] [cursor=pointer]:
+        - text: English
+        - img "triangle icon" [ref=f11e197]
+        - combobox [ref=f11e198]:
+          - option "English" [selected]
+          - option "日本語"
+      - paragraph [ref=f11e199]: "@2026 TikTok"
+  - alert [ref=f11e200]
+  - generic [ref=f11e202]:
+    - paragraph [ref=f11e204]: Accept cookies from TikTok on this browser?
+    - generic [ref=f11e205]:
+      - paragraph [ref=f11e207]:
+        - text: TikTok uses cookies and similar technologies to provide, improve, secure and analyse our services. By clicking “Accept all”, you agree to let us use our own and third party cookies for marketing purposes so that we can understand the effectiveness of TikTok’s advertising campaigns. If you click “Decline all”, we will not use cookies for these additional purposes. You can
+        - button "manage your cookies" [ref=f11e208] [cursor=pointer]
+        - text: at any time. Learn more in our
+        - link "Cookies Policy" [ref=f11e209] [cursor=pointer]:
+          - /url: https://www.tiktok.com/legal/page/us/privacy-policy/en
+        - text: .
+      - generic [ref=f11e210]:
+        - button [ref=f11e211] [cursor=pointer]:
+          - paragraph [ref=f11e212]: Decline all
+        - button [ref=f11e213] [cursor=pointer]:
+          - paragraph [ref=f11e214]: Accept all

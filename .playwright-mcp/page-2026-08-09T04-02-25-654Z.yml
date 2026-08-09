@@ -1,0 +1,19 @@
+- generic [active] [ref=f8e1]:
+  - generic [ref=f8e2]:
+    - generic [ref=f8e4]:
+      - alert "Content is loading" [ref=f8e5]
+      - alert "Content is loading" [ref=f8e6]
+      - alert "Content is loading" [ref=f8e7]
+      - alert "Content is loading" [ref=f8e8]
+      - alert "Content is loading" [ref=f8e9]
+      - alert "Content is loading" [ref=f8e10]
+    - main [ref=f8e11]:
+      - img "loading" [ref=f8e14]
+    - generic [ref=f8e16]:
+      - alert "Content is loading" [ref=f8e17]
+      - alert "Content is loading" [ref=f8e18]
+      - alert "Content is loading" [ref=f8e19]
+      - alert "Content is loading" [ref=f8e20]
+      - alert "Content is loading" [ref=f8e21]
+      - alert "Content is loading"
+  - alert [ref=f8e22]

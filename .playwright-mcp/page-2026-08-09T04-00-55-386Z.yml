@@ -1,0 +1,65 @@
+- generic [active] [ref=f46e1]:
+  - generic [ref=f46e2]:
+    - banner [ref=f46e5]:
+      - generic [ref=f46e8]:
+        - navigation [ref=f46e11]:
+          - list "menu-list" [ref=f46e12]:
+            - listitem [ref=f46e13]:
+              - link "Careers Home" [ref=f46e14] [cursor=pointer]:
+                - /url: /results
+            - listitem [ref=f46e16]:
+              - link "Careers Blog" [ref=f46e17] [cursor=pointer]:
+                - /url: https://www.goldmansachs.com/careers/blog/index.html
+            - listitem [ref=f46e19]:
+              - link "Students" [ref=f46e20] [cursor=pointer]:
+                - /url: /campus
+        - generic [ref=f46e22]:
+          - button [ref=f46e24] [cursor=pointer]:
+            - img "Help Outline" [ref=f46e25]:
+              - img [ref=f46e26]: help_outline
+          - button [ref=f46e28] [cursor=pointer]:
+            - img "Avatar" [ref=f46e31]:
+              - img [ref=f46e32]: person
+            - img "Expand More" [ref=f46e33]:
+              - img [ref=f46e34]: expand_more
+    - main [ref=f46e35]:
+      - img "loading" [ref=f46e38]
+    - generic [ref=f46e42]:
+      - generic [ref=f46e50]:
+        - link [ref=f46e51] [cursor=pointer]:
+          - /url: https://www.facebook.com/goldmansachs
+          - img "Goldman Sachs Facebook Page" [ref=f46e52]
+        - link [ref=f46e53] [cursor=pointer]:
+          - /url: https://www.linkedin.com/company/goldman-sachs/
+          - img "Goldman Sachs Linked In" [ref=f46e54]
+        - link [ref=f46e55] [cursor=pointer]:
+          - /url: https://www.youtube.com/user/GoldmanSachs
+          - img "Goldman Sachs YouTube Page" [ref=f46e56]
+        - link [ref=f46e57] [cursor=pointer]:
+          - /url: https://www.instagram.com/goldmansachs
+          - img "Goldman Sachs Instagram Page" [ref=f46e58]
+        - link [ref=f46e59] [cursor=pointer]:
+          - /url: https://twitter.com/GoldmanSachs
+          - img "Goldman Sachs Twitter" [ref=f46e60]
+      - generic [ref=f46e61]:
+        - separator [ref=f46e62]
+        - generic [ref=f46e63]:
+          - generic [ref=f46e64]: © 2026 Goldman Sachs
+          - navigation [ref=f46e68]:
+            - list "menu-list" [ref=f46e69]:
+              - listitem [ref=f46e70]:
+                - link "Privacy and Cookies" [ref=f46e71] [cursor=pointer]:
+                  - /url: https://www.goldmansachs.com/privacy-and-cookies/index.html
+              - listitem [ref=f46e72]:
+                - link "Terms & Conditions" [ref=f46e73] [cursor=pointer]:
+                  - /url: https://www.goldmansachs.com/terms-and-conditions/index.html
+              - listitem [ref=f46e74]:
+                - link "Security & Fraud Awareness" [ref=f46e75] [cursor=pointer]:
+                  - /url: https://www.goldmansachs.com/security/index.html
+              - listitem [ref=f46e76]:
+                - link "Regulatory Disclosures" [ref=f46e77] [cursor=pointer]:
+                  - /url: https://www.goldmansachs.com/disclosures/index.html
+              - listitem [ref=f46e78]:
+                - link "Disability Accommodation for Applicants" [ref=f46e79] [cursor=pointer]:
+                  - /url: https://www.goldmansachs.com/careers/footer/disability-statement.html
+  - alert [ref=f46e80]

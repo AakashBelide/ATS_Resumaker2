@@ -1,0 +1,875 @@
+- generic [ref=f7e1]:
+  - navigation "Global" [ref=f7e3]:
+    - list [ref=f7e5]:
+      - listitem [ref=f7e6]:
+        - link "Apple" [ref=f7e7] [cursor=pointer]:
+          - /url: https://www.apple.com/
+      - listitem [ref=f7e8]:
+        - generic [ref=f7e10]:
+          - list [ref=f7e12]:
+            - listitem [ref=f7e13]:
+              - link "Store" [ref=f7e14] [cursor=pointer]:
+                - /url: https://www.apple.com/us/shop/goto/store
+            - listitem:
+              - button "Store menu"
+          - list [ref=f7e17]:
+            - listitem [ref=f7e18]:
+              - link "Mac" [ref=f7e19] [cursor=pointer]:
+                - /url: https://www.apple.com/mac/
+            - listitem:
+              - button "Mac menu"
+          - list [ref=f7e22]:
+            - listitem [ref=f7e23]:
+              - link "iPad" [ref=f7e24] [cursor=pointer]:
+                - /url: https://www.apple.com/ipad/
+            - listitem:
+              - button "iPad menu"
+          - list [ref=f7e27]:
+            - listitem [ref=f7e28]:
+              - link "iPhone" [ref=f7e29] [cursor=pointer]:
+                - /url: https://www.apple.com/iphone/
+            - listitem:
+              - button "iPhone menu"
+          - list [ref=f7e32]:
+            - listitem [ref=f7e33]:
+              - link "Watch" [ref=f7e34] [cursor=pointer]:
+                - /url: https://www.apple.com/watch/
+            - listitem:
+              - button "Watch menu"
+          - list [ref=f7e37]:
+            - listitem [ref=f7e38]:
+              - link "Vision" [ref=f7e39] [cursor=pointer]:
+                - /url: https://www.apple.com/apple-vision-pro/
+            - listitem:
+              - button "Vision menu"
+          - list [ref=f7e42]:
+            - listitem [ref=f7e43]:
+              - link "AirPods" [ref=f7e44] [cursor=pointer]:
+                - /url: https://www.apple.com/airpods/
+            - listitem:
+              - button "AirPods menu"
+          - list [ref=f7e47]:
+            - listitem [ref=f7e48]:
+              - link "TV and Home" [ref=f7e49] [cursor=pointer]:
+                - /url: https://www.apple.com/tv-home/
+                - generic [ref=f7e50]: TV & Home
+            - listitem:
+              - button "TV and Home menu"
+          - list [ref=f7e52]:
+            - listitem [ref=f7e53]:
+              - link "Entertainment" [ref=f7e54] [cursor=pointer]:
+                - /url: https://www.apple.com/entertainment/
+            - listitem:
+              - button "Entertainment menu"
+          - list [ref=f7e57]:
+            - listitem [ref=f7e58]:
+              - link "Accessories" [ref=f7e59] [cursor=pointer]:
+                - /url: https://www.apple.com/us/shop/goto/buy_accessories
+            - listitem:
+              - button "Accessories menu"
+          - list [ref=f7e62]:
+            - listitem [ref=f7e63]:
+              - link "Support" [ref=f7e64] [cursor=pointer]:
+                - /url: https://support.apple.com/?cid=gn-ols-home-hp-tab
+            - listitem:
+              - button "Support menu"
+      - listitem [ref=f7e66]:
+        - button "Search apple.com" [ref=f7e67] [cursor=pointer]
+      - listitem [ref=f7e68]:
+        - button "Shopping Bag" [ref=f7e70] [cursor=pointer]
+  - generic [ref=f7e72]:
+    - navigation [ref=f7e73]:
+      - generic [ref=f7e76]:
+        - link "Careers at Apple" [ref=f7e78] [cursor=pointer]:
+          - /url: https://www.apple.com/careers/us
+        - generic [ref=f7e79]:
+          - list [ref=f7e81]:
+            - listitem [ref=f7e82]:
+              - list [ref=f7e83]:
+                - listitem [ref=f7e84]:
+                  - link "Work at Apple" [ref=f7e86] [cursor=pointer]:
+                    - /url: https://www.apple.com/careers/us/work-at-apple.html
+            - listitem [ref=f7e87]:
+              - list [ref=f7e88]:
+                - listitem [ref=f7e89]:
+                  - link "Life at Apple" [ref=f7e91] [cursor=pointer]:
+                    - /url: https://www.apple.com/careers/us/life-at-apple.html
+            - listitem [ref=f7e92]:
+              - list [ref=f7e93]:
+                - listitem [ref=f7e94]:
+                  - link "Profile" [ref=f7e96] [cursor=pointer]:
+                    - /url: /app/en-us/profile/info
+            - listitem [ref=f7e97]:
+              - list [ref=f7e98]:
+                - listitem [ref=f7e99]:
+                  - link "Sign In" [ref=f7e101] [cursor=pointer]:
+                    - /url: /en-us/login
+          - link "Search" [ref=f7e103] [cursor=pointer]:
+            - /url: /en-us/search
+    - main [ref=f7e105]:
+      - generic [ref=f7e106]:
+        - heading "Find your perfect role." [active] [level=1] [ref=f7e107]
+        - generic [ref=f7e108]:
+          - generic [ref=f7e109]:
+            - textbox "Search by role or keyword" [ref=f7e110]
+            - generic [ref=f7e111]: To reveal list of choices, type
+          - status [ref=f7e112]
+        - paragraph [ref=f7e113]: Most corporate roles require English-language skills.
+      - generic [ref=f7e114]:
+        - generic [ref=f7e115]:
+          - generic [ref=f7e116]:
+            - button "Filters" [expanded] [ref=f7e117] [cursor=pointer]
+            - button "Clear all selected Filters" [ref=f7e120] [cursor=pointer]: Clear all
+          - generic [ref=f7e121]:
+            - heading "Refine by" [level=2] [ref=f7e122]
+            - list "Refine by" [ref=f7e123]:
+              - listitem [ref=f7e124]:
+                - heading [level=3] [ref=f7e125]:
+                  - button "Location 1 Filter(s) Applied " [ref=f7e126] [cursor=pointer]:
+                    - generic [ref=f7e127]:
+                      - generic [ref=f7e128]: Location
+                      - generic [ref=f7e129]: "1"
+                      - generic [ref=f7e130]: 1 Filter(s) Applied
+                    - generic [ref=f7e131]: 
+                - text: 
+              - listitem [ref=f7e132]:
+                - heading [level=3] [ref=f7e133]:
+                  - button "Keyword 0 Filter(s) Applied " [ref=f7e134] [cursor=pointer]:
+                    - generic [ref=f7e135]:
+                      - generic [ref=f7e136]: Keyword
+                      - generic [ref=f7e137]: 0 Filter(s) Applied
+                    - generic [ref=f7e138]: 
+              - listitem [ref=f7e139]:
+                - heading [level=3] [ref=f7e140]:
+                  - button "Teams 0 Filter(s) Applied " [ref=f7e141] [cursor=pointer]:
+                    - generic [ref=f7e142]:
+                      - generic [ref=f7e143]: Teams
+                      - generic [ref=f7e144]: 0 Filter(s) Applied
+                    - generic [ref=f7e145]: 
+              - listitem [ref=f7e146]:
+                - heading [level=3] [ref=f7e147]:
+                  - button "Products and Services 0 Filter(s) Applied " [ref=f7e148] [cursor=pointer]:
+                    - generic [ref=f7e149]:
+                      - generic [ref=f7e150]: Products and Services
+                      - generic [ref=f7e151]: 0 Filter(s) Applied
+                    - generic [ref=f7e152]: 
+              - listitem [ref=f7e153]:
+                - heading [level=3] [ref=f7e154]:
+                  - button "Language Skills 0 Filter(s) Applied " [ref=f7e155] [cursor=pointer]:
+                    - generic [ref=f7e156]:
+                      - generic [ref=f7e157]: Language Skills
+                      - generic [ref=f7e158]: 0 Filter(s) Applied
+                    - generic [ref=f7e159]: 
+        - generic [ref=f7e160]:
+          - generic [ref=f7e162]:
+            - button "Saved Searches" [ref=f7e164] [cursor=pointer]
+            - button "Favorites" [ref=f7e169] [cursor=pointer]
+            - button "Recently viewed roles" [ref=f7e174] [cursor=pointer]
+          - generic [ref=f7e178]:
+            - generic [ref=f7e179]:
+              - status [ref=f7e181]: 1 Filter(s) Applied
+              - button "Save Search" [ref=f7e184] [cursor=pointer]
+            - generic [ref=f7e186]:
+              - status [ref=f7e187]
+              - generic [ref=f7e188]:
+                - list "Filter(s) Applied" [ref=f7e189]:
+                  - listitem [ref=f7e190]:
+                    - button "Remove United States" [ref=f7e192] [cursor=pointer]:
+                      - generic "United States" [ref=f7e193]
+                      - generic [ref=f7e194]: 
+                - generic [ref=f7e195]: text
+            - generic [ref=f7e196]:
+              - status [ref=f7e197]: The page has been updated. 600+ results were found.
+              - heading "Search Results" [level=2] [ref=f7e198]
+              - generic [ref=f7e199]:
+                - status [ref=f7e200]: 600+ Result(s)
+                - 'button "Sort by: Newest" [ref=f7e202] [cursor=pointer]':
+                  - generic [ref=f7e203]: "Sort by:"
+                  - text: Newest
+              - list "Job Opportunities" [ref=f7e205]:
+                - listitem [ref=f7e206]:
+                  - generic [ref=f7e207] [cursor=pointer]:
+                    - generic [ref=f7e209]:
+                      - generic [ref=f7e210]:
+                        - heading [level=3] [ref=f7e211]:
+                          - 'link "US - Specialist: Seasonal, Part-time 114438158" [ref=f7e212]':
+                            - /url: /en-us/details/114438158/us-specialist-seasonal-part-time?team=APPST
+                            - text: "US - Specialist: Seasonal, Part-time "
+                        - generic [ref=f7e213]: Apple Retail
+                        - generic [ref=f7e214]: Aug 09, 2026
+                      - generic [ref=f7e215]:
+                        - generic [ref=f7e216]: Location
+                        - text: Various Locations within United States
+                      - generic [ref=f7e217]:
+                        - generic [ref=f7e218]: Actions
+                        - 'button "Add to Favorites US - Specialist: Seasonal, Part-time 114438158" [ref=f7e220]'
+                    - 'button "Role description: US - Specialist: Seasonal, Part-time" [ref=f7e224]': 
+                  - text:   
+                - listitem [ref=f7e225]:
+                  - generic [ref=f7e226] [cursor=pointer]:
+                    - generic [ref=f7e228]:
+                      - generic [ref=f7e229]:
+                        - heading [level=3] [ref=f7e230]:
+                          - link "AI Test Engineer, Sensing & Connectivity 200676692" [ref=f7e231]:
+                            - /url: /en-us/details/200676692-3543/ai-test-engineer-sensing-connectivity?team=SFTWR
+                            - text: AI Test Engineer, Sensing & Connectivity 
+                        - generic [ref=f7e232]: Software and Services
+                        - generic [ref=f7e233]: Aug 08, 2026
+                      - generic [ref=f7e234]:
+                        - generic [ref=f7e235]: Location
+                        - text: San Diego
+                      - generic [ref=f7e236]:
+                        - generic [ref=f7e237]: Actions
+                        - button "Add to Favorites AI Test Engineer, Sensing & Connectivity 200676692-3543" [ref=f7e239]
+                    - 'button "Role description: AI Test Engineer, Sensing & Connectivity" [ref=f7e243]': 
+                  - text:  
+                - listitem [ref=f7e244]:
+                  - generic [ref=f7e245] [cursor=pointer]:
+                    - generic [ref=f7e247]:
+                      - generic [ref=f7e248]:
+                        - heading [level=3] [ref=f7e249]:
+                          - link "Systems Software Engineer, Core OS 200676717" [ref=f7e250]:
+                            - /url: /en-us/details/200676717-3543/systems-software-engineer-core-os?team=SFTWR
+                            - text: Systems Software Engineer, Core OS 
+                        - generic [ref=f7e251]: Software and Services
+                        - generic [ref=f7e252]: Aug 08, 2026
+                      - generic [ref=f7e253]:
+                        - generic [ref=f7e254]: Location
+                        - text: San Diego
+                      - generic [ref=f7e255]:
+                        - generic [ref=f7e256]: Actions
+                        - button "Add to Favorites Systems Software Engineer, Core OS 200676717-3543" [ref=f7e258]
+                    - 'button "Role description: Systems Software Engineer, Core OS" [ref=f7e262]': 
+                  - text:  
+                - listitem [ref=f7e263]:
+                  - generic [ref=f7e264] [cursor=pointer]:
+                    - generic [ref=f7e266]:
+                      - generic [ref=f7e267]:
+                        - heading [level=3] [ref=f7e268]:
+                          - link "US-Manager 200659287" [ref=f7e269]:
+                            - /url: /en-us/details/200659287-2459/us-manager?team=APPST
+                            - text: US-Manager 
+                        - generic [ref=f7e270]: Apple Retail
+                        - generic [ref=f7e271]: Aug 08, 2026
+                      - generic [ref=f7e272]:
+                        - generic [ref=f7e273]: Location
+                        - text: New York City
+                      - generic [ref=f7e274]:
+                        - generic [ref=f7e275]: Actions
+                        - button "Add to Favorites US-Manager 200659287-2459" [ref=f7e277]
+                    - 'button "Role description: US-Manager" [ref=f7e281]': 
+                  - text:  
+                - listitem [ref=f7e282]:
+                  - generic [ref=f7e283] [cursor=pointer]:
+                    - generic [ref=f7e285]:
+                      - generic [ref=f7e286]:
+                        - heading [level=3] [ref=f7e287]:
+                          - link "SoC Physical Design Engineer, PnR 200676744" [ref=f7e288]:
+                            - /url: /en-us/details/200676744-0157/soc-physical-design-engineer-pnr?team=HRDWR
+                            - text: SoC Physical Design Engineer, PnR 
+                        - generic [ref=f7e289]: Hardware
+                        - generic [ref=f7e290]: Aug 07, 2026
+                      - generic [ref=f7e291]:
+                        - generic [ref=f7e292]: Location
+                        - text: Austin
+                      - generic [ref=f7e293]:
+                        - generic [ref=f7e294]: Actions
+                        - button "Add to Favorites SoC Physical Design Engineer, PnR 200676744-0157" [ref=f7e296]
+                    - 'button "Role description: SoC Physical Design Engineer, PnR" [ref=f7e300]': 
+                  - text:  
+                - listitem [ref=f7e301]:
+                  - generic [ref=f7e302] [cursor=pointer]:
+                    - generic [ref=f7e304]:
+                      - generic [ref=f7e305]:
+                        - heading [level=3] [ref=f7e306]:
+                          - link "People Planning Process Analyst 200676753" [ref=f7e307]:
+                            - /url: /en-us/details/200676753-0157/people-planning-process-analyst?team=CORSV
+                            - text: People Planning Process Analyst 
+                        - generic [ref=f7e308]: Corporate Functions
+                        - generic [ref=f7e309]: Aug 07, 2026
+                      - generic [ref=f7e310]:
+                        - generic [ref=f7e311]: Location
+                        - text: Austin
+                      - generic [ref=f7e312]:
+                        - generic [ref=f7e313]: Actions
+                        - button "Add to Favorites People Planning Process Analyst 200676753-0157" [ref=f7e315]
+                    - 'button "Role description: People Planning Process Analyst" [ref=f7e319]': 
+                  - text:  
+                - listitem [ref=f7e320]:
+                  - generic [ref=f7e321] [cursor=pointer]:
+                    - generic [ref=f7e323]:
+                      - generic [ref=f7e324]:
+                        - heading [level=3] [ref=f7e325]:
+                          - link "Community Specialist, Channel Retail 200676755" [ref=f7e326]:
+                            - /url: /en-us/details/200676755-2068/community-specialist-channel-retail?team=SLDEV
+                            - text: Community Specialist, Channel Retail 
+                        - generic [ref=f7e327]: Sales and Business Development
+                        - generic [ref=f7e328]: Aug 07, 2026
+                      - generic [ref=f7e329]:
+                        - generic [ref=f7e330]: Location
+                        - text: Grove City
+                      - generic [ref=f7e331]:
+                        - generic [ref=f7e332]: Actions
+                        - button "Add to Favorites Community Specialist, Channel Retail 200676755-2068" [ref=f7e334]
+                    - 'button "Role description: Community Specialist, Channel Retail" [ref=f7e338]': 
+                  - text:  
+                - listitem [ref=f7e339]:
+                  - generic [ref=f7e340] [cursor=pointer]:
+                    - generic [ref=f7e342]:
+                      - generic [ref=f7e343]:
+                        - heading [level=3] [ref=f7e344]:
+                          - link "Senior Lead Auditor (Medical Devices) 200650153" [ref=f7e345]:
+                            - /url: /en-us/details/200650153-0836/senior-lead-auditor-medical-devices?team=SFTWR
+                            - text: Senior Lead Auditor (Medical Devices) 
+                        - generic [ref=f7e346]: Software and Services
+                        - generic [ref=f7e347]: Aug 07, 2026
+                      - generic [ref=f7e348]:
+                        - generic [ref=f7e349]: Location
+                        - text: Cupertino
+                      - generic [ref=f7e350]:
+                        - generic [ref=f7e351]: Actions
+                        - button "Add to Favorites Senior Lead Auditor (Medical Devices) 200650153-0836" [ref=f7e353]
+                    - 'button "Role description: Senior Lead Auditor (Medical Devices)" [ref=f7e357]': 
+                  - text:  
+                - listitem [ref=f7e358]:
+                  - generic [ref=f7e359] [cursor=pointer]:
+                    - generic [ref=f7e361]:
+                      - generic [ref=f7e362]:
+                        - heading [level=3] [ref=f7e363]:
+                          - link "US-Manager 200675406" [ref=f7e364]:
+                            - /url: /en-us/details/200675406-3088/us-manager?team=APPST
+                            - text: US-Manager 
+                        - generic [ref=f7e365]: Apple Retail
+                        - generic [ref=f7e366]: Aug 07, 2026
+                      - generic [ref=f7e367]:
+                        - generic [ref=f7e368]: Location
+                        - text: University Village
+                      - generic [ref=f7e369]:
+                        - generic [ref=f7e370]: Actions
+                        - button "Add to Favorites US-Manager 200675406-3088" [ref=f7e372]
+                    - 'button "Role description: US-Manager" [ref=f7e376]': 
+                  - text:  
+                - listitem [ref=f7e377]:
+                  - generic [ref=f7e378] [cursor=pointer]:
+                    - generic [ref=f7e380]:
+                      - generic [ref=f7e381]:
+                        - heading [level=3] [ref=f7e382]:
+                          - link "Generative AI Applied Scientist, SIML - ISE 200676664" [ref=f7e383]:
+                            - /url: /en-us/details/200676664-0836/generative-ai-applied-scientist-siml-ise?team=MLAI
+                            - text: Generative AI Applied Scientist, SIML - ISE 
+                        - generic [ref=f7e384]: Machine Learning and AI
+                        - generic [ref=f7e385]: Aug 07, 2026
+                      - generic [ref=f7e386]:
+                        - generic [ref=f7e387]: Location
+                        - text: Cupertino
+                      - generic [ref=f7e388]:
+                        - generic [ref=f7e389]: Actions
+                        - button "Add to Favorites Generative AI Applied Scientist, SIML - ISE 200676664-0836" [ref=f7e391]
+                    - 'button "Role description: Generative AI Applied Scientist, SIML - ISE" [ref=f7e395]': 
+                  - text:  
+                - listitem [ref=f7e396]:
+                  - generic [ref=f7e397] [cursor=pointer]:
+                    - generic [ref=f7e399]:
+                      - generic [ref=f7e400]:
+                        - heading [level=3] [ref=f7e401]:
+                          - link "Systems Debug Engineer – Data Center HWE 200647212" [ref=f7e402]:
+                            - /url: /en-us/details/200647212-3956/systems-debug-engineer-data-center-hwe?team=HRDWR
+                            - text: Systems Debug Engineer – Data Center HWE 
+                        - generic [ref=f7e403]: Hardware
+                        - generic [ref=f7e404]: Aug 07, 2026
+                      - generic [ref=f7e405]:
+                        - generic [ref=f7e406]: Location
+                        - text: Sunnyvale
+                      - generic [ref=f7e407]:
+                        - generic [ref=f7e408]: Actions
+                        - button "Add to Favorites Systems Debug Engineer – Data Center HWE 200647212-3956" [ref=f7e410]
+                    - 'button "Role description: Systems Debug Engineer – Data Center HWE" [ref=f7e414]': 
+                  - text:  
+                - listitem [ref=f7e415]:
+                  - generic [ref=f7e416] [cursor=pointer]:
+                    - generic [ref=f7e418]:
+                      - generic [ref=f7e419]:
+                        - heading [level=3] [ref=f7e420]:
+                          - link "Software Engineer - Apple Services 200676478" [ref=f7e421]:
+                            - /url: /en-us/details/200676478-3577/software-engineer-apple-services?team=SFTWR
+                            - text: Software Engineer - Apple Services 
+                        - generic [ref=f7e422]: Software and Services
+                        - generic [ref=f7e423]: Aug 07, 2026
+                      - generic [ref=f7e424]:
+                        - generic [ref=f7e425]: Location
+                        - text: San Francisco
+                      - generic [ref=f7e426]:
+                        - generic [ref=f7e427]: Actions
+                        - button "Add to Favorites Software Engineer - Apple Services 200676478-3577" [ref=f7e429]
+                    - 'button "Role description: Software Engineer - Apple Services" [ref=f7e433]': 
+                  - text:  
+                - listitem [ref=f7e434]:
+                  - generic [ref=f7e435] [cursor=pointer]:
+                    - generic [ref=f7e437]:
+                      - generic [ref=f7e438]:
+                        - heading [level=3] [ref=f7e439]:
+                          - link "People Business Partner 200661387" [ref=f7e440]:
+                            - /url: /en-us/details/200661387-0836/people-business-partner?team=CORSV
+                            - text: People Business Partner 
+                        - generic [ref=f7e441]: Corporate Functions
+                        - generic [ref=f7e442]: Aug 07, 2026
+                      - generic [ref=f7e443]:
+                        - generic [ref=f7e444]: Location
+                        - text: Cupertino
+                      - generic [ref=f7e445]:
+                        - generic [ref=f7e446]: Actions
+                        - button "Add to Favorites People Business Partner 200661387-0836" [ref=f7e448]
+                    - 'button "Role description: People Business Partner" [ref=f7e452]': 
+                  - text:  
+                - listitem [ref=f7e453]:
+                  - generic [ref=f7e454] [cursor=pointer]:
+                    - generic [ref=f7e456]:
+                      - generic [ref=f7e457]:
+                        - heading [level=3] [ref=f7e458]:
+                          - link "Engineering Manager, Machine Learning & NLP, Input Experience 200671833" [ref=f7e459]:
+                            - /url: /en-us/details/200671833-0836/engineering-manager-machine-learning-nlp-input-experience?team=SFTWR
+                            - text: Engineering Manager, Machine Learning & NLP, Input Experience 
+                        - generic [ref=f7e460]: Software and Services
+                        - generic [ref=f7e461]: Aug 07, 2026
+                      - generic [ref=f7e462]:
+                        - generic [ref=f7e463]: Location
+                        - text: Cupertino
+                      - generic [ref=f7e464]:
+                        - generic [ref=f7e465]: Actions
+                        - button "Add to Favorites Engineering Manager, Machine Learning & NLP, Input Experience 200671833-0836" [ref=f7e467]
+                    - 'button "Role description: Engineering Manager, Machine Learning & NLP, Input Experience" [ref=f7e471]': 
+                  - text:  
+                - listitem [ref=f7e472]:
+                  - generic [ref=f7e473] [cursor=pointer]:
+                    - generic [ref=f7e475]:
+                      - generic [ref=f7e476]:
+                        - heading [level=3] [ref=f7e477]:
+                          - link "Global Security Manager, Executive Protection 200676699" [ref=f7e478]:
+                            - /url: /en-us/details/200676699-0836/global-security-manager-executive-protection?team=CORSV
+                            - text: Global Security Manager, Executive Protection 
+                        - generic [ref=f7e479]: Corporate Functions
+                        - generic [ref=f7e480]: Aug 07, 2026
+                      - generic [ref=f7e481]:
+                        - generic [ref=f7e482]: Location
+                        - text: Cupertino
+                      - generic [ref=f7e483]:
+                        - generic [ref=f7e484]: Actions
+                        - button "Add to Favorites Global Security Manager, Executive Protection 200676699-0836" [ref=f7e486]
+                    - 'button "Role description: Global Security Manager, Executive Protection" [ref=f7e490]': 
+                  - text:  
+                - listitem [ref=f7e491]:
+                  - generic [ref=f7e492] [cursor=pointer]:
+                    - generic [ref=f7e494]:
+                      - generic [ref=f7e495]:
+                        - heading [level=3] [ref=f7e496]:
+                          - link "US-Store Leader 200675344" [ref=f7e497]:
+                            - /url: /en-us/details/200675344-2389/us-store-leader?team=APPST
+                            - text: US-Store Leader 
+                        - generic [ref=f7e498]: Apple Retail
+                        - generic [ref=f7e499]: Aug 07, 2026
+                      - generic [ref=f7e500]:
+                        - generic [ref=f7e501]: Location
+                        - text: West Town Mall
+                      - generic [ref=f7e502]:
+                        - generic [ref=f7e503]: Actions
+                        - button "Add to Favorites US-Store Leader 200675344-2389" [ref=f7e505]
+                    - 'button "Role description: US-Store Leader" [ref=f7e509]': 
+                  - text:  
+                - listitem [ref=f7e510]:
+                  - generic [ref=f7e511] [cursor=pointer]:
+                    - generic [ref=f7e513]:
+                      - generic [ref=f7e514]:
+                        - heading [level=3] [ref=f7e515]:
+                          - link "Product RF Design Engineer 200667456" [ref=f7e516]:
+                            - /url: /en-us/details/200667456-3543/product-rf-design-engineer?team=HRDWR
+                            - text: Product RF Design Engineer 
+                        - generic [ref=f7e517]: Hardware
+                        - generic [ref=f7e518]: Aug 07, 2026
+                      - generic [ref=f7e519]:
+                        - generic [ref=f7e520]: Location
+                        - text: San Diego
+                      - generic [ref=f7e521]:
+                        - generic [ref=f7e522]: Actions
+                        - button "Add to Favorites Product RF Design Engineer 200667456-3543" [ref=f7e524]
+                    - 'button "Role description: Product RF Design Engineer" [ref=f7e528]': 
+                  - text:  
+                - listitem [ref=f7e529]:
+                  - generic [ref=f7e530] [cursor=pointer]:
+                    - generic [ref=f7e532]:
+                      - generic [ref=f7e533]:
+                        - heading [level=3] [ref=f7e534]:
+                          - link "Engineering Program Manager, Siri Runtime Platform and Interaction 200676368" [ref=f7e535]:
+                            - /url: /en-us/details/200676368-0836/engineering-program-manager-siri-runtime-platform-and-interaction?team=SFTWR
+                            - text: Engineering Program Manager, Siri Runtime Platform and Interaction 
+                        - generic [ref=f7e536]: Software and Services
+                        - generic [ref=f7e537]: Aug 07, 2026
+                      - generic [ref=f7e538]:
+                        - generic [ref=f7e539]: Location
+                        - text: Cupertino
+                      - generic [ref=f7e540]:
+                        - generic [ref=f7e541]: Actions
+                        - button "Add to Favorites Engineering Program Manager, Siri Runtime Platform and Interaction 200676368-0836" [ref=f7e543]
+                    - 'button "Role description: Engineering Program Manager, Siri Runtime Platform and Interaction" [ref=f7e547]': 
+                  - text:  
+                - listitem [ref=f7e548]:
+                  - generic [ref=f7e549] [cursor=pointer]:
+                    - generic [ref=f7e551]:
+                      - generic [ref=f7e552]:
+                        - heading [level=3] [ref=f7e553]:
+                          - link "AIML - Privacy & Compliance Data Strategy Lead, Evaluation 200676512" [ref=f7e554]:
+                            - /url: /en-us/details/200676512-2459/aiml-privacy-compliance-data-strategy-lead-evaluation?team=MLAI
+                            - text: AIML - Privacy & Compliance Data Strategy Lead, Evaluation 
+                        - generic [ref=f7e555]: Machine Learning and AI
+                        - generic [ref=f7e556]: Aug 07, 2026
+                      - generic [ref=f7e557]:
+                        - generic [ref=f7e558]: Location
+                        - text: New York City
+                      - generic [ref=f7e559]:
+                        - generic [ref=f7e560]: Actions
+                        - button "Add to Favorites AIML - Privacy & Compliance Data Strategy Lead, Evaluation 200676512-2459" [ref=f7e562]
+                    - 'button "Role description: AIML - Privacy & Compliance Data Strategy Lead, Evaluation" [ref=f7e566]': 
+                  - text:  
+                - listitem [ref=f7e567]:
+                  - generic [ref=f7e568] [cursor=pointer]:
+                    - generic [ref=f7e570]:
+                      - generic [ref=f7e571]:
+                        - heading [level=3] [ref=f7e572]:
+                          - link "Senior Applied ML Researcher - Video Apps 200676658" [ref=f7e573]:
+                            - /url: /en-us/details/200676658-0836/senior-applied-ml-researcher-video-apps?team=SFTWR
+                            - text: Senior Applied ML Researcher - Video Apps 
+                        - generic [ref=f7e574]: Software and Services
+                        - generic [ref=f7e575]: Aug 07, 2026
+                      - generic [ref=f7e576]:
+                        - generic [ref=f7e577]: Location
+                        - text: Cupertino
+                      - generic [ref=f7e578]:
+                        - generic [ref=f7e579]: Actions
+                        - button "Add to Favorites Senior Applied ML Researcher - Video Apps 200676658-0836" [ref=f7e581]
+                    - 'button "Role description: Senior Applied ML Researcher - Video Apps" [ref=f7e585]': 
+                  - text:  
+            - navigation "Results pagination" [ref=f7e586]:
+              - generic [ref=f7e587]:
+                - button "Previous Page" [disabled] [ref=f7e589]: 
+                - generic [ref=f7e591]:
+                  - generic [ref=f7e592]: Page Number
+                  - spinbutton "Page Number" [ref=f7e593]: "1"
+                  - generic [ref=f7e595]: Page 1
+                  - generic [ref=f7e596]: Of
+                  - generic [ref=f7e597]: "230"
+                - button "Next Page" [ref=f7e599] [cursor=pointer]: 
+  - status [ref=f7e601]: Page 1 Of 230
+  - contentinfo [ref=f7e602]:
+    - generic [ref=f7e603]:
+      - heading "Apple Footer" [level=2] [ref=f7e604]
+      - generic [ref=f7e605]:
+        - paragraph [ref=f7e606]:
+          - text: Apple is an equal opportunity employer that is committed to inclusion and diversity. We seek to promote equal opportunity for all applicants without regard to race, color, religion, sex, sexual orientation, gender identity, national origin, disability, Veteran status, or other legally protected characteristics.
+          - link "Learn more about your EEO rights as an applicant (Opens in a new window)" [ref=f7e607] [cursor=pointer]:
+            - /url: https://www.eeoc.gov/sites/default/files/2023-06/22-088_EEOC_KnowYourRights6.12ScreenRdr.pdf
+            - text: Learn more about your EEO rights as an applicant
+            - generic [ref=f7e608]: (Opens in a new window)
+          - text: .
+        - paragraph [ref=f7e609]: Apple will not discriminate or retaliate against applicants who inquire about, disclose, or discuss their compensation.
+        - paragraph [ref=f7e610]:
+          - text: Apple participates in the E-Verify program in certain locations as required by law.
+          - link "Learn more about the E-Verify program" [ref=f7e611] [cursor=pointer]:
+            - /url: https://www.apple.com/careers/pdf/EverifyPosterEnglish.pdf
+          - text: .
+        - paragraph [ref=f7e612]:
+          - text: Apple is committed to working with and providing reasonable accommodation to applicants with physical and mental disabilities.
+          - link "Reasonable Accommodation and Drug Free Workplace policy Learn more (Opens in a new window)" [ref=f7e613] [cursor=pointer]:
+            - /url: https://www.apple.com/careers/us/accommodation_drugfree.html
+            - generic [ref=f7e614]: Reasonable Accommodation and Drug Free Workplace policy
+            - text: Learn more
+            - generic [ref=f7e615]: (Opens in a new window)
+          - text: .
+        - paragraph [ref=f7e616]:
+          - text: Apple is a drug-free workplace.
+          - link "Reasonable Accommodation and Drug Free Workplace policy Learn more (Opens in a new window)" [ref=f7e617] [cursor=pointer]:
+            - /url: https://www.apple.com/careers/us/accommodation_drugfree.html
+            - generic [ref=f7e618]: Reasonable Accommodation and Drug Free Workplace policy
+            - text: Learn more
+            - generic [ref=f7e619]: (Opens in a new window)
+          - text: .
+        - paragraph [ref=f7e620]:
+          - text: Apple will consider for employment all qualified applicants with criminal histories in a manner consistent with applicable law. If you’re applying for a position in San Francisco, review the
+          - link "San Francisco Fair Chance Ordinance guidelines (opens in a new window)" [ref=f7e621] [cursor=pointer]:
+            - /url: https://www.sf.gov/sites/default/files/2022-12/FCO%20poster2020_0.pdf
+            - generic [ref=f7e622]: San Francisco Fair Chance Ordinance
+            - text: guidelines
+            - generic [ref=f7e623]: (opens in a new window)
+          - text: applicable in your area.
+        - paragraph [ref=f7e624]: It is unlawful in Massachusetts to require or administer a lie detector test as a condition of employment or continued employment. An employer who violates this law shall be subject to criminal penalties and civil liability.
+      - navigation "Breadcrumbs" [ref=f7e625]:
+        - link "Apple" [ref=f7e626] [cursor=pointer]:
+          - /url: http://www.apple.com/
+          - generic [ref=f7e627]: 
+        - generic [ref=f7e629]:
+          - list:
+            - listitem [ref=f7e630]:
+              - link "Careers at Apple" [ref=f7e631] [cursor=pointer]:
+                - /url: /careers/us/index/index.html
+            - listitem [ref=f7e633]:
+              - generic [ref=f7e634]: Careers at Apple
+      - navigation "Apple Directory" [ref=f7e635]:
+        - generic [ref=f7e636]:
+          - generic:
+            - heading "Shop and Learn" [level=3] [ref=f7e637]
+            - list [ref=f7e639]:
+              - listitem [ref=f7e640]:
+                - link "Store" [ref=f7e641] [cursor=pointer]:
+                  - /url: https://www.apple.com/us/shop/goto/store
+              - listitem [ref=f7e642]:
+                - link "Mac" [ref=f7e643] [cursor=pointer]:
+                  - /url: https://www.apple.com/mac/
+              - listitem [ref=f7e644]:
+                - link "iPad" [ref=f7e645] [cursor=pointer]:
+                  - /url: https://www.apple.com/ipad/
+              - listitem [ref=f7e646]:
+                - link "iPhone" [ref=f7e647] [cursor=pointer]:
+                  - /url: https://www.apple.com/iphone/
+              - listitem [ref=f7e648]:
+                - link "Watch" [ref=f7e649] [cursor=pointer]:
+                  - /url: https://www.apple.com/watch/
+              - listitem [ref=f7e650]:
+                - link "Vision" [ref=f7e651] [cursor=pointer]:
+                  - /url: https://www.apple.com/apple-vision-pro/
+              - listitem [ref=f7e652]:
+                - link "AirPods" [ref=f7e653] [cursor=pointer]:
+                  - /url: https://www.apple.com/airpods/
+              - listitem [ref=f7e654]:
+                - link "TV & Home" [ref=f7e655] [cursor=pointer]:
+                  - /url: https://www.apple.com/tv-home/
+              - listitem [ref=f7e656]:
+                - link "AirTag" [ref=f7e657] [cursor=pointer]:
+                  - /url: https://www.apple.com/airtag/
+              - listitem [ref=f7e658]:
+                - link "Accessories" [ref=f7e659] [cursor=pointer]:
+                  - /url: https://www.apple.com/us/shop/goto/buy_accessories
+              - listitem [ref=f7e660]:
+                - link "Gift Cards" [ref=f7e661] [cursor=pointer]:
+                  - /url: https://www.apple.com/us/shop/goto/giftcards
+          - generic:
+            - heading "Apple Wallet" [level=3] [ref=f7e662]
+            - list [ref=f7e664]:
+              - listitem [ref=f7e665]:
+                - link "Wallet" [ref=f7e666] [cursor=pointer]:
+                  - /url: https://www.apple.com/wallet/
+              - listitem [ref=f7e667]:
+                - link "Apple Card" [ref=f7e668] [cursor=pointer]:
+                  - /url: https://www.apple.com/apple-card/
+              - listitem [ref=f7e669]:
+                - link "Apple Pay" [ref=f7e670] [cursor=pointer]:
+                  - /url: https://www.apple.com/apple-pay/
+              - listitem [ref=f7e671]:
+                - link "Apple Cash" [ref=f7e672] [cursor=pointer]:
+                  - /url: https://www.apple.com/apple-cash/
+        - generic [ref=f7e673]:
+          - generic:
+            - heading "Account" [level=3] [ref=f7e674]
+            - list [ref=f7e676]:
+              - listitem [ref=f7e677]:
+                - link "Manage Your Apple Account" [ref=f7e678] [cursor=pointer]:
+                  - /url: https://account.apple.com/
+              - listitem [ref=f7e679]:
+                - link "Apple Store Account" [ref=f7e680] [cursor=pointer]:
+                  - /url: https://www.apple.com/us/shop/goto/account
+              - listitem [ref=f7e681]:
+                - link "iCloud.com" [ref=f7e682] [cursor=pointer]:
+                  - /url: https://www.icloud.com
+          - generic:
+            - heading "Entertainment" [level=3] [ref=f7e683]
+            - list [ref=f7e685]:
+              - listitem [ref=f7e686]:
+                - link "Apple One" [ref=f7e687] [cursor=pointer]:
+                  - /url: https://www.apple.com/apple-one/
+              - listitem [ref=f7e688]:
+                - link "Apple TV+" [ref=f7e689] [cursor=pointer]:
+                  - /url: https://www.apple.com/apple-tv-plus/
+              - listitem [ref=f7e690]:
+                - link "Apple Music" [ref=f7e691] [cursor=pointer]:
+                  - /url: https://www.apple.com/apple-music/
+              - listitem [ref=f7e692]:
+                - link "Apple Arcade" [ref=f7e693] [cursor=pointer]:
+                  - /url: https://www.apple.com/apple-arcade/
+              - listitem [ref=f7e694]:
+                - link "Apple Fitness+" [ref=f7e695] [cursor=pointer]:
+                  - /url: https://www.apple.com/apple-fitness-plus/
+              - listitem [ref=f7e696]:
+                - link "Apple News+" [ref=f7e697] [cursor=pointer]:
+                  - /url: https://www.apple.com/apple-news/
+              - listitem [ref=f7e698]:
+                - link "Apple Podcasts" [ref=f7e699] [cursor=pointer]:
+                  - /url: https://www.apple.com/apple-podcasts/
+              - listitem [ref=f7e700]:
+                - link "Apple Books" [ref=f7e701] [cursor=pointer]:
+                  - /url: https://www.apple.com/apple-books/
+              - listitem [ref=f7e702]:
+                - link "App Store" [ref=f7e703] [cursor=pointer]:
+                  - /url: https://www.apple.com/app-store/
+        - generic [ref=f7e704]:
+          - generic:
+            - heading "Apple Store" [level=3] [ref=f7e705]
+            - list [ref=f7e707]:
+              - listitem [ref=f7e708]:
+                - link "Find a Store" [ref=f7e709] [cursor=pointer]:
+                  - /url: https://www.apple.com/retail/
+              - listitem [ref=f7e710]:
+                - link "Genius Bar" [ref=f7e711] [cursor=pointer]:
+                  - /url: https://www.apple.com/retail/geniusbar/
+              - listitem [ref=f7e712]:
+                - link "Today at Apple" [ref=f7e713] [cursor=pointer]:
+                  - /url: https://www.apple.com/today/
+              - listitem [ref=f7e714]:
+                - link "Group Reservations" [ref=f7e715] [cursor=pointer]:
+                  - /url: https://www.apple.com/today/groups/
+              - listitem [ref=f7e716]:
+                - link "Apple Camp" [ref=f7e717] [cursor=pointer]:
+                  - /url: https://www.apple.com/today/camp/
+              - listitem [ref=f7e718]:
+                - link "Apple Store App" [ref=f7e719] [cursor=pointer]:
+                  - /url: https://apps.apple.com/us/app/apple-store/id375380948
+              - listitem [ref=f7e720]:
+                - link "Certified Refurbished" [ref=f7e721] [cursor=pointer]:
+                  - /url: https://www.apple.com/us/shop/goto/special_deals
+              - listitem [ref=f7e722]:
+                - link "Apple Trade In" [ref=f7e723] [cursor=pointer]:
+                  - /url: https://www.apple.com/us/shop/goto/trade_in
+              - listitem [ref=f7e724]:
+                - link "Financing" [ref=f7e725] [cursor=pointer]:
+                  - /url: https://www.apple.com/us/shop/goto/payment_plan
+              - listitem [ref=f7e726]:
+                - link "Carrier Deals at Apple" [ref=f7e727] [cursor=pointer]:
+                  - /url: https://www.apple.com/us/shop/goto/buy_iphone/carrier_offers
+              - listitem [ref=f7e728]:
+                - link "Order Status" [ref=f7e729] [cursor=pointer]:
+                  - /url: https://www.apple.com/us/shop/goto/order/list
+              - listitem [ref=f7e730]:
+                - link "Shopping Help" [ref=f7e731] [cursor=pointer]:
+                  - /url: https://www.apple.com/us/shop/goto/help
+        - generic [ref=f7e732]:
+          - generic:
+            - heading "For Business" [level=3] [ref=f7e733]
+            - list [ref=f7e735]:
+              - listitem [ref=f7e736]:
+                - link "Apple and Business" [ref=f7e737] [cursor=pointer]:
+                  - /url: https://www.apple.com/business/
+              - listitem [ref=f7e738]:
+                - link "Shop for Business" [ref=f7e739] [cursor=pointer]:
+                  - /url: https://www.apple.com/retail/business/
+          - generic:
+            - heading "For Education" [level=3] [ref=f7e740]
+            - list [ref=f7e742]:
+              - listitem [ref=f7e743]:
+                - link "Apple and Education" [ref=f7e744] [cursor=pointer]:
+                  - /url: https://www.apple.com/education/
+              - listitem [ref=f7e745]:
+                - link "Shop for K-12" [ref=f7e746] [cursor=pointer]:
+                  - /url: https://www.apple.com/education/k12/how-to-buy/
+              - listitem [ref=f7e747]:
+                - link "Shop for College" [ref=f7e748] [cursor=pointer]:
+                  - /url: https://www.apple.com/us/shop/goto/educationrouting
+          - generic:
+            - heading "For Healthcare" [level=3] [ref=f7e749]
+            - list [ref=f7e751]:
+              - listitem [ref=f7e752]:
+                - link "Apple in Healthcare" [ref=f7e753] [cursor=pointer]:
+                  - /url: https://www.apple.com/healthcare/
+              - listitem [ref=f7e754]:
+                - link "Mac in Healthcare" [ref=f7e755] [cursor=pointer]:
+                  - /url: https://www.apple.com/healthcare/mac/
+              - listitem [ref=f7e756]:
+                - link "Health on Apple Watch" [ref=f7e757] [cursor=pointer]:
+                  - /url: https://www.apple.com/healthcare/apple-watch/
+              - listitem [ref=f7e758]:
+                - link "Health Records on iPhone and iPad" [ref=f7e759] [cursor=pointer]:
+                  - /url: https://www.apple.com/healthcare/health-records/
+          - generic:
+            - heading "For Government" [level=3] [ref=f7e760]
+            - list [ref=f7e762]:
+              - listitem [ref=f7e763]:
+                - link "Shop for Government" [ref=f7e764] [cursor=pointer]:
+                  - /url: https://www.apple.com/r/store/government/
+              - listitem [ref=f7e765]:
+                - link "Shop for Veterans and Military" [ref=f7e766] [cursor=pointer]:
+                  - /url: https://www.apple.com/us/shop/goto/eppstore/veteransandmilitary
+        - generic [ref=f7e767]:
+          - generic:
+            - heading "Apple Values" [level=3] [ref=f7e768]
+            - list [ref=f7e770]:
+              - listitem [ref=f7e771]:
+                - link "Accessibility" [ref=f7e772] [cursor=pointer]:
+                  - /url: https://www.apple.com/accessibility/
+              - listitem [ref=f7e773]:
+                - link "Education" [ref=f7e774] [cursor=pointer]:
+                  - /url: https://www.apple.com/education-initiative/
+              - listitem [ref=f7e775]:
+                - link "Environment" [ref=f7e776] [cursor=pointer]:
+                  - /url: https://www.apple.com/environment/
+              - listitem [ref=f7e777]:
+                - link "Inclusion and Diversity" [ref=f7e778] [cursor=pointer]:
+                  - /url: https://www.apple.com/diversity/
+              - listitem [ref=f7e779]:
+                - link "Privacy" [ref=f7e780] [cursor=pointer]:
+                  - /url: https://www.apple.com/privacy/
+              - listitem [ref=f7e781]:
+                - link "Racial Equity and Justice" [ref=f7e782] [cursor=pointer]:
+                  - /url: https://www.apple.com/racial-equity-justice-initiative/
+              - listitem [ref=f7e783]:
+                - link "Supply Chain" [ref=f7e784] [cursor=pointer]:
+                  - /url: https://www.apple.com/supply-chain/
+          - generic:
+            - heading "About Apple" [level=3] [ref=f7e785]
+            - list [ref=f7e787]:
+              - listitem [ref=f7e788]:
+                - link "Newsroom" [ref=f7e789] [cursor=pointer]:
+                  - /url: https://www.apple.com/newsroom/
+              - listitem [ref=f7e790]:
+                - link "Apple Leadership" [ref=f7e791] [cursor=pointer]:
+                  - /url: https://www.apple.com/leadership/
+              - listitem [ref=f7e792]:
+                - link "Career Opportunities" [ref=f7e793] [cursor=pointer]:
+                  - /url: https://www.apple.com/careers/us/
+              - listitem [ref=f7e794]:
+                - link "Investors" [ref=f7e795] [cursor=pointer]:
+                  - /url: https://investor.apple.com/
+              - listitem [ref=f7e796]:
+                - link "Ethics & Compliance" [ref=f7e797] [cursor=pointer]:
+                  - /url: https://www.apple.com/compliance/
+              - listitem [ref=f7e798]:
+                - link "Events" [ref=f7e799] [cursor=pointer]:
+                  - /url: https://www.apple.com/apple-events/
+              - listitem [ref=f7e800]:
+                - link "Contact Apple" [ref=f7e801] [cursor=pointer]:
+                  - /url: https://www.apple.com/contact/
+      - generic [ref=f7e802]:
+        - generic [ref=f7e803]:
+          - text: "More ways to shop:"
+          - link "Find an Apple Store" [ref=f7e804] [cursor=pointer]:
+            - /url: https://www.apple.com/retail/
+          - text: or
+          - link "other retailer" [ref=f7e805] [cursor=pointer]:
+            - /url: https://locate.apple.com/
+          - text: near you.
+          - generic [ref=f7e806]: Or call 1-800-MY-APPLE.
+        - link "United States. Choose your country or region" [ref=f7e808] [cursor=pointer]:
+          - /url: /careers/choose-country-region.html
+          - text: United States
+        - generic [ref=f7e809]:
+          - generic [ref=f7e810]: Copyright © 2025 Apple Inc. All rights reserved.
+          - list [ref=f7e811]:
+            - listitem [ref=f7e812]:
+              - link "Privacy Policy" [ref=f7e813] [cursor=pointer]:
+                - /url: https://www.apple.com/legal/privacy/
+            - listitem [ref=f7e814]:
+              - link "Terms of Use" [ref=f7e815] [cursor=pointer]:
+                - /url: https://www.apple.com/legal/internet-services/terms/site.html
+            - listitem [ref=f7e816]:
+              - link "Sales and Refunds" [ref=f7e817] [cursor=pointer]:
+                - /url: https://www.apple.com/us/shop/goto/help/sales_refunds
+            - listitem [ref=f7e818]:
+              - link "Legal" [ref=f7e819] [cursor=pointer]:
+                - /url: https://www.apple.com/legal/
+            - listitem [ref=f7e820]:
+              - link "Site Map" [ref=f7e821] [cursor=pointer]:
+                - /url: https://www.apple.com/sitemap/

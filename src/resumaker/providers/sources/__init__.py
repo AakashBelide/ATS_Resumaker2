@@ -1,8 +1,11 @@
 """Board-listing adapters (watchlist ingestion). `get_source(name)` returns an adapter."""
+from resumaker.providers.sources.amazon import AmazonJobsSource
 from resumaker.providers.sources.ashby import AshbySource
 from resumaker.providers.sources.base import PostingStub, SourceAdapter
+from resumaker.providers.sources.eightfold import EightfoldSource
 from resumaker.providers.sources.greenhouse import GreenhouseSource
 from resumaker.providers.sources.lever import LeverSource
+from resumaker.providers.sources.oracle_cloud import OracleCloudSource
 from resumaker.providers.sources.workday import WorkdaySource
 
 _SOURCES: dict[str, SourceAdapter] = {
@@ -10,6 +13,9 @@ _SOURCES: dict[str, SourceAdapter] = {
     LeverSource.source: LeverSource(),
     AshbySource.source: AshbySource(),
     WorkdaySource.source: WorkdaySource(),
+    EightfoldSource.source: EightfoldSource(),
+    AmazonJobsSource.source: AmazonJobsSource(),
+    OracleCloudSource.source: OracleCloudSource(),
 }
 
 

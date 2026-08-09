@@ -1,0 +1,518 @@
+- generic [ref=f47e1]:
+  - dialog "Cookie Consent Banner" [ref=f47e2]:
+    - button "Close this consent banner" [active] [ref=f47e3] [cursor=pointer]
+    - generic [ref=f47e5]: "This website utilizes technologies such as cookies to enable essential site functionality, as well as for analytics, personalization, and targeted advertising. To learn more, view the following link:"
+    - button "Manage Preferences" [ref=f47e8] [cursor=pointer]
+  - generic [ref=f47e14]:
+    - generic:
+      - link "Skip to main content":
+        - /url: "#acc-skip-content"
+    - generic [ref=f47e15]:
+      - text: 
+      - link "Careers at mintre header logo" [ref=f47e17] [cursor=pointer]:
+        - /url: /
+      - generic [ref=f47e20]:
+        - navigation "main navigation" [ref=f47e21]:
+          - list [ref=f47e22]:
+            - listitem [ref=f47e23]:
+              - button "Career Paths" [ref=f47e24] [cursor=pointer]
+            - listitem [ref=f47e26]:
+              - link "Benefits" [ref=f47e27] [cursor=pointer]:
+                - /url: https://careers.mitre.org/us/en/benefits
+            - listitem [ref=f47e28]:
+              - link "Veterans" [ref=f47e29] [cursor=pointer]:
+                - /url: https://careers.mitre.org/us/en/veterans
+            - listitem [ref=f47e30]:
+              - link "Events" [ref=f47e31] [cursor=pointer]:
+                - /url: https://careers.mitre.org/us/en/events
+            - listitem [ref=f47e32]:
+              - link "Browse Jobs" [ref=f47e33] [cursor=pointer]:
+                - /url: https://careers.mitre.org/us/en/search-results
+        - text: $
+      - link "0 Saved jobs" [ref=f47e39] [cursor=pointer]:
+        - /url: https://careers.mitre.org/us/en/jobcart
+        - generic [ref=f47e40]: "|"
+        - generic [ref=f47e41]: (0)
+  - main [ref=f47e42]:
+    - generic [ref=f47e43]:
+      - generic [ref=f47e49]:
+        - figure [ref=f47e50]:
+          - img "search results banner image of MITRE McLean Office Building" [ref=f47e53]
+        - generic "Job search" [ref=f47e57]:
+          - generic [ref=f47e58]:
+            - text: 
+            - generic [ref=f47e59]:
+              - generic [ref=f47e61]:
+                - text: 
+                - generic [ref=f47e62]: Search for Job title, keyword, skill
+                - textbox "Search for Job title, keyword, skill" [ref=f47e63]
+                - text:  $
+              - button "Find Jobs" [ref=f47e65] [cursor=pointer]:
+                - generic: 
+                - text: Find Jobs
+      - generic [ref=f47e69]:
+        - region "Refine your search" [ref=f47e74]:
+          - text: $
+          - heading "Refine your search" [level=2] [ref=f47e77]
+          - generic [ref=f47e78]:
+            - generic [ref=f47e79]:
+              - heading [level=3] [ref=f47e82]:
+                - button "Category" [expanded] [ref=f47e83] [cursor=pointer]:
+                  - text: Category
+                  - generic [ref=f47e84]: "8"
+              - generic [ref=f47e86]:
+                - generic [ref=f47e87]:
+                  - generic [ref=f47e88]: Category
+                  - searchbox "Category" [ref=f47e89]
+                  - button "Search in category" [ref=f47e90] [cursor=pointer]:
+                    - generic [ref=f47e91]: ":"
+                    - generic [ref=f47e92]: Search button
+                - list [ref=f47e94]:
+                  - listitem [ref=f47e95]:
+                    - generic [ref=f47e96] [cursor=pointer]:
+                      - checkbox "Engineering 194 jobs" [ref=f47e97]
+                      - text: Engineering
+                      - generic [ref=f47e100]:
+                        - text: (194)
+                        - generic [ref=f47e101]: jobs
+                  - listitem [ref=f47e102]:
+                    - generic [ref=f47e103] [cursor=pointer]:
+                      - checkbox "Facilities & Security 5 jobs" [ref=f47e104]
+                      - text: Facilities & Security
+                      - generic [ref=f47e107]:
+                        - text: (5)
+                        - generic [ref=f47e108]: jobs
+                  - listitem [ref=f47e109]:
+                    - generic [ref=f47e110] [cursor=pointer]:
+                      - checkbox "Federal & State Acquisition 11 jobs" [ref=f47e111]
+                      - text: Federal & State Acquisition
+                      - generic [ref=f47e114]:
+                        - text: (11)
+                        - generic [ref=f47e115]: jobs
+                  - listitem [ref=f47e116]:
+                    - generic [ref=f47e117] [cursor=pointer]:
+                      - checkbox "Finance 2 jobs" [ref=f47e118]
+                      - text: Finance
+                      - generic [ref=f47e121]:
+                        - text: (2)
+                        - generic [ref=f47e122]: jobs
+                  - listitem [ref=f47e123]:
+                    - generic [ref=f47e124] [cursor=pointer]:
+                      - checkbox "Human Resources 3 jobs" [ref=f47e125]
+                      - text: Human Resources
+                      - generic [ref=f47e128]:
+                        - text: (3)
+                        - generic [ref=f47e129]: jobs
+                  - listitem [ref=f47e130]:
+                    - generic [ref=f47e131] [cursor=pointer]:
+                      - checkbox "Other 10 jobs" [ref=f47e132]
+                      - text: Other
+                      - generic [ref=f47e135]:
+                        - text: (10)
+                        - generic [ref=f47e136]: jobs
+                  - listitem [ref=f47e137]:
+                    - generic [ref=f47e138] [cursor=pointer]:
+                      - checkbox "Specialized Sciences 14 jobs" [ref=f47e139]
+                      - text: Specialized Sciences
+                      - generic [ref=f47e142]:
+                        - text: (14)
+                        - generic [ref=f47e143]: jobs
+            - generic [ref=f47e144]:
+              - heading [level=3] [ref=f47e147]:
+                - button "Sub Category" [ref=f47e148] [cursor=pointer]:
+                  - text: Sub Category
+                  - generic [ref=f47e149]: (
+              - generic: ":"
+            - generic [ref=f47e150]:
+              - heading [level=3] [ref=f47e153]:
+                - button "Locations" [ref=f47e154] [cursor=pointer]:
+                  - text: Locations
+                  - generic [ref=f47e155]: (
+              - generic: ":"
+            - generic [ref=f47e156]:
+              - heading [level=3] [ref=f47e159]:
+                - button "State/Province" [ref=f47e160] [cursor=pointer]:
+                  - text: State/Province
+                  - generic [ref=f47e161]: (
+              - generic: ":"
+            - generic [ref=f47e162]:
+              - heading [level=3] [ref=f47e165]:
+                - button "Work Location Type" [ref=f47e166] [cursor=pointer]:
+                  - text: Work Location Type
+                  - generic [ref=f47e167]: (
+              - generic: ":"
+            - generic [ref=f47e168]:
+              - heading [level=3] [ref=f47e171]:
+                - button "Job Type" [ref=f47e172] [cursor=pointer]:
+                  - text: Job Type
+                  - generic [ref=f47e173]: (
+              - generic: ":"
+            - generic [ref=f47e174]:
+              - heading [level=3] [ref=f47e177]:
+                - button "Time Type" [ref=f47e178] [cursor=pointer]:
+                  - text: Time Type
+                  - generic [ref=f47e179]: (
+              - generic: ":"
+            - generic [ref=f47e180]:
+              - heading [level=3] [ref=f47e183]:
+                - button "Minimum Security Clearance Required" [ref=f47e184] [cursor=pointer]:
+                  - text: Minimum Security Clearance Required
+                  - generic [ref=f47e185]: (
+              - generic: ":"
+        - generic [ref=f47e190]:
+          - region "Search results" [ref=f47e191]:
+            - generic [ref=f47e195]:
+              - generic [ref=f47e197]:
+                - generic [ref=f47e200]:
+                  - generic [ref=f47e201]: Search from below list
+                  - textbox "Search from below list" [ref=f47e202]
+                  - text: "$ :"
+                - generic [ref=f47e204]:
+                  - generic [ref=f47e205]: 239 jobs
+                  - generic [ref=f47e206]:
+                    - text: "|"
+                    - generic [ref=f47e207]: Sort by
+                    - generic [ref=f47e208]:
+                      - combobox "Sort by" [ref=f47e209]:
+                        - option "Most relevant" [selected]
+                        - option "Most recent"
+                      - generic: 
+                  - text: F
+              - list [ref=f47e211]:
+                - listitem [ref=f47e212]:
+                  - generic [ref=f47e213]:
+                    - generic [ref=f47e214]:
+                      - heading [level=3] [ref=f47e215]:
+                        - link "Principal Missile Defense Space Systems Engineer Job ID is R116851" [ref=f47e216] [cursor=pointer]:
+                          - /url: https://careers.mitre.org/us/en/job/R116851/Principal-Missile-Defense-Space-Systems-Engineer
+                          - generic [ref=f47e217]: Principal Missile Defense Space Systems Engineer
+                      - paragraph [ref=f47e218]:
+                        - generic [ref=f47e220]:
+                          - generic [ref=f47e221]: Location
+                          - text: Colorado Springs, Colorado, United States of America
+                        - generic [ref=f47e223]:
+                          - generic [ref=f47e224]: Job Type
+                          - text: Full time
+                        - generic [ref=f47e226]:
+                          - generic [ref=f47e227]: Posted Date
+                          - text: 06/17/2026
+                        - generic [ref=f47e228]: Engineering Group
+                        - generic [ref=f47e231]: Systems Engineering
+                      - text: 
+                      - paragraph [ref=f47e234]: Exciting opportunity for a Principal Missile Defense Space Systems Engineer to drive innovation in next-generation missile defense. Lead integration, architecture, and strategic initiatives for space-based systems, collaborating with top defense and space experts. Shape the future of missile defense with MITRE and make a lasting impact on national security.
+                    - generic [ref=f47e238] [cursor=pointer]:
+                      - checkbox "Save Principal Missile Defense Space Systems Engineer R116851 to job cart" [ref=f47e239]
+                      - generic [ref=f47e240]:
+                        - generic [ref=f47e241]: "|"
+                        - generic [ref=f47e242]: Save Principal Missile Defense Space Systems Engineer R116851
+                - listitem [ref=f47e243]:
+                  - generic [ref=f47e244]:
+                    - generic [ref=f47e245]:
+                      - heading [level=3] [ref=f47e246]:
+                        - link "Senior Embedded Software Engineer Job ID is R116321" [ref=f47e247] [cursor=pointer]:
+                          - /url: https://careers.mitre.org/us/en/job/R116321/Senior-Embedded-Software-Engineer
+                          - generic [ref=f47e248]: Senior Embedded Software Engineer
+                      - paragraph [ref=f47e249]:
+                        - generic [ref=f47e251]:
+                          - generic [ref=f47e252]: Location
+                          - text: Bedford, Massachusetts, United States of America
+                        - generic [ref=f47e254]:
+                          - generic [ref=f47e255]: Job Type
+                          - text: Full time
+                        - generic [ref=f47e257]:
+                          - generic [ref=f47e258]: Posted Date
+                          - text: 07/06/2026
+                        - generic [ref=f47e259]: Engineering Group
+                        - generic [ref=f47e262]: Microelectronics Engineering
+                      - text: 
+                      - paragraph [ref=f47e265]: Join our team as a Senior Embedded Software Engineer and lead the design and development of advanced embedded systems for national security. Collaborate with multidisciplinary teams, mentor junior engineers, and drive innovation in high-performance platforms. Shape the future of defense technology with MITRE and make a lasting impact on mission-critical projects.
+                    - generic [ref=f47e269] [cursor=pointer]:
+                      - checkbox "Save Senior Embedded Software Engineer R116321 to job cart" [ref=f47e270]
+                      - generic [ref=f47e271]:
+                        - generic [ref=f47e272]: "|"
+                        - generic [ref=f47e273]: Save Senior Embedded Software Engineer R116321
+                - listitem [ref=f47e274]:
+                  - generic [ref=f47e275]:
+                    - generic [ref=f47e276]:
+                      - heading [level=3] [ref=f47e277]:
+                        - link "Defensive Cyber Enterprise Engineer Job ID is R116561" [ref=f47e278] [cursor=pointer]:
+                          - /url: https://careers.mitre.org/us/en/job/R116561/Defensive-Cyber-Enterprise-Engineer
+                          - generic [ref=f47e279]: Defensive Cyber Enterprise Engineer
+                      - paragraph [ref=f47e280]:
+                        - generic [ref=f47e282]:
+                          - generic [ref=f47e283]: Location
+                          - text: San Antonio, Texas, United States of America
+                        - generic [ref=f47e285]:
+                          - generic [ref=f47e286]: Job Type
+                          - text: Full time
+                        - generic [ref=f47e288]:
+                          - generic [ref=f47e289]: Posted Date
+                          - text: 05/04/2026
+                        - generic [ref=f47e290]: Engineering Group
+                        - generic [ref=f47e293]: Cyber Security
+                      - text: 
+                      - paragraph [ref=f47e296]: Exciting opportunity for a Defensive Cyber Enterprise Engineer and play a pivotal role in safeguarding the USAF enterprise. Drive mission-critical cyber operations, collaborate with top security leaders, and implement cutting-edge defense technologies. Shape the future of national security with MITRE’s innovative and impactful projects. Ready to make an impact as a cyber defense expert?
+                    - generic [ref=f47e300] [cursor=pointer]:
+                      - checkbox "Save Defensive Cyber Enterprise Engineer R116561 to job cart" [ref=f47e301]
+                      - generic [ref=f47e302]:
+                        - generic [ref=f47e303]: "|"
+                        - generic [ref=f47e304]: Save Defensive Cyber Enterprise Engineer R116561
+                - listitem [ref=f47e305]:
+                  - generic [ref=f47e306]:
+                    - generic [ref=f47e307]:
+                      - heading [level=3] [ref=f47e308]:
+                        - link "Senior Cyber Intelligence Engineer Job ID is R116907" [ref=f47e309] [cursor=pointer]:
+                          - /url: https://careers.mitre.org/us/en/job/R116907/Senior-Cyber-Intelligence-Engineer
+                          - generic [ref=f47e310]: Senior Cyber Intelligence Engineer
+                      - paragraph [ref=f47e311]:
+                        - generic [ref=f47e313]:
+                          - generic [ref=f47e314]: Location
+                          - text: Fort Meade - Annapolis Junction, Maryland, United States of America
+                        - generic [ref=f47e316]:
+                          - generic [ref=f47e317]: Job Type
+                          - text: Full time
+                        - generic [ref=f47e319]:
+                          - generic [ref=f47e320]: Posted Date
+                          - text: 06/30/2026
+                        - generic [ref=f47e321]: Engineering Group
+                        - generic [ref=f47e324]: Cyber Security
+                      - text: 
+                      - paragraph [ref=f47e327]: Join our team as a Senior Cyber Intelligence Engineer and drive innovation in cyber intelligence for government and private sector clients. Leverage your expertise in cyber analytics, adversary engagement, and technical research to support mission-critical decision-making. Collaborate with top professionals and make a real impact on national security and defense.
+                    - generic [ref=f47e331] [cursor=pointer]:
+                      - checkbox "Save Senior Cyber Intelligence Engineer R116907 to job cart" [ref=f47e332]
+                      - generic [ref=f47e333]:
+                        - generic [ref=f47e334]: "|"
+                        - generic [ref=f47e335]: Save Senior Cyber Intelligence Engineer R116907
+                - listitem [ref=f47e336]:
+                  - generic [ref=f47e337]:
+                    - generic [ref=f47e338]:
+                      - heading [level=3] [ref=f47e339]:
+                        - link "Principal Systems Engineer Job ID is R116759" [ref=f47e340] [cursor=pointer]:
+                          - /url: https://careers.mitre.org/us/en/job/R116759/Principal-Systems-Engineer
+                          - generic [ref=f47e341]: Principal Systems Engineer
+                      - paragraph [ref=f47e342]:
+                        - generic [ref=f47e344]:
+                          - generic [ref=f47e345]: Location
+                          - text: Aberdeen, Maryland, United States of America
+                        - generic [ref=f47e347]:
+                          - generic [ref=f47e348]: Job Type
+                          - text: Full time
+                        - generic [ref=f47e350]:
+                          - generic [ref=f47e351]: Posted Date
+                          - text: 06/08/2026
+                        - generic [ref=f47e352]: Engineering Group
+                        - generic [ref=f47e355]: Systems Engineering
+                      - text: 
+                      - paragraph [ref=f47e358]: Embrace the opportunity to become a Principal Systems Engineer and lead the development of mission-critical architectures for Army sponsors. Collaborate across disciplines, drive innovation, and shape the future of national security. If you excel in systems engineering, mission architecture, and technical leadership, this is your opportunity to make a lasting impact.
+                    - generic [ref=f47e362] [cursor=pointer]:
+                      - checkbox "Save Principal Systems Engineer R116759 to job cart" [ref=f47e363]
+                      - generic [ref=f47e364]:
+                        - generic [ref=f47e365]: "|"
+                        - generic [ref=f47e366]: Save Principal Systems Engineer R116759
+                - listitem [ref=f47e367]:
+                  - generic [ref=f47e368]:
+                    - generic [ref=f47e369]:
+                      - heading [level=3] [ref=f47e370]:
+                        - link "Microelectronics Engineer (Intelligence Center) Job ID is R116935" [ref=f47e371] [cursor=pointer]:
+                          - /url: https://careers.mitre.org/us/en/job/R116935/Microelectronics-Engineer-Intelligence-Center
+                          - generic [ref=f47e372]: Microelectronics Engineer (Intelligence Center)
+                      - paragraph [ref=f47e373]:
+                        - generic [ref=f47e375]:
+                          - generic [ref=f47e376]: Location
+                          - text: Chantilly, Virginia, United States of America
+                        - generic [ref=f47e378]:
+                          - generic [ref=f47e379]: Job Type
+                          - text: Full time
+                        - generic [ref=f47e381]:
+                          - generic [ref=f47e382]: Posted Date
+                          - text: 07/06/2026
+                        - generic [ref=f47e383]: Engineering Group
+                        - generic [ref=f47e386]: Microelectronics Engineering
+                      - text: 
+                      - paragraph [ref=f47e389]: Join our team as a Senior Microelectronics Engineer and lead cutting-edge projects supporting national security and defense. Leverage your expertise in microelectronics design, fabrication, and quality assurance to drive innovation at MITRE. Collaborate with top professionals and make a lasting impact on the future of space and defense technology.
+                    - generic [ref=f47e393] [cursor=pointer]:
+                      - checkbox "Save Microelectronics Engineer (Intelligence Center) R116935 to job cart" [ref=f47e394]
+                      - generic [ref=f47e395]:
+                        - generic [ref=f47e396]: "|"
+                        - generic [ref=f47e397]: Save Microelectronics Engineer (Intelligence Center) R116935
+                - listitem [ref=f47e398]:
+                  - generic [ref=f47e399]:
+                    - generic [ref=f47e400]:
+                      - heading [level=3] [ref=f47e401]:
+                        - link "Electronic Warfare Systems Engineer Job ID is R116609" [ref=f47e402] [cursor=pointer]:
+                          - /url: https://careers.mitre.org/us/en/job/R116609/Electronic-Warfare-Systems-Engineer
+                          - generic [ref=f47e403]: Electronic Warfare Systems Engineer
+                      - paragraph [ref=f47e404]:
+                        - generic [ref=f47e406]:
+                          - generic [ref=f47e407]: Location
+                          - text: Aberdeen, Maryland, United States of America
+                        - generic [ref=f47e409]:
+                          - generic [ref=f47e410]: Job Type
+                          - text: Full time
+                        - generic [ref=f47e412]:
+                          - generic [ref=f47e413]: Posted Date
+                          - text: 05/08/2026
+                        - generic [ref=f47e414]: Engineering Group
+                        - generic [ref=f47e417]: Electrical Engineering
+                      - text: 
+                      - paragraph [ref=f47e420]: Exciting opportunity for an Electronic Warfare Systems Engineer and drive innovation in advanced radar and communications systems. Lead engineering teams, develop cutting-edge electronic warfare solutions, and collaborate with top experts to protect our nation’s future. Shape the next generation of intelligence and surveillance technology with MITRE. Ready to make an impact? Apply today!
+                    - generic [ref=f47e424] [cursor=pointer]:
+                      - checkbox "Save Electronic Warfare Systems Engineer R116609 to job cart" [ref=f47e425]
+                      - generic [ref=f47e426]:
+                        - generic [ref=f47e427]: "|"
+                        - generic [ref=f47e428]: Save Electronic Warfare Systems Engineer R116609
+                - listitem [ref=f47e429]:
+                  - generic [ref=f47e430]:
+                    - generic [ref=f47e431]:
+                      - heading [level=3] [ref=f47e432]:
+                        - link "Design and Manufacturing Engineer Job ID is R116863" [ref=f47e433] [cursor=pointer]:
+                          - /url: https://careers.mitre.org/us/en/job/R116863/Design-and-Manufacturing-Engineer
+                          - generic [ref=f47e434]: Design and Manufacturing Engineer
+                      - paragraph [ref=f47e435]:
+                        - generic [ref=f47e437]:
+                          - generic [ref=f47e438]: Location
+                          - text: Bedford, Massachusetts, United States of America
+                        - generic [ref=f47e440]:
+                          - generic [ref=f47e441]: Job Type
+                          - text: Full time
+                        - generic [ref=f47e443]:
+                          - generic [ref=f47e444]: Posted Date
+                          - text: 07/05/2026
+                        - generic [ref=f47e445]: Engineering Group
+                        - generic [ref=f47e448]: Mechanical Engineering
+                      - text: 
+                      - paragraph [ref=f47e451]: Join our team as a Senior Mechanical Design and Manufacturing Engineer and drive innovation in advanced electronic systems. Leverage your expertise in CAD, FEA, and manufacturing to shape prototype development for ground, airborne, and shipboard systems. Collaborate with cross-functional teams and contribute to impactful solutions for national security and technology advancement.
+                    - generic [ref=f47e455] [cursor=pointer]:
+                      - checkbox "Save Design and Manufacturing Engineer R116863 to job cart" [ref=f47e456]
+                      - generic [ref=f47e457]:
+                        - generic [ref=f47e458]: "|"
+                        - generic [ref=f47e459]: Save Design and Manufacturing Engineer R116863
+                - listitem [ref=f47e460]:
+                  - generic [ref=f47e461]:
+                    - generic [ref=f47e462]:
+                      - heading [level=3] [ref=f47e463]:
+                        - link "Lead Cyber Risk Manager (Splunk Engineer) Job ID is R116248" [ref=f47e464] [cursor=pointer]:
+                          - /url: https://careers.mitre.org/us/en/job/R116248/Lead-Cyber-Risk-Manager-Splunk-Engineer
+                          - generic [ref=f47e465]: Lead Cyber Risk Manager (Splunk Engineer)
+                      - paragraph [ref=f47e466]:
+                        - generic [ref=f47e468]:
+                          - generic [ref=f47e469]: Location
+                          - text: McLean, Virginia, United States of America
+                        - generic [ref=f47e471]:
+                          - generic [ref=f47e472]: Job Type
+                          - text: Full time
+                        - generic [ref=f47e474]:
+                          - generic [ref=f47e475]: Posted Date
+                          - text: 04/09/2026
+                        - generic [ref=f47e476]: Engineering Group
+                        - generic [ref=f47e479]: Cyber Security
+                      - text: 
+                      - paragraph [ref=f47e482]: Embrace the opportunity to become a Lead Cyber Risk Manager (Splunk Engineer) and drive security excellence in classified environments. Leverage your expertise in Splunk administration, compliance, and cybersecurity to support high-impact projects. Collaborate with top professionals, innovate with advanced security concepts, and make a difference in national security. Shape the future of cybersecurity with MITRE.
+                    - generic [ref=f47e486] [cursor=pointer]:
+                      - checkbox "Save Lead Cyber Risk Manager (Splunk Engineer) R116248 to job cart" [ref=f47e487]
+                      - generic [ref=f47e488]:
+                        - generic [ref=f47e489]: "|"
+                        - generic [ref=f47e490]: Save Lead Cyber Risk Manager (Splunk Engineer) R116248
+                - listitem [ref=f47e491]:
+                  - generic [ref=f47e492]:
+                    - generic [ref=f47e493]:
+                      - heading [level=3] [ref=f47e494]:
+                        - link "Senior User Experience (UX) Engineer, TS/SCI w/ Poly Job ID is R116647" [ref=f47e495] [cursor=pointer]:
+                          - /url: https://careers.mitre.org/us/en/job/R116647/Senior-User-Experience-UX-Engineer-TS-SCI-w-Poly
+                          - generic [ref=f47e496]: Senior User Experience (UX) Engineer, TS/SCI w/ Poly
+                      - paragraph [ref=f47e497]:
+                        - generic [ref=f47e499]:
+                          - generic [ref=f47e500]: Location
+                          - text: McLean, Virginia, United States of America
+                        - generic [ref=f47e502]:
+                          - generic [ref=f47e503]: Job Type
+                          - text: Full time
+                        - generic [ref=f47e505]:
+                          - generic [ref=f47e506]: Posted Date
+                          - text: 06/16/2026
+                        - generic [ref=f47e507]: Engineering Group
+                        - generic [ref=f47e510]: Computer Science
+                      - text: 
+                      - paragraph [ref=f47e513]: Join our team as a Senior UX Engineer and drive innovation in secure, mission-critical front-end web applications for the Intelligence Community. Collaborate with top engineers and designers, shape intuitive user interfaces, and contribute to high-impact projects. If you thrive in a dynamic, mission-driven environment, this is your opportunity to make a difference.
+                    - generic [ref=f47e517] [cursor=pointer]:
+                      - checkbox "Save Senior User Experience (UX) Engineer, TS/SCI w/ Poly R116647 to job cart" [ref=f47e518]
+                      - generic [ref=f47e519]:
+                        - generic [ref=f47e520]: "|"
+                        - generic [ref=f47e521]: Save Senior User Experience (UX) Engineer, TS/SCI w/ Poly R116647
+          - region "pagination" [ref=f47e522]:
+            - text: Z
+            - button "Page 1": "1"
+            - button "Page 2" [ref=f47e523] [cursor=pointer]: "2"
+            - button "Page 3" [ref=f47e524] [cursor=pointer]: "3"
+            - button "Page 4" [ref=f47e525] [cursor=pointer]: "4"
+            - button "Page 5" [ref=f47e526] [cursor=pointer]: "5"
+            - button "Page 6" [ref=f47e527] [cursor=pointer]: "6"
+            - button "Page 7" [ref=f47e528] [cursor=pointer]: "7"
+            - button "Page 8" [ref=f47e529] [cursor=pointer]: "8"
+            - button "Page 9" [ref=f47e530] [cursor=pointer]: "9"
+            - button "Page 10" [ref=f47e531] [cursor=pointer]: "10"
+            - button "View next page" [ref=f47e532] [cursor=pointer]:
+              - generic [ref=f47e533]: 
+  - generic:
+    - generic:
+      - generic:
+        - contentinfo:
+          - generic [ref=f47e534]:
+            - generic [ref=f47e536]:
+              - link "Careers at mitre footer logo" [ref=f47e538] [cursor=pointer]:
+                - /url: ""
+              - generic [ref=f47e544]:
+                - text: VISIT
+                - link "Visit mitre.org" [ref=f47e545] [cursor=pointer]:
+                  - /url: ""
+                  - text: MITRE.ORG
+            - generic [ref=f47e547]:
+              - list [ref=f47e550]:
+                - listitem [ref=f47e551]:
+                  - link "Privacy Policy" [ref=f47e552] [cursor=pointer]:
+                    - /url: https://www.mitre.org/privacy-policy
+                - listitem [ref=f47e553]:
+                  - link "Manage Cookies" [ref=f47e554] [cursor=pointer]:
+                    - /url: "#"
+                - listitem [ref=f47e555]:
+                  - link "Terms of Service" [ref=f47e556] [cursor=pointer]:
+                    - /url: https://www.mitre.org/terms-of-use
+              - list [ref=f47e560]:
+                - listitem [ref=f47e561]:
+                  - link "facebook" [ref=f47e562] [cursor=pointer]:
+                    - /url: https://www.facebook.com/MITREcorp
+                    - generic [ref=f47e563]: C
+                - listitem [ref=f47e564]:
+                  - link "linkedin" [ref=f47e565] [cursor=pointer]:
+                    - /url: https://www.linkedin.com/company/mitre/
+                    - generic [ref=f47e566]: "1"
+                - listitem [ref=f47e567]:
+                  - link "twitter" [ref=f47e568] [cursor=pointer]:
+                    - /url: https://twitter.com/MITREcorp
+                    - generic [ref=f47e569]: 
+                - listitem [ref=f47e570]:
+                  - link "instagram" [ref=f47e571] [cursor=pointer]:
+                    - /url: https://www.instagram.com/mitre.corp/
+                    - generic [ref=f47e572]: "%"
+            - generic [ref=f47e575]:
+              - paragraph [ref=f47e578]:
+                - generic [ref=f47e579]:
+                  - strong [ref=f47e580]: Commitment to Non-Discrimination
+                  - text: All qualified applicants will receive consideration for employment without regard to disability, status as a protected veteran or any other status protected by applicable federal, state, local or international law.
+              - paragraph [ref=f47e583]:
+                - generic [ref=f47e584]:
+                  - text: MITRE intends to maintain a website that is fully accessible to all individuals. If you are unable to search or apply for jobs and would like to request a reasonable accommodation for any part of MITRE’s employment process, please email
+                  - link "recruitinghelp@mitre.org" [ref=f47e587] [cursor=pointer]:
+                    - /url: mailto:recruitinghelp@mitre.org
+                  - text: for general support and
+                  - link "collegerecruiting@mitre.org" [ref=f47e589] [cursor=pointer]:
+                    - /url: mailto:collegerecruiting@mitre.org
+                  - text: for intern positions. This service is for individuals requiring reasonable accommodation requests. Please note that vendor solicitations will not receive a reply.
+            - generic [ref=f47e593]:
+              - paragraph [ref=f47e594]: Copyright © 1997-2025, The MITRE Corporation. All rights reserved.
+              - paragraph [ref=f47e595]: MITRE is a registered trademark of The MITRE Corporation. Material on this site may be copied and distributed with permission only.
+  - generic:
+    - generic:
+      - generic:
+        - generic:
+          - complementary "Static Text"
