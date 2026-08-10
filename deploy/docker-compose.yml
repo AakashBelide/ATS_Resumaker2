@@ -9,6 +9,8 @@ services:
     environment:
       RESUMAKER_DATA_DIR: /data
       RESUMAKER_OUTPUT_DIR: /outputs
+      RESUMAKER_SCHEDULER_ENABLED: "true"   # run the built-in watchlist scheduler in the container
+      # (fast boards hourly, Workday daily); Docker's restart policy keeps it alive across reboots.
     volumes:
       - ../data:/data          # SQLite + profile (PII) persist on the host (gitignored)
       - ../outputs:/outputs     # generated resumes/cover letters
