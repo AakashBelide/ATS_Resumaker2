@@ -132,6 +132,7 @@ Project plan + task tracker. Companion to [RESUME_SYSTEM_BLUEPRINT.md](RESUME_SY
 | Auto-apply policy | **Assisted-apply only**, human before submit (blueprint §21). No bulk auto-submit. | ✅ Decided |
 | Resume template theme(s) | Start with one clean ATS-safe .docx template; add variants later. | ⬜ Open |
 | Scraping stealth tools legality | Prefer official public APIs; Scrapling/CloakBrowser reserved for JS/protected pages within ToS and the local test ATS. | ⬜ Open |
+| **Long-tail discovery via Google-Alerts RSS** (idea borrowed from `job-hunter-public`) — reach postings at companies NOT on our watchlist, without maintaining an adapter/company list. Design: owner creates Google Alerts (`site:greenhouse.io …` etc., delivery = RSS) → we fetch the RSS feeds → **unwrap the Google redirect URL → real ATS URL** → **domain classifier → `(source, external_id)`** → route through the matching existing adapter for a fresh/structured re-fetch. **Dedup: Google does NOT dedupe** — we reuse our `jobs` identity `(source, external_id)` + `content_hash`, so an RSS hit for an already-tracked company merges (no dupe) and untracked ones store fresh. Surface on a **dedicated "Long-tail / Discovered" page** (source-type = `rss`), deduped against the main feed. Caveats: Google Alerts `site:` is laggy/incomplete/result-capped (broad-but-thin) — a *supplement* to our direct polling, not a replacement; needs URL-normalization (strip tracking params) for stable ids. | ⬜ Open (future) |
 
 ---
 
