@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 
 import CompanyLogo from "@/components/CompanyLogo";
+import Donut from "@/components/Donut";
 import { dashboard, discovery, type Dashboard, type Discovery } from "@/lib/api";
 
 const LEVEL_ORDER = ["intern", "junior", "mid", "senior", "staff", "manager"];
@@ -41,7 +42,6 @@ export default function DashboardPage() {
   const levels: [string, number][] = disc
     ? LEVEL_ORDER.filter((l) => disc.facets.levels[l]).map((l) => [l, disc.facets.levels[l]])
     : [];
-  const lmax = Math.max(1, ...levels.map(([, n]) => n));
   const states: [string, number][] = disc
     ? Object.entries(disc.facets.states).filter(([s]) => s !== "OTHER").sort((a, b) => b[1] - a[1]).slice(0, 10)
     : [];
@@ -98,7 +98,7 @@ export default function DashboardPage() {
             <div className="dash-2col">
               <div className="block">
                 <div className="block-head"><h2>On-target by level</h2></div>
-                <div className="panel">{levels.length ? <Bars data={levels} max={lmax} /> : <p className="muted" style={{ fontSize: 13 }}>—</p>}</div>
+                <div className="panel">{levels.length ? <Donut data={levels} unit="on-target" size={172} /> : <p className="muted" style={{ fontSize: 13 }}>—</p>}</div>
               </div>
               <div className="block">
                 <div className="block-head"><h2>Top states</h2><span className="count">on-target</span></div>

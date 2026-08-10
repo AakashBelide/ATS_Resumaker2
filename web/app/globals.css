@@ -448,7 +448,7 @@ button, input, select, textarea { font-family: inherit; }
 .chip.skill { color: var(--mist); }
 
 /* ---- dashboard: two-col + stage-colored funnel ---- */
-.dash-2col { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+.dash-2col { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-items: start; }
 @media (max-width: 900px) { .dash-2col { grid-template-columns: 1fr; } }
 .fill.stage-interested { background: var(--azure); }
 .fill.stage-applied { background: var(--cyan); }
@@ -457,8 +457,8 @@ button, input, select, textarea { font-family: inherit; }
 .fill.stage-rejected, .fill.stage-skipped { background: var(--bad); }
 
 /* ---- donut chart + clickable legend (onboarding composition) ---- */
-.donut { display: flex; align-items: center; gap: 22px; flex-wrap: wrap; }
-.donut-svg { width: 150px; height: 150px; flex-shrink: 0; }
+.donut { display: flex; align-items: center; gap: 26px; flex-wrap: wrap; justify-content: center; }
+.donut-svg { flex-shrink: 0; }
 .donut-total { font-family: var(--font-display); font-size: 27px; font-weight: 700; fill: var(--text); }
 .donut-unit { font-family: var(--font-mono); font-size: 8.5px; letter-spacing: 1px; text-transform: uppercase; fill: var(--muted); }
 .donut-legend { display: flex; flex-direction: column; gap: 3px; flex: 1; min-width: 150px; max-height: 178px; overflow-y: auto; }

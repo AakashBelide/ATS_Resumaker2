@@ -4,11 +4,12 @@
 const PALETTE = ["#3B74FF", "#34D2E8", "#34e89e", "#F2C24B", "#8FBBFF", "#a78bfa",
   "#ff7a8a", "#5B93FF", "#f472b6", "#5eead4", "#fbbf24", "#c4b5fd"];
 
-export default function Donut({ data, onSlice, active, unit = "" }: {
+export default function Donut({ data, onSlice, active, unit = "", size = 190 }: {
   data: [string, number][];
   onSlice?: (k: string) => void;
   active?: string;
   unit?: string;
+  size?: number;
 }) {
   const total = data.reduce((a, [, v]) => a + v, 0) || 1;
   const R = 56, SW = 26, C = 2 * Math.PI * R;
@@ -16,7 +17,7 @@ export default function Donut({ data, onSlice, active, unit = "" }: {
 
   return (
     <div className="donut">
-      <svg viewBox="0 0 150 150" className="donut-svg" role="img">
+      <svg viewBox="0 0 150 150" className="donut-svg" role="img" style={{ width: size, height: size }}>
         <g transform="rotate(-90 75 75)">
           {data.map(([k, v], i) => {
             const len = (v / total) * C;
