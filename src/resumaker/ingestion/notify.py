@@ -18,6 +18,29 @@ from resumaker.persistence import db
 
 _log = get_logger("resumaker.ingestion.notify")
 
+# ---- brand theme (mirrors web/app/globals.css "Orbital Data" tokens) --------------------
+# Emails inline every style (Gmail strips <style>/SVG), but we still ship the web fonts via an
+# @import so clients that honor it (Apple Mail, Outlook-mac) render the real wordmark; the rest
+# fall back through the same system stacks the site declares.
+_BG, _SURFACE = "#060A14", "#0E1728"
+_TEXT, _MUTED, _SKY = "#E9F0FB", "#93A7C9", "#8FBBFF"
+_ELECTRIC, _AZURE, _CYAN, _GOOD = "#3B74FF", "#5B93FF", "#34D2E8", "#34e89e"
+_LINE, _LINE2 = "rgba(126,164,224,0.14)", "rgba(126,164,224,0.28)"
+_ACCENT = f"linear-gradient(90deg,{_ELECTRIC},{_CYAN})"
+_F_DISPLAY = "'Space Grotesk',-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif"
+_F_SANS = "'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif"
+_F_MONO = "'Space Mono',ui-monospace,SFMono-Regular,Menlo,Consolas,monospace"
+
+# seniority pill palette, matching the .lvl.* classes in globals.css (color, bg, border).
+_LVL_COLORS = {
+    "intern":  (_CYAN, "rgba(52,210,232,0.08)", "rgba(52,210,232,0.30)"),
+    "junior":  (_GOOD, "rgba(52,232,158,0.07)", "rgba(52,232,158,0.28)"),
+    "senior":  (_AZURE, "rgba(59,116,255,0.08)", _LINE2),
+    "staff":   ("#F2C24B", "rgba(242,194,75,0.07)", "rgba(242,194,75,0.28)"),
+    "manager": ("#ff7a8a", "rgba(255,122,138,0.06)", "rgba(255,122,138,0.26)"),
+}
+_LVL_DEFAULT = (_MUTED, "rgba(255,255,255,0.03)", _LINE2)
+
 
 def notify_new(jobs: list[JobRecord]) -> None:
     """Scheduler hook: durable digest + optional webhook, then the email digest (best-effort)."""
@@ -95,6 +118,80 @@ def _posting_date(j: JobRecord) -> str:
     return ""
 
 
+def _pill(text: str, color: str, bg: str, border: str) -> str:
+    """A mono, uppercase micro-badge in the site's .lvl / .tag idiom."""
+    return (f"<span style=\"font-family:{_F_MONO};font-size:10px;letter-spacing:.6px;"
+            f"text-transform:uppercase;color:{color};background:{bg};"
+            f"border:1px solid {border};border-radius:6px;padding:3px 9px;"
+            f"display:inline-block;line-height:1.4\">{html_lib.escape(text)}</span>")
+
+
+def _brand_header(n: int) -> str:
+    """Hex-badge + wordmark lockup, accent divider, and the headline — the site's rail brand
+    rendered email-safe (a gradient tile with the ⬢ glyph stands in for the stroked SVG hex,
+    which Gmail would strip)."""
+    plural = "" if n == 1 else "s"
+    return (
+        "<tr><td style=\"padding:0 0 18px\">"
+        "<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\"><tr>"
+        f"<td style=\"width:40px;height:40px;border-radius:10px;text-align:center;"
+        f"vertical-align:middle;background:linear-gradient(135deg,{_ELECTRIC},{_AZURE});"
+        f"font-size:20px;line-height:40px;color:#061024;"
+        f"box-shadow:0 8px 22px rgba(59,116,255,0.28)\">&#11042;</td>"
+        "<td style=\"padding-left:12px;vertical-align:middle\">"
+        f"<div style=\"font-family:{_F_DISPLAY};font-size:19px;font-weight:700;color:{_TEXT};"
+        "letter-spacing:0.2px;line-height:1.1\">ATS Resumaker</div>"
+        f"<div style=\"font-family:{_F_MONO};font-size:8.5px;letter-spacing:2px;"
+        f"text-transform:uppercase;color:{_MUTED};margin-top:3px\">watchlist &middot; discovery</div>"
+        "</td></tr></table></td></tr>"
+        f"<tr><td style=\"padding:0 0 24px\"><div style=\"height:3px;border-radius:3px;"
+        f"background:{_ACCENT}\"></div></td></tr>"
+        "<tr><td style=\"padding:0 0 22px\">"
+        f"<div style=\"font-family:{_F_MONO};font-size:11px;letter-spacing:2px;"
+        f"text-transform:uppercase;color:{_SKY};margin:0 0 8px\">&mdash; new on-target</div>"
+        f"<div style=\"font-family:{_F_DISPLAY};font-size:24px;font-weight:700;color:{_TEXT};"
+        f"letter-spacing:-0.4px;line-height:1.2\">{n} new on-target posting{plural}</div>"
+        f"<div style=\"color:{_MUTED};font-size:13px;margin-top:6px\">"
+        "from your ATS Resumaker watchlist</div></td></tr>")
+
+
+def _card_html(j: JobRecord) -> str:
+    """A single posting as a themed .jobcard: accent top-strip, display-font title link,
+    sky company, and a mono meta row (seniority pill + source + comp + date)."""
+    from resumaker.ingestion.service import title_level
+    lvl = title_level(j.title)
+    color, bg, border = _LVL_COLORS.get(lvl, _LVL_DEFAULT)
+
+    pills = [_pill(lvl, color, bg, border)]
+    if j.source:
+        pills.append(_pill(j.source, _MUTED, "rgba(255,255,255,0.03)", _LINE2))
+    date = _posting_date(j)
+    if date:
+        pills.append(f"<span style=\"font-family:{_F_MONO};font-size:11px;color:{_MUTED}\">"
+                     f"{html_lib.escape(date)}</span>")
+    if j.comp:
+        pills.append(f"<span style=\"font-size:12.5px;font-weight:600;color:{_GOOD}\">"
+                     f"{html_lib.escape(j.comp)}</span>")
+    meta_pills = "".join(f"<td style=\"padding:0 8px 0 0\">{p}</td>" for p in pills)
+
+    co_line = html_lib.escape(j.company)
+    if j.location:
+        co_line += f" &middot; {html_lib.escape(j.location)}"
+
+    return (
+        f"<tr><td style=\"padding:0 0 12px\"><div style=\"border-radius:14px;overflow:hidden;"
+        f"border:1px solid {_LINE};background:{_SURFACE}\">"
+        f"<div style=\"height:3px;background:{_ACCENT}\"></div>"
+        "<div style=\"padding:15px 18px\">"
+        f"<a href=\"{html_lib.escape(j.url)}\" style=\"font-family:{_F_DISPLAY};color:{_SKY};"
+        "font-weight:600;font-size:16px;text-decoration:none;line-height:1.3;"
+        f"letter-spacing:-0.2px\">{html_lib.escape(j.title)}</a>"
+        f"<div style=\"color:{_SKY};font-size:13.5px;margin-top:5px\">{co_line}</div>"
+        "<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" "
+        f"style=\"margin-top:12px\"><tr>{meta_pills}</tr></table>"
+        "</div></div></td></tr>")
+
+
 def build_digest(jobs: list[JobRecord]) -> tuple[str, str, str]:
     """Return (subject, html, text) for a grouped, readable digest of the given postings."""
     from resumaker.ingestion.service import title_level
@@ -106,21 +203,26 @@ def build_digest(jobs: list[JobRecord]) -> tuple[str, str, str]:
     for j in ordered:
         meta = " · ".join(x for x in [j.location, (j.comp or ""), title_level(j.title),
                                       j.source, _posting_date(j)] if x)
-        cards_html.append(
-            "<div style='background:#0E1728;border:1px solid #1e2a44;border-radius:12px;"
-            "padding:14px 16px;margin:0 0 12px'>"
-            f"<a href='{html_lib.escape(j.url)}' style='color:#8FBBFF;text-decoration:none;"
-            f"font-weight:600;font-size:15px'>{html_lib.escape(j.title)}</a>"
-            f"<div style='color:#93A7C9;font-size:13px;margin-top:5px'>"
-            f"{html_lib.escape(j.company)} — {html_lib.escape(meta)}</div></div>")
+        cards_html.append(_card_html(j))
         rows_text.append(f"- {j.title} — {j.company} ({meta})\n  {j.url}")
 
     html_body = (
-        "<div style='background:#060A14;color:#E9F0FB;"
-        "font-family:system-ui,-apple-system,Arial,sans-serif;padding:24px'>"
-        f"<h2 style='margin:0 0 4px;font-size:20px'>{n} new on-target posting{'' if n == 1 else 's'}</h2>"
-        "<p style='color:#93A7C9;margin:0 0 18px;font-size:13px'>from your ATS Resumaker watchlist</p>"
-        f"{''.join(cards_html)}</div>")
+        "<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"utf-8\">"
+        "<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">"
+        "<style>@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700"
+        "&family=Space+Mono:wght@400;700&family=Inter:wght@400;500;600&display=swap');"
+        "body{margin:0;padding:0;background:" + _BG + ";}</style></head>"
+        f"<body style=\"margin:0;padding:0;background:{_BG};font-family:{_F_SANS};color:{_TEXT}\">"
+        f"<table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" "
+        f"style=\"background:{_BG}\"><tr><td align=\"center\" style=\"padding:32px 16px\">"
+        "<table role=\"presentation\" width=\"600\" cellpadding=\"0\" cellspacing=\"0\" "
+        "style=\"max-width:600px;width:100%\">"
+        + _brand_header(n)
+        + "".join(cards_html)
+        + f"<tr><td style=\"padding:20px 2px 0\"><div style=\"font-family:{_F_MONO};font-size:10px;"
+        f"letter-spacing:1px;color:{_MUTED};border-top:1px solid {_LINE};padding-top:14px\">"
+        "ATS RESUMAKER &middot; v0.1 &middot; SELF-HOSTED</div></td></tr>"
+        "</table></td></tr></table></body></html>")
     text_body = (f"{n} new on-target posting{'' if n == 1 else 's'} from your ATS Resumaker watchlist:\n\n"
                  + "\n\n".join(rows_text))
     return subject, html_body, text_body

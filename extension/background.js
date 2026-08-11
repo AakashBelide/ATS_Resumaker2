@@ -1,37 +1,20 @@
-// Service worker: add the current job URL to the ATS Resumaker tracker. Two backends, all
-// configurable from the Options page (so pointing at a backend hosted elsewhere is just a
-// setting change):
-//   - "cli"  : native messaging host runs the CLI (`track add`) locally - works even if the
-//              FastAPI server is NOT running. This is the CLI-first path.
-//   - "api"  : POST /v1/tracker to the configured API base (needs the server up).
-//   - "auto" : try CLI first, fall back to API. (default)
-const NATIVE_HOST = "com.resumaker.host";
-
+// Service worker: add the current job URL to the ATS Resumaker tracker.
+//
+// The extension is a THIN HTTP CLIENT: it just POSTs the URL to the backend's `/v1/tracker`
+// endpoint. The backend owns everything else (instant add, then the CLI-first LLM match in a
+// background task). Backend base URL / token are configurable from the Options page, so
+// pointing at a backend hosted anywhere is just a setting change.
 async function cfg() {
-  const c = await chrome.storage.local.get(["mode", "apiBase", "apiToken", "runMatch"]);
+  const c = await chrome.storage.local.get(["apiBase", "apiToken", "runMatch"]);
   return {
-    mode: c.mode || "auto",
     apiBase: (c.apiBase || "http://localhost:8000").replace(/\/+$/, ""),
     apiToken: c.apiToken || "",
     runMatch: c.runMatch !== false, // default true
   };
 }
 
-function trackViaCLI(url, runMatch) {
-  return new Promise((resolve, reject) => {
-    try {
-      chrome.runtime.sendNativeMessage(
-        NATIVE_HOST, { action: "track", url, no_match: !runMatch },
-        (resp) => {
-          if (chrome.runtime.lastError) return reject(new Error(chrome.runtime.lastError.message));
-          if (!resp || resp.ok !== true) return reject(new Error(resp?.error || "native host error"));
-          resolve({ via: "cli", ...resp });
-        });
-    } catch (e) { reject(e); }
-  });
-}
-
-async function trackViaAPI(url, c) {
+async function track(url) {
+  const c = await cfg();
   const headers = { "Content-Type": "application/json" };
   if (c.apiToken) headers["X-API-Key"] = c.apiToken;
   const r = await fetch(`${c.apiBase}/v1/tracker`, {
@@ -41,15 +24,7 @@ async function trackViaAPI(url, c) {
     const body = await r.text().catch(() => "");
     throw new Error(`API ${r.status} ${body}`.slice(0, 200));
   }
-  return { via: "api", ok: true, entry: await r.json() };
-}
-
-async function track(url) {
-  const c = await cfg();
-  if (c.mode === "cli") return trackViaCLI(url, c.runMatch);
-  if (c.mode === "api") return trackViaAPI(url, c);
-  try { return await trackViaCLI(url, c.runMatch); }        // auto: CLI first
-  catch { return await trackViaAPI(url, c); }                // ...then API
+  return { ok: true, entry: await r.json() };
 }
 
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {

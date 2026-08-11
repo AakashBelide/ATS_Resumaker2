@@ -28,16 +28,8 @@
   <body>
     <div class="wrap">
       <h1>ATS Resumaker — extension settings</h1>
-      <p class="sub">Everything the extension talks to is configurable here — point it at a backend
-        hosted anywhere just by changing these values.</p>
-
-      <label>Backend method</label>
-      <select id="mode">
-        <option value="auto">Auto — try CLI first, fall back to API</option>
-        <option value="cli">CLI only (native host; works without the server)</option>
-        <option value="api">API only (HTTP to the server below)</option>
-      </select>
-      <div class="hint">CLI mode needs the native host installed once (see <code>extension/native-host/install.sh</code>).</div>
+      <p class="sub">The extension is a thin client — it just posts the job URL to your backend.
+        Point it at a backend hosted anywhere just by changing these values.</p>
 
       <label>API base URL</label>
       <input id="apiBase" placeholder="http://localhost:8000" />

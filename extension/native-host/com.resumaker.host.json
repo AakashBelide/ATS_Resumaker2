@@ -1,7 +1,0 @@
-{
-  "name": "com.resumaker.host",
-  "description": "ATS Resumaker native host — adds a job URL to the tracker via the CLI",
-  "path": "__HOST_PATH__",
-  "type": "stdio",
-  "allowed_origins": ["chrome-extension://__EXTENSION_ID__/"]
-}

@@ -1,5 +1,5 @@
-// Popup: show the active tab's URL and add it to the tracker (via the configured backend).
-// Human-in-the-loop: this only TRACKS the job (runs the match); it never applies.
+// Popup: show the active tab's URL and add it to the tracker via the configured backend.
+// Human-in-the-loop: this only TRACKS the job (the backend then runs the match); it never applies.
 const $ = (id) => document.getElementById(id);
 let url = "";
 
@@ -29,22 +29,10 @@ $("track").addEventListener("click", async () => {
   const resp = await chrome.runtime.sendMessage({ type: "track", url });
   $("track").disabled = false;
   if (resp?.ok) {
-    const via = resp.result?.via === "cli" ? "via CLI" : "via API";
-    setStatus(`✓ tracked (${via}). Fit fills in shortly.`, "ok");
+    setStatus("✓ tracked. Fit fills in shortly.", "ok");
   } else {
     setStatus(`error: ${resp?.error || "unknown"}`, "err");
   }
 });
 
 $("opts").addEventListener("click", (e) => { e.preventDefault(); chrome.runtime.openOptionsPage(); });
-
-$("copy").addEventListener("click", async (e) => {
-  e.preventDefault();
-  const cmd = `uv run python -m apps.cli track add --url "${url}"`;
-  try {
-    await navigator.clipboard.writeText(cmd);
-    setStatus("CLI command copied — paste it in the project terminal", "ok");
-  } catch {
-    setStatus("copy failed", "err");
-  }
-});
