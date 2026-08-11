@@ -18,7 +18,7 @@ import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 
-import catalog
+from resumaker.onboarding.sandbox import catalog
 
 SANDBOX_DIR = Path(__file__).resolve().parent
 COMPOSE_FILE = SANDBOX_DIR / "compose.yml"

@@ -10,16 +10,18 @@ from __future__ import annotations
 import json
 import os
 import re
-import sys
 from pathlib import Path
 from urllib.parse import urlsplit
 
-POC_DIR = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(POC_DIR / "sandbox"))
-import runner  # noqa: E402
+from resumaker.config import get_settings
+from resumaker.onboarding.sandbox import runner
 
-SYSTEM_PROMPT = (POC_DIR / "agent" / "system_prompt.md").read_text()
-TOKEN_FILE = POC_DIR / ".secrets" / "claude_oauth_token"
+SYSTEM_PROMPT = (Path(__file__).resolve().parent / "system_prompt.md").read_text()
+
+
+def _token_file() -> Path:
+    """Gitignored on-host token file: `data/.secrets/claude_oauth_token`."""
+    return get_settings().data_root / ".secrets" / "claude_oauth_token"
 
 
 def _registrable(host: str) -> str:
@@ -36,6 +38,7 @@ def _supported_platforms() -> str:
     hand-maintained per platform or per company."""
     try:
         import inspect  # noqa: PLC0415
+
         from resumaker.providers.sources import available_sources, get_source  # noqa: PLC0415
     except Exception:  # noqa: BLE001 - POC may run without the package importable
         return ("- greenhouse / lever / ashby (extra keys: none; token = board slug)\n"
@@ -59,12 +62,13 @@ class AuthMissing(RuntimeError):
 
 def _token() -> str:
     tok = os.environ.get("CLAUDE_CODE_OAUTH_TOKEN", "").strip()
-    if not tok and TOKEN_FILE.exists():
-        tok = TOKEN_FILE.read_text().strip()
+    tf = _token_file()
+    if not tok and tf.exists():
+        tok = tf.read_text().strip()
     if not tok:
         raise AuthMissing(
-            "No Claude auth. Run `claude setup-token` on the host and save the token to "
-            f"{TOKEN_FILE} (gitignored), or export CLAUDE_CODE_OAUTH_TOKEN.")
+            "No Claude auth. Run `claude setup-token` on the host and export "
+            f"CLAUDE_CODE_OAUTH_TOKEN, or save the token to {tf} (gitignored).")
     return tok
 
 

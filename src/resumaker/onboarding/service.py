@@ -13,9 +13,9 @@ import time
 import uuid
 from concurrent.futures import ThreadPoolExecutor
 
-from resumaker.domain import BoardRef, Company, OnboardEvent, OnboardingRun
+from resumaker.domain import BoardRef, Company, OnboardEvent, OnboardingRun, OnboardState
 from resumaker.observability.logging import get_logger
-from resumaker.onboarding.agent import get_agent_runner
+from resumaker.onboarding.agent_runner import OnEvent, get_agent_runner
 from resumaker.persistence import db
 
 _log = get_logger("resumaker.onboarding.service")
@@ -42,6 +42,13 @@ def _emit(run: OnboardingRun, stage: str, status: str, detail: str = "") -> None
     run.events.append(OnboardEvent(stage=stage, status=status, detail=detail, ts=time.time()))
     db.upsert_onboarding_run(run)
     _log.info("onboard %s [%s] %s: %s", run.id, status, stage, detail)
+
+
+def _on_event(run: OnboardingRun) -> OnEvent:
+    """Typed progress callback the agent runner calls -> appends to the run's event timeline."""
+    def cb(stage: str, status: str, detail: str = "") -> None:
+        _emit(run, stage, status, detail)
+    return cb
 
 
 def _deterministic(name: str, careers_url: str | None) -> BoardRef | None:
@@ -72,7 +79,7 @@ def _resolve_and_add(run: OnboardingRun, method: str, board: BoardRef, evidence:
           f"{board.source}:{board.token} ({evidence.get('count', '?')} jobs) — added to watchlist")
 
 
-def _finish(run: OnboardingRun, state: str, note: str = "") -> None:
+def _finish(run: OnboardingRun, state: OnboardState, note: str = "") -> None:
     run.state = state
     if state == "error":
         run.error = note
@@ -133,7 +140,7 @@ def _run(run_id: str) -> None:
 
         runner = get_agent_runner()
         contract = runner.resolve(run.name, run.careers_url or None, run_id=run_id,
-                                  on_event=lambda st, sta, d="": _emit(run, st, sta, d))
+                                  on_event=_on_event(run))
         _apply_agent_contract(run, contract)
     except _Cancelled:
         _log.info("onboard run %s cancelled (stopped by user)", run_id)
@@ -161,7 +168,7 @@ def _resume(run_id: str, careers: str | None) -> None:
     try:
         runner = get_agent_runner()
         contract = runner.resolve(run.name, careers, run_id=run_id,
-                                  on_event=lambda st, sta, d="": _emit(run, st, sta, d))
+                                  on_event=_on_event(run))
         _apply_agent_contract(run, contract)
     except _Cancelled:
         _log.info("onboard resume %s cancelled (stopped by user)", run_id)

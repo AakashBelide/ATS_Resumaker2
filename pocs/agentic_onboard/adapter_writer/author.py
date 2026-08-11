@@ -11,14 +11,12 @@ from __future__ import annotations
 
 import argparse
 import json
-import sys
 from pathlib import Path
 
+from resumaker.onboarding.agent import resolve as agent_resolve  # reuse token + CLI-output parsing
+from resumaker.onboarding.sandbox import runner
+
 POC_DIR = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(POC_DIR / "sandbox"))
-sys.path.insert(0, str(POC_DIR / "agent"))
-import runner  # noqa: E402
-import resolve as agent_resolve  # noqa: E402  (reuse token load + CLI-output parsing)
 
 AUTHOR_PROMPT = (Path(__file__).resolve().parent / "author_prompt.md").read_text()
 DRAFTS_DIR = POC_DIR / "adapter_writer" / "drafts"

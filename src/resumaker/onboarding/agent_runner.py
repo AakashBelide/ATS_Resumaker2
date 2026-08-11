@@ -5,12 +5,11 @@ sandboxed agent is enabled (`RESUMAKER_ONBOARD_AGENT_ENABLED` + Docker + a Claud
 returns a runner that resolves the hard tail inside a locked sandbox. Default = `NullAgentRunner`
 (deterministic-only), so onboarding works with zero extra infra.
 
-The real runner currently reuses the proven POC sandbox (`pocs/agentic_onboard`). Productionizing
-it (moving the sandbox into `src/` + a GitHub-Actions runner for the cloud) is a follow-on (TASKS D.7).
+`DockerAgentRunner` uses the local Docker sandbox (`resumaker.onboarding.sandbox`). A cloud
+(GitHub-Actions) runner implementing the same interface is the deploy-time counterpart (TASKS D.7).
 """
 from __future__ import annotations
 
-import sys
 from collections.abc import Callable
 from typing import Protocol
 
@@ -45,20 +44,14 @@ class NullAgentRunner:
         return None
 
 
-class _PocAgentRunner:
-    """Interim runner reusing the POC sandbox at `pocs/agentic_onboard` (local-first)."""
+class DockerAgentRunner:
+    """Runs the sandboxed resolver via the local Docker sandbox (`resumaker.onboarding.sandbox`)."""
 
     def __init__(self) -> None:
-        poc = get_settings().root_dir / "pocs" / "agentic_onboard"
-        if not (poc / "agent" / "resolve.py").exists():
-            raise RuntimeError(f"POC sandbox not found at {poc}")
-        for p in (poc / "sandbox", poc / "agent"):
-            if str(p) not in sys.path:
-                sys.path.insert(0, str(p))
-        import resolve as _agent_resolve  # noqa: PLC0415  (POC module)
-        import runner as _runner          # noqa: PLC0415  (POC module)
-        self._resolve_via_agent = _agent_resolve.resolve_via_agent
-        self._runner = _runner
+        from resumaker.onboarding.agent import resolve as agent_resolve  # noqa: PLC0415
+        from resumaker.onboarding.sandbox import runner as sandbox_runner  # noqa: PLC0415
+        self._resolve_via_agent = agent_resolve.resolve_via_agent
+        self._runner = sandbox_runner
 
     def resolve(self, name: str, careers_url: str | None, *, run_id: str, on_event: OnEvent) -> dict:
         s = get_settings()
@@ -90,7 +83,7 @@ def get_agent_runner() -> AgentRunner:
     if not get_settings().onboard_agent_enabled:
         return NullAgentRunner()
     try:
-        return _PocAgentRunner()
+        return DockerAgentRunner()
     except Exception as e:  # noqa: BLE001
         _log.warning("agent enabled but runner unavailable: %s", e)
         return NullAgentRunner(note=f"agent enabled but runner unavailable: {e}")

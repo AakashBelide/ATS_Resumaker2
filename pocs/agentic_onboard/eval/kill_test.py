@@ -15,8 +15,7 @@ import threading
 import time
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "sandbox"))
-import runner  # noqa: E402
+from resumaker.onboarding.sandbox import runner  # noqa: E402
 
 
 def _containers(project: str) -> str:

@@ -16,11 +16,12 @@ company careers host per run). Stdlib only — no third-party deps in the proxy 
 """
 from __future__ import annotations
 
+import contextlib
+import http.client
 import os
 import select
 import socket
 import sys
-import http.client
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlsplit
 
@@ -106,10 +107,8 @@ class Proxy(BaseHTTPRequestHandler):
                     (b if s is a else a).sendall(data)
         finally:
             for s in (a, b):
-                try:
+                with contextlib.suppress(OSError):
                     s.close()
-                except OSError:
-                    pass
 
     # ---- plain http (rare): absolute-URI forward, allow-listed ----
     def _forward_http(self) -> None:
@@ -120,7 +119,7 @@ class Proxy(BaseHTTPRequestHandler):
         length = int(self.headers.get("Content-Length", 0) or 0)
         body = self.rfile.read(length) if length else None
         try:
-            conn = http.client.HTTPConnection(u.hostname, u.port or 80, timeout=15)
+            conn = http.client.HTTPConnection(u.hostname or "", u.port or 80, timeout=15)
             path = u.path + (("?" + u.query) if u.query else "")
             headers = {k: v for k, v in self.headers.items()
                        if k.lower() not in ("proxy-connection", "connection")}

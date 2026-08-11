@@ -18,15 +18,14 @@ from __future__ import annotations
 import argparse
 import ast
 import json
-import sys
 from pathlib import Path
+
+from resumaker.onboarding.sandbox import runner
 
 POC_DIR = Path(__file__).resolve().parents[1]
 HERE = Path(__file__).resolve().parent
 DRAFTS = HERE / "drafts"
 SHIM = HERE / "shim"
-sys.path.insert(0, str(POC_DIR / "sandbox"))
-import runner  # noqa: E402
 
 ALLOWED_IMPORT_ROOTS = {
     "__future__", "re", "json", "html", "dataclasses", "typing", "urllib", "pathlib",
