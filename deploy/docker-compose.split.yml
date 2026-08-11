@@ -1,0 +1,59 @@
+# resumaker serverless-split, run LOCALLY (dual-mode parity for the Cloud Run topology).
+#
+# Two services from two images - the same split deployed to Cloud Run:
+#   api    (lean)  : user traffic + /v1/worker/ingest-tick (Cloud Scheduler target locally = cron
+#                    via the in-process APScheduler, kept on for convenience).
+#   worker (heavy) : /v1/worker/run-pipeline (Cloud Tasks target); LibreOffice + Claude CLI.
+# They share the data/ + outputs/ volumes so either can read the SQLite index + artifacts, exactly
+# like Turso + GCS share them in the cloud. The api learns the worker URL via RESUMAKER_WORKER_URL
+# (the Cloud Tasks enqueue seam is wired in D.4; today both run pipelines in-process locally).
+#
+# Run from repo root:  docker compose -f deploy/docker-compose.split.yml up --build
+# Images must target linux/amd64 (Cloud Run's arch; libsql-experimental ships amd64 wheels).
+services:
+  api:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.api
+      platforms: ["linux/amd64"]
+    env_file: ../.env
+    environment:
+      RESUMAKER_DATA_DIR: /data
+      RESUMAKER_OUTPUT_DIR: /outputs
+      RESUMAKER_SCHEDULER_ENABLED: "true"
+      RESUMAKER_WORKER_URL: "http://worker:8000"   # used by the D.4 Cloud Tasks enqueue seam
+      PORT: "8000"
+    volumes:
+      - ../data:/data
+      - ../outputs:/outputs
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/health').status==200 else 1)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  worker:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.worker
+      platforms: ["linux/amd64"]
+    env_file: ../.env
+    environment:
+      RESUMAKER_DATA_DIR: /data
+      RESUMAKER_OUTPUT_DIR: /outputs
+      RESUMAKER_SCHEDULER_ENABLED: "false"   # the worker never schedules; it only executes tasks
+      PORT: "8000"
+    volumes:
+      - ../data:/data
+      - ../outputs:/outputs
+    ports:
+      - "8001:8000"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/health').status==200 else 1)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3

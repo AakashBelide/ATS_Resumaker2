@@ -1,0 +1,45 @@
+# resumaker WORKER image (heavy) - D.2 serverless split.
+#
+# Executes one pipeline per request (Cloud Tasks -> POST /v1/worker/run-pipeline): scrape ->
+# structure -> tailor -> render. Adds what the api image deliberately omits:
+#   - LibreOffice (headless) + Carlito: render .docx -> .pdf, layout-matched to the desktop
+#     (Carlito is the metric-compatible Calibri substitute).
+#   - Node + the Claude CLI (@anthropic-ai/claude-code): CLI-first LLM ($0 subscription) in the
+#     cloud, authenticated by CLAUDE_CODE_OAUTH_TOKEN; the provider layer (D.8) auto-falls-back
+#     to a paid API (RESUMAKER_FALLBACK_PROVIDER) if the CLI fails / is rate-limited.
+#
+# Same codebase/app as the api image, run as a separate Cloud Run service (Tasks-only traffic).
+# Listens on $PORT. Playwright is NOT bundled (the scraper's public-API path covers the
+# supported boards); add `--extra scrape` + `playwright install` only if you need the fallback.
+FROM ghcr.io/astral-sh/uv:python3.13-bookworm-slim
+
+ENV UV_COMPILE_BYTECODE=1 \
+    UV_LINK_MODE=copy \
+    RESUMAKER_ENVIRONMENT=vm \
+    RESUMAKER_DATA_DIR=/data \
+    RESUMAKER_OUTPUT_DIR=/outputs \
+    PORT=8000
+
+# LibreOffice + fonts for docx->pdf; Node + the Claude CLI for CLI-first LLM. (Keep npm: the
+# CLI runs on node at runtime; purging npm risks autoremove taking nodejs with it.)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        libreoffice-writer fonts-crosextra-carlito \
+        nodejs npm \
+    && npm install -g @anthropic-ai/claude-code \
+    && npm cache clean --force \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Deps first (cached layer) from the lockfile - core + api extras, no dev.
+COPY pyproject.toml uv.lock ./
+RUN uv sync --frozen --no-dev --extra api --no-install-project
+
+COPY README.md ./
+COPY src ./src
+COPY apps ./apps
+RUN uv sync --frozen --no-dev --extra api
+
+RUN mkdir -p /data /outputs
+EXPOSE 8000
+CMD ["sh", "-c", "uv run --no-sync uvicorn apps.api.main:app --host 0.0.0.0 --port ${PORT:-8000}"]

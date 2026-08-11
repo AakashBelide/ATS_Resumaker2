@@ -1,0 +1,33 @@
+# resumaker API image (lean) - D.2 serverless split.
+#
+# Serves user traffic + the Cloud Scheduler /v1/worker/ingest-tick target (ingestion is pure
+# scrape + dedupe - no LLM, no PDF render). It never renders resumes or runs the pipeline
+# inline: that work is enqueued to the `worker` service (Cloud Tasks). So this image omits
+# LibreOffice and the Claude CLI, staying small for fast cold starts. Same codebase as the
+# worker image - only the system deps differ; deployed as a separate Cloud Run service.
+#
+# Listens on $PORT (Cloud Run injects it; defaults to 8000 locally).
+FROM ghcr.io/astral-sh/uv:python3.13-bookworm-slim
+
+ENV UV_COMPILE_BYTECODE=1 \
+    UV_LINK_MODE=copy \
+    RESUMAKER_ENVIRONMENT=vm \
+    RESUMAKER_DATA_DIR=/data \
+    RESUMAKER_OUTPUT_DIR=/outputs \
+    PORT=8000
+
+WORKDIR /app
+
+# Deps first (cached layer) from the lockfile - core + api extras, no dev.
+COPY pyproject.toml uv.lock ./
+RUN uv sync --frozen --no-dev --extra api --no-install-project
+
+# Then the source (README is referenced by pyproject's `readme` field, needed to build).
+COPY README.md ./
+COPY src ./src
+COPY apps ./apps
+RUN uv sync --frozen --no-dev --extra api
+
+RUN mkdir -p /data /outputs
+EXPOSE 8000
+CMD ["sh", "-c", "uv run --no-sync uvicorn apps.api.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
