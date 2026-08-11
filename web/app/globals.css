@@ -448,8 +448,12 @@ button, input, select, textarea { font-family: inherit; }
 .chip.skill { color: var(--mist); }
 
 /* ---- dashboard: two-col + stage-colored funnel ---- */
-.dash-2col { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-items: start; }
+.dash-2col { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-items: stretch; }
 @media (max-width: 900px) { .dash-2col { grid-template-columns: 1fr; } }
+/* a panel holding a donut: fill the (stretched) height and center the chart so the two
+   columns match heights instead of leaving a gap under the shorter one. */
+.donut-panel { display: flex; flex-direction: column; }
+.donut-panel .donut { flex: 1; }
 .fill.stage-interested { background: var(--azure); }
 .fill.stage-applied { background: var(--cyan); }
 .fill.stage-interview { background: var(--gold); }
@@ -461,7 +465,7 @@ button, input, select, textarea { font-family: inherit; }
 .donut-svg { flex-shrink: 0; }
 .donut-total { font-family: var(--font-display); font-size: 27px; font-weight: 700; fill: var(--text); }
 .donut-unit { font-family: var(--font-mono); font-size: 8.5px; letter-spacing: 1px; text-transform: uppercase; fill: var(--muted); }
-.donut-legend { display: flex; flex-direction: column; gap: 3px; flex: 1; min-width: 150px; max-height: 178px; overflow-y: auto; }
+.donut-legend { display: flex; flex-direction: column; gap: 3px; flex: 1; min-width: 150px; max-height: 240px; overflow-y: auto; }
 .dleg { display: flex; align-items: center; gap: 9px; background: none; border: 0; cursor: pointer;
     padding: 5px 7px; border-radius: 6px; color: var(--muted); font-size: 13px; text-align: left; }
 .dleg:hover { background: rgba(255,255,255,0.04); color: var(--text); }

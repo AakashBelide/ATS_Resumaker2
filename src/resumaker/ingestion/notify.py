@@ -80,6 +80,21 @@ def email_new(jobs: list[JobRecord], *, dry_run: bool = False) -> int:
     return len(candidates)
 
 
+def _posting_date(j: JobRecord) -> str:
+    """Best per-posting date for the digest: the source's posting date when parseable, else
+    when we first fetched it. Workday-style relative text ('Posted 3 Days Ago') is shown as-is."""
+    raw = (j.posted_at or "").strip()
+    if raw:
+        try:
+            d = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+            return "posted " + d.strftime("%b %d, %Y").replace(" 0", " ")
+        except ValueError:
+            return raw                       # e.g. Workday "Posted 3 Days Ago"
+    if j.first_seen:
+        return "added " + j.first_seen.strftime("%b %d, %Y").replace(" 0", " ")
+    return ""
+
+
 def build_digest(jobs: list[JobRecord]) -> tuple[str, str, str]:
     """Return (subject, html, text) for a grouped, readable digest of the given postings."""
     from resumaker.ingestion.service import title_level
@@ -89,7 +104,8 @@ def build_digest(jobs: list[JobRecord]) -> tuple[str, str, str]:
 
     cards_html, rows_text = [], []
     for j in ordered:
-        meta = " · ".join(x for x in [j.location, (j.comp or ""), title_level(j.title), j.source] if x)
+        meta = " · ".join(x for x in [j.location, (j.comp or ""), title_level(j.title),
+                                      j.source, _posting_date(j)] if x)
         cards_html.append(
             "<div style='background:#0E1728;border:1px solid #1e2a44;border-radius:12px;"
             "padding:14px 16px;margin:0 0 12px'>"

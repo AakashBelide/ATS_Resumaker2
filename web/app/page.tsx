@@ -14,7 +14,7 @@ import { titleLevel, workModel } from "@/lib/logo";
 const LEVEL_ORDER = ["intern", "junior", "mid", "senior", "staff", "manager"];
 const PAGE_SIZES = [24, 48, 96];
 const STORE_KEY = "discovery.q";
-const DEFAULT_Q: DiscoveryQuery = { on_target: true, order: "recent", limit: 24, offset: 0 };
+const DEFAULT_Q: DiscoveryQuery = { on_target: true, order: "recent", limit: 24, offset: 0, since_days: 1 };
 
 function daysAgo(iso: string | null): string {
   if (!iso) return "";

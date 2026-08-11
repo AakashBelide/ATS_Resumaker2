@@ -98,7 +98,7 @@ export default function DashboardPage() {
             <div className="dash-2col">
               <div className="block">
                 <div className="block-head"><h2>On-target by level</h2></div>
-                <div className="panel">{levels.length ? <Donut data={levels} unit="on-target" size={172} /> : <p className="muted" style={{ fontSize: 13 }}>—</p>}</div>
+                <div className="panel donut-panel">{levels.length ? <Donut data={levels} unit="on-target" size={200} /> : <p className="muted" style={{ fontSize: 13 }}>—</p>}</div>
               </div>
               <div className="block">
                 <div className="block-head"><h2>Top states</h2><span className="count">on-target</span></div>

@@ -123,16 +123,16 @@ export default function OnboardPage() {
           <div className="block-head"><h2>Watchlist composition</h2>
             <span className="count">{companies.length} companies · {postingsTotal.toLocaleString()} postings</span></div>
           <div className="dash-2col">
-            <div className="panel">
+            <div className="panel donut-panel">
               <p className="kicker" style={{ marginBottom: 8 }}>Companies by source · click to filter</p>
-              <Donut data={bySource} unit="companies" active={sourceFilter}
+              <Donut data={bySource} unit="companies" active={sourceFilter} size={200}
                      onSlice={(s) => setSourceFilter(sourceFilter === s ? "" : s)} />
             </div>
             <div className="panel">
-              <p className="kicker" style={{ marginBottom: 14 }}>Postings ingested by source</p>
+              <p className="kicker" style={{ marginBottom: 14 }}>Postings ingested by source · top 12</p>
               {postingsBySource.length === 0 ? <p className="muted" style={{ fontSize: 13 }}>—</p> : (
                 <div className="bars">
-                  {postingsBySource.map(([s, n]) => (
+                  {postingsBySource.slice(0, 12).map(([s, n]) => (
                     <div className="bar" key={s}>
                       <span className="lbl">{s}</span>
                       <span className="track"><span className="fill" style={{ width: `${(n / pmax) * 100}%` }} /></span>
