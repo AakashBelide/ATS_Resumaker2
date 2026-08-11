@@ -1,0 +1,6 @@
+# Egress allow-list proxy — stdlib only, no third-party deps.
+FROM python:3.12-slim
+COPY proxy.py /opt/proxy.py
+USER nobody
+EXPOSE 8080
+ENTRYPOINT ["python", "/opt/proxy.py"]

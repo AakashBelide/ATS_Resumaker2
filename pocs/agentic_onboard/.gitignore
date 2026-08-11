@@ -1,0 +1,7 @@
+# Never commit the OAuth token or any run artifacts.
+.secrets/
+runs/
+*.token
+
+# adapter-writer drafts (generated, gated + reviewed before use)
+drafts/

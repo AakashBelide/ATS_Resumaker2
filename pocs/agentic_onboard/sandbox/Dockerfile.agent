@@ -1,0 +1,32 @@
+# Agent image — the sandbox base + Node + the Claude CLI + the resolver tools + hook policy.
+# Built on top of onboard-sandbox:poc so it inherits the non-root user and slim base. Auth is
+# injected at runtime via CLAUDE_CODE_OAUTH_TOKEN (never baked into the image).
+FROM onboard-sandbox:poc
+USER root
+
+# Node 20 (Claude CLI needs >=18) via NodeSource.
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends gnupg \
+ && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+ && apt-get install -y --no-install-recommends nodejs \
+ && rm -rf /var/lib/apt/lists/* \
+ && npm install -g @anthropic-ai/claude-code \
+ && npm cache clean --force
+
+COPY agent/tools/ /opt/agent/tools/
+COPY agent/hook_policy.py /opt/agent/hook_policy.py
+COPY agent/claude-settings.json /opt/agent/claude-settings.json
+RUN chmod +x /opt/agent/tools/*.py \
+ && ln -sf /opt/agent/tools/ats_probe.py /usr/local/bin/ats_probe \
+ && ln -sf /opt/agent/tools/fetch.py /usr/local/bin/fetch
+
+# Keep the CLI to essential (LLM) traffic only, so api.anthropic.com is the sole egress need.
+ENV DISABLE_TELEMETRY=1 \
+    DISABLE_ERROR_REPORTING=1 \
+    DISABLE_AUTOUPDATER=1 \
+    DISABLE_BUG_COMMAND=1 \
+    CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1 \
+    PATH=/opt/agent/tools:$PATH
+
+USER 10001
+WORKDIR /work

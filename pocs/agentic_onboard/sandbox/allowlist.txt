@@ -1,0 +1,19 @@
+# GENERATED from catalog.py — do not edit by hand.
+# = the egress hosts of every supported source + the Anthropic API. The per-run
+#   company careers host is added separately via EXTRA_ALLOW (human-approved).
+
+.eightfold.ai
+.icims.com
+.myworkdayjobs.com
+.oraclecloud.com
+api.anthropic.com
+api.ashbyhq.com
+api.lever.co
+api.smartrecruiters.com
+boards-api.greenhouse.io
+boards.greenhouse.io
+gcsservices.careers.microsoft.com
+job-boards.greenhouse.io
+jobs.ashbyhq.com
+jobs.lever.co
+www.amazon.jobs

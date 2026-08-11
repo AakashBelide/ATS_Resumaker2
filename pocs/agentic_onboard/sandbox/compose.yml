@@ -1,0 +1,76 @@
+# Onboarding sandbox — two networks enforce egress-through-proxy-only:
+#   * proxy sits on BOTH `external` (has internet) and `sandbox`.
+#   * agent sits ONLY on `sandbox`, which is `internal: true` (NO internet/NAT).
+# So the agent's single route out is the proxy, which allow-lists hosts. Plus the agent runs
+# non-root, read-only rootfs, all caps dropped, no-new-privileges, pid/mem capped, and gets
+# NO host mounts of the repo/.env — the only writable space is the /work + /tmp tmpfs.
+name: onboard-sandbox
+
+services:
+  proxy:
+    build: { context: ., dockerfile: Dockerfile.proxy }
+    image: onboard-proxy:poc
+    environment:
+      EGRESS_ALLOWLIST_FILE: /etc/egress/allowlist.txt
+      EXTRA_ALLOW: ${EXTRA_ALLOW:-}
+    volumes:
+      - ./allowlist.txt:/etc/egress/allowlist.txt:ro
+    networks: [external, sandbox]
+
+  agent:
+    build: { context: ., dockerfile: Dockerfile.sandbox }
+    image: onboard-sandbox:poc
+    depends_on: [proxy]
+    environment:
+      HTTP_PROXY: http://proxy:8080
+      HTTPS_PROXY: http://proxy:8080
+      http_proxy: http://proxy:8080
+      https_proxy: http://proxy:8080
+      NO_PROXY: ""
+      no_proxy: ""
+    networks: [sandbox]            # NOT on `external` -> no direct internet
+    read_only: true
+    tmpfs:
+      - /work:uid=10001,gid=10001
+      - /tmp
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    user: "10001:10001"
+    pids_limit: 128
+    mem_limit: 512m
+    cpus: 1.0
+    working_dir: /work
+    # command supplied per-run by the runner.
+
+  # Full agent (base + Node + Claude CLI + tools + hook). Same isolation as `agent`, plus a
+  # writable /tmp HOME (read-only rootfs) and the OAuth token forwarded at run time.
+  resolver:
+    build: { context: .., dockerfile: sandbox/Dockerfile.agent }
+    image: onboard-agent:poc
+    depends_on: [proxy]
+    environment:
+      HTTP_PROXY: http://proxy:8080
+      HTTPS_PROXY: http://proxy:8080
+      http_proxy: http://proxy:8080
+      https_proxy: http://proxy:8080
+      NO_PROXY: ""
+      no_proxy: ""
+      HOME: /tmp
+      CLAUDE_CONFIG_DIR: /tmp/.claude
+    networks: [sandbox]            # NOT on `external` -> egress only via proxy
+    read_only: true
+    tmpfs:
+      - /work:uid=10001,gid=10001
+      - /tmp:uid=10001,gid=10001
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    user: "10001:10001"
+    pids_limit: 256
+    mem_limit: 1g
+    cpus: 2.0
+    working_dir: /work
+
+networks:
+  external: {}
+  sandbox:
+    internal: true

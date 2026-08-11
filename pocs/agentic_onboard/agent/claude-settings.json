@@ -1,0 +1,12 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "*",
+        "hooks": [
+          { "type": "command", "command": "python3 /opt/agent/hook_policy.py" }
+        ]
+      }
+    ]
+  }
+}
