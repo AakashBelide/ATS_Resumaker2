@@ -12,56 +12,85 @@ no single free tier being load-bearing.
 
 ## Chosen path: Serverless (Cloud Run)
 
-No VM to provision or run out of capacity — Google spins the container on demand and scales it to
-zero when idle ($0). Each part maps to a managed/triggered service:
+Chosen deliberately as a **hobby/learning** build (wire up several managed GCP pieces), and because
+it removes the always-on VM entirely — Google spins the container on demand and scales to zero.
 
+### ⚠️ Use Cloud Run *services* (request-based), NOT Jobs or functions
+The Always Free tier (2M req / **180k vCPU-s** / **360k GiB-s**) covers **request-based Cloud Run
+services** only.
+- **Cloud Run *Jobs*** bill *instance-based* → **NOT** covered by that free tier (would bill). Avoid.
+- **Cloud Run *functions*** is a *different product* (rebranded Cloud Functions; 2M invocations /
+  200k **GHz**-s) → wrong tool for our containers. Avoid.
+- So **all batch work runs as request-based services** hit over HTTP (by Cloud Scheduler / Cloud Tasks).
+  A "service" is just a container that runs when hit — it doesn't have to be a web app.
+
+### Components
 | Part | Runs on | Notes |
 |---|---|---|
-| **API** (FastAPI) | **Cloud Run *service*** (scale-to-zero) | wakes on request; free 2M req/mo |
-| **DB** (SQLite) | **Turso** (libSQL, SQLite-compatible) | the main code change; Cloud Run has no persistent disk |
-| **Scheduler** | **Cloud Scheduler** (cron) → triggers the ingestion job | free: 3 jobs |
-| **Ingestion** (77 boards, dedup, notify) | **Cloud Run *job*** | runs to completion, up to hours |
-| **Résumé-gen** (LibreOffice + LLM) | **Cloud Run *job*** (or Actions) | heavy; own container |
-| **Onboarding sandbox** | **GitHub Actions** | Cloud Run can't nest Docker/root |
+| **`api` service** (FastAPI, lean image) | Cloud Run service | read/query endpoints + triggers; ~1% of free tier |
+| **`worker` service** (heavy image: LibreOffice, curl_cffi, …) | Cloud Run service | `POST /ingest-tick`, `POST /run-pipeline`; scale-to-zero, request-based |
+| **DB** (SQLite) | **Turso** (libSQL, SQLite-compatible) | main code change; Cloud Run has no persistent disk |
+| **Scheduler** | **Cloud Scheduler** (cron) → `POST /ingest-tick` | free: 3 jobs |
+| **Async queue** (résumé) | **Cloud Tasks** → `POST /run-pipeline` | managed **work queue** (SQS/Celery-style, NOT Kafka; GCP's Kafka = Pub/Sub). Retries, rate-limit, delay. Free 1M ops/mo |
+| **Onboarding sandbox** | **GitHub Actions** | needs Docker/root — Cloud Run can't nest it |
 | **Artifacts** (.docx/.pdf) | **GCS bucket** (free 5 GB) / R2 | ephemeral FS → upload + signed URLs |
 | **Frontend** | **Vercel** | route handlers hide the API token |
 | **Secrets** | **GCP Secret Manager** / env | Turso, Resend, Anthropic, API token, GitHub PAT |
 
 ```
-Browser ─▶ Vercel ─▶ Cloud Run SERVICE (FastAPI) ─▶ Turso (libSQL)
-                            │                          ▲
-Cloud Scheduler ─▶ Cloud Run JOB: ingestion ──────────┘   + Resend email
-"generate résumé" ─▶ API triggers ─▶ Cloud Run JOB: pipeline (LibreOffice+LLM)
-                                         └─ artifacts ▶ GCS bucket, status ▶ Turso
-"onboard company" ─▶ API triggers ─▶ GitHub Actions (Docker sandbox) ─▶ result ▶ API; adapter ▶ PR
+Browser ─▶ Vercel ─▶ Cloud Run `api` service ─▶ Turso (libSQL)
+                          │                        ▲
+Cloud Scheduler ─(every 2h, 8AM–10PM ET)─▶ `worker` /ingest-tick ─┘  + Resend email
+"generate résumé" ─▶ api ─▶ Cloud Tasks ─▶ `worker` /run-pipeline (LibreOffice+LLM)
+                                              └─ artifact ▶ GCS, status ▶ Turso
+"onboard company" ─▶ api ─▶ GitHub Actions (Docker sandbox) ─▶ result ▶ api; new adapter ▶ PR
 Frontend POLLS /v1/runs/{id} for progress   # replaces SSE
 ```
 
-**Setup order:** Turso DB → GCS bucket → build a lean *API* image + a heavier *jobs* image
-(LibreOffice + curl_cffi + Playwright + LLM client) → deploy API to Cloud Run (`--min-instances=0`)
-→ create ingestion + pipeline **Cloud Run jobs** → Cloud Scheduler cron → GitHub Actions workflow
-for onboarding → Vercel frontend pointed at the Cloud Run URL.
+### Ingestion schedule (owner: 2-hourly, overnight pause, ET)
+Cloud Scheduler cron **`0 8-22/2 * * *`**, timezone **`America/New_York`** (auto EST/EDT) → ~8
+runs/day, **paused 10 PM–8 AM**; the 8 AM run catches everything overnight.
+- **No dedup risk**: ingestion is idempotent — identity `(source, external_id)` + `content_hash`,
+  only new/changed rows are inserted regardless of the time window (re-ingest 819 → 0 new, verified).
+- **Bonus**: no 3 AM emails — the mailer batches overnight postings into one morning digest.
 
-**Code changes (the refactor):**
-1. **DB layer** — `persistence/db.py` `connect()` → libSQL/Turso (SQL unchanged; the sync `libsql`
-   client is close to `sqlite3` — exercise the repository methods). *Biggest task.*
-2. **Drop in-process APScheduler** → a job entrypoint `python -m apps.jobs.ingest` (one tick); Cloud Scheduler triggers it.
-3. **Pipeline off the request thread** → `python -m apps.jobs.run_pipeline --run-id … --url …`; `POST /v1/runs` triggers the Cloud Run job instead of the ThreadPoolExecutor (status already persists to `runs`).
+### Usage vs free tier (owner's max estimates)
+- **Ingestion**: ~240 runs/mo × ~90 s = **~22k vCPU-s (12%)** of 180k.
+- **Résumé-gen**: 300/mo × ~3 min = **~54k vCPU-s (30%)**.
+- **API**: ~2k vCPU-s (~1%).
+- **Cloud Run total ≈ 78k of 180k vCPU-s (43%), ~173k of 360k GiB-s (48%)** → comfortably free.
+- **Onboarding**: GitHub Actions, 200/mo × ~4 min (**prebuilt image**) = **~800 of 2,000 min (40%)**.
+- **Prebuilt images are mandatory** — building per-run (LibreOffice/Playwright/Node ≈ 5–8 min) blows
+  every budget. Build once on push → `docker pull` (~1 min) at run time.
+
+### Setup order
+Turso DB → GCS bucket → build a lean **api** image + a heavier **worker** image (prebuilt, pushed to
+Artifact Registry — the small api image fits the 0.5 GB free; the worker image ~cents) → deploy both
+as Cloud Run services (`--min-instances=0`) → Cloud Scheduler cron → Cloud Tasks queue → GitHub
+Actions workflow for onboarding → Vercel frontend pointed at the api URL.
+
+### Code changes (the refactor)
+1. **DB layer** — `persistence/db.py` `connect()` → libSQL/Turso (SQL unchanged; sync `libsql` client
+   ≈ `sqlite3` — exercise the repository methods). *Biggest task.*
+2. **Drop in-process APScheduler** → a `worker` endpoint `POST /ingest-tick` running one tick; Cloud Scheduler calls it.
+3. **Pipeline off the request thread** → `worker` endpoint `POST /run-pipeline`; `api` enqueues via Cloud Tasks; status persists to `runs` (already does).
 4. **SSE → polling** — frontend swaps `EventSource` for polling `/v1/runs/{id}`.
 5. **Artifacts → bucket** — `outputs/` writes become GCS uploads + signed URLs.
-6. **Containerize for `$PORT`** (Dockerfile already exists).
+6. **PDF on demand** — ship `.docx` by default; render PDF (LibreOffice) only when downloaded (keeps most runs light).
+7. **Containerize for `$PORT`** (Dockerfile exists) — split into lean **api** + heavy **worker** images.
 
-**Gotchas:**
-- **LLM auth in the cloud**: the *subscription* `claude` CLI on a cloud host is the ToS-gray area —
-  for cloud jobs use the **metered Anthropic API** (`RESUMAKER_DEFAULT_PROVIDER=anthropic`); cost is
-  tiny (infrequent runs). Keep the subscription CLI for local/dev.
-- **Cold starts** ~1–3 s after idle (fine for single-user). **No SSE** (poll the DB status).
-- **No Docker sandbox on Cloud Run** → onboarding stays on Actions.
-- **Turso** is mostly drop-in but test the DB layer before trusting it.
-- Everything stays within free tiers for a single user; $0 when idle.
+### Gotchas
+- **LLM auth in the cloud**: the *subscription* `claude` CLI on a cloud host is ToS-gray — use the
+  **metered Anthropic API** (`RESUMAKER_DEFAULT_PROVIDER=anthropic`) for cloud runs; cost is tiny.
+  Keep the subscription CLI for local/dev.
+- **Cold starts** ~1–3 s after idle; **no SSE** (poll the DB status); **no Docker sandbox on Cloud Run** (onboarding → Actions); **Turso** is mostly drop-in but test the DB layer.
+- $0 when idle; all within free tiers at the owner's estimates.
 
-**Trade-off:** most refactor of all options (DB→Turso, scheduler→cron, worker→jobs, artifacts→bucket,
-SSE→polling), but no server to provision, patch, or run out of capacity.
+### Reality check
+This is **8 moving parts** (api + worker services + Scheduler + Cloud Tasks + Turso + GCS + Vercel +
+Actions) — great for learning, more to build/debug. A **$5 VPS** collapses all of it into one warm box
+(no cold starts, no per-run image pulls, résumés generate instantly). Same Docker Compose either way,
+so serverless-now → VPS-later (or vice-versa) is a redeploy. Chosen: serverless, for the learning value.
 
 ## The workload has 4 distinct parts (host them where they fit)
 1. **Always-on core** — FastAPI API + SQLite + APScheduler + ingestion + mailer. Light, must be up.
