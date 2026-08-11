@@ -477,6 +477,29 @@ def _cmd_serve(args) -> int:
     return 0
 
 
+def _cmd_notify(args) -> int:
+    """Email a digest of new on-target postings. Preview by default; --send actually emails."""
+    from resumaker.ingestion import DiscoveryFilters, discover, notify
+    from resumaker.persistence import db
+    db.init_db()
+    jobs = discover(DiscoveryFilters(on_target=True, order="recent", limit=args.limit)).jobs
+    cands = notify.pending(jobs)
+    if not cands:
+        print("nothing new to notify (recent on-target postings already emailed).")
+        return 0
+    if args.send:
+        n = notify.email_new(jobs)
+        print(f"✅ emailed {n} posting(s) to the .env recipient." if n
+              else "email skipped — set RESUMAKER_NOTIFY_TO + a sender (Resend/SMTP) in .env.")
+        return 0
+    subject, _html, text = notify.build_digest(cands)
+    print("DRY RUN — would email (nothing sent, nothing marked):\n")
+    print(f"Subject: {subject}\n")
+    print(text)
+    print(f"\n[{len(cands)} posting(s); run `notify --send` to email + mark them]")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="resumaker", description="ATS resume pipeline")
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -571,6 +594,11 @@ def main(argv: list[str] | None = None) -> int:
 
     c = sub.add_parser("costs", help="show LLM spend (Gemini budget + Claude usage)")
     c.set_defaults(func=_cmd_costs)
+
+    nt = sub.add_parser("notify", help="email a digest of new on-target postings (preview by default)")
+    nt.add_argument("--send", action="store_true", help="actually send + mark notified (default: dry-run)")
+    nt.add_argument("--limit", type=int, default=50, help="recent on-target postings to consider")
+    nt.set_defaults(func=_cmd_notify)
 
     db_ = sub.add_parser("dashboard", help="feed + application-funnel stats")
     db_.add_argument("--days", type=int, default=14)

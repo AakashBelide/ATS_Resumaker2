@@ -316,6 +316,34 @@ def test_preference_filter(monkeypatch):
     assert service.matches_preferences("Product Manager") is False  # no target kw
 
 
+def test_notify_digest_and_dedupe(tmp_db):
+    from resumaker.domain import JobRecord
+    from resumaker.ingestion import notify
+    from resumaker.persistence import db
+    jobs = [
+        JobRecord(source="greenhouse", external_id="1", title="Machine Learning Engineer",
+                  company="Acme", location="SF, CA", url="https://x/1", content_hash="1",
+                  comp="$200K – $250K"),
+        JobRecord(source="ashby", external_id="2", title="Data Engineer", company="Beta",
+                  location="NYC", url="https://x/2", content_hash="2"),
+        JobRecord(source="greenhouse", external_id="3", title="Office Manager", company="Acme",
+                  location="SF", url="https://x/3", content_hash="3"),   # off-target -> excluded
+    ]
+    # pending = on-target (net match) AND not-yet-emailed
+    p = notify.pending(jobs)
+    assert {j.external_id for j in p} == {"1", "2"}
+    subject, html_body, text_body = notify.build_digest(p)
+    assert "2 new" in subject
+    assert "Machine Learning Engineer" in html_body and "$200K – $250K" in html_body
+    assert "https://x/1" in text_body
+    # dry-run counts without needing email config, and does NOT mark
+    assert notify.email_new(jobs, dry_run=True) == 2
+    assert len(notify.pending(jobs)) == 2
+    # once marked, they never re-notify
+    db.mark_notified(p)
+    assert notify.pending(jobs) == []
+
+
 def test_matches_preferences_broad_net(monkeypatch):
     # avoid labels carry '(pure)' qualifiers in the real profile - must still block the role
     monkeypatch.setattr("resumaker.enrichment.preferences", lambda: {

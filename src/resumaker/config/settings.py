@@ -69,6 +69,14 @@ class Settings(BaseSettings):
     # Workday sits behind Akamai + throttles; poll it gently (daily) to avoid blocks.
     scheduler_workday_interval_minutes: int = 1440
     notify_webhook: str | None = None     # optional: POST a JSON digest of new jobs here
+    # -- email digest of new on-target postings (all from .env; nothing hardcoded) -----------
+    notify_to: str | None = None          # recipient; blank -> email disabled
+    notify_from: str = "onboarding@resend.dev"   # verified-domain address for real deliverability
+    resend_api_key: str | None = None     # if set -> send via Resend API (recommended)
+    smtp_host: str | None = None          # else -> SMTP fallback (e.g. Gmail App Password)
+    smtp_port: int = 587
+    smtp_user: str | None = None
+    smtp_pass: str | None = None
 
     @model_validator(mode="after")
     def _derive_paths(self) -> Settings:

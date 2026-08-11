@@ -87,6 +87,12 @@ CREATE TABLE IF NOT EXISTS tracker (
     updated_at       TEXT NOT NULL,
     UNIQUE (url)
 );
+CREATE TABLE IF NOT EXISTS notified (
+    source       TEXT NOT NULL,
+    external_id  TEXT NOT NULL,
+    notified_at  TEXT NOT NULL,
+    PRIMARY KEY (source, external_id)
+);
 CREATE INDEX IF NOT EXISTS idx_runs_created ON runs(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_jobs_status ON jobs(status);
 CREATE INDEX IF NOT EXISTS idx_tracker_stage ON tracker(stage);
@@ -206,6 +212,29 @@ def get_job(job_id: int) -> JobRecord | None:
     with connect() as conn:
         row = conn.execute("SELECT * FROM jobs WHERE id=?", (job_id,)).fetchone()
     return _job_from_row(row) if row else None
+
+
+# ------------------------------------------------------------------ notifications (RI.4)
+def unnotified(jobs: list[JobRecord]) -> list[JobRecord]:
+    """Return only the jobs we have NOT already emailed (dedup on (source, external_id)), so a
+    posting is never sent twice across ticks."""
+    if not jobs:
+        return []
+    with connect() as conn:
+        seen = {(r["source"], r["external_id"])
+                for r in conn.execute("SELECT source, external_id FROM notified").fetchall()}
+    return [j for j in jobs if (j.source, j.external_id) not in seen]
+
+
+def mark_notified(jobs: list[JobRecord]) -> None:
+    """Record that these jobs have been emailed (idempotent)."""
+    if not jobs:
+        return
+    now = _now()
+    with connect() as conn:
+        conn.executemany(
+            "INSERT OR IGNORE INTO notified (source, external_id, notified_at) VALUES (?,?,?)",
+            [(j.source, j.external_id, now) for j in jobs])
 
 
 def list_jobs(status: str | None = None, limit: int = 100) -> list[JobRecord]:
