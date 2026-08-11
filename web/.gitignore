@@ -8,3 +8,4 @@ next-env.d.ts
 .env.local
 # os
 .DS_Store
+tsconfig.tsbuildinfo

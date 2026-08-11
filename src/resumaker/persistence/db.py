@@ -20,6 +20,8 @@ from resumaker.domain.ingestion import (
     BoardRef,
     Company,
     JobRecord,
+    OnboardEvent,
+    OnboardingRun,
     RunRecord,
     TrackerEntry,
 )
@@ -93,9 +95,26 @@ CREATE TABLE IF NOT EXISTS notified (
     notified_at  TEXT NOT NULL,
     PRIMARY KEY (source, external_id)
 );
+CREATE TABLE IF NOT EXISTS onboarding_runs (
+    id           TEXT PRIMARY KEY,
+    name         TEXT NOT NULL,
+    careers_url  TEXT NOT NULL DEFAULT '',
+    method       TEXT NOT NULL DEFAULT '',
+    state        TEXT NOT NULL DEFAULT 'running',
+    question     TEXT NOT NULL DEFAULT '',
+    board        TEXT NOT NULL DEFAULT '',    -- JSON BoardRef, or '' when unresolved
+    evidence     TEXT NOT NULL DEFAULT '{}',  -- JSON
+    events       TEXT NOT NULL DEFAULT '[]',  -- JSON [{stage,status,detail,ts}]
+    cost_usd     REAL NOT NULL DEFAULT 0,
+    turns        INTEGER NOT NULL DEFAULT 0,
+    error        TEXT NOT NULL DEFAULT '',
+    created_at   TEXT NOT NULL,
+    updated_at   TEXT NOT NULL
+);
 CREATE INDEX IF NOT EXISTS idx_runs_created ON runs(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_jobs_status ON jobs(status);
 CREATE INDEX IF NOT EXISTS idx_tracker_stage ON tracker(stage);
+CREATE INDEX IF NOT EXISTS idx_onboarding_created ON onboarding_runs(created_at DESC);
 """
 
 
@@ -370,6 +389,42 @@ def list_companies(active_only: bool = True) -> list[Company]:
     return out
 
 
+# ------------------------------------------------------------------ onboarding runs (Phase C)
+def upsert_onboarding_run(run: OnboardingRun) -> None:
+    """Insert or update an onboarding run (upsert on id). `created_at` is set once on insert."""
+    now = _now()
+    created = run.created_at.isoformat() if run.created_at else now
+    with connect() as conn:
+        conn.execute(
+            """INSERT INTO onboarding_runs (id, name, careers_url, method, state, question,
+                   board, evidence, events, cost_usd, turns, error, created_at, updated_at)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+               ON CONFLICT(id) DO UPDATE SET
+                   name=excluded.name, careers_url=excluded.careers_url, method=excluded.method,
+                   state=excluded.state, question=excluded.question, board=excluded.board,
+                   evidence=excluded.evidence, events=excluded.events, cost_usd=excluded.cost_usd,
+                   turns=excluded.turns, error=excluded.error, updated_at=excluded.updated_at""",
+            (run.id, run.name, run.careers_url, run.method, run.state, run.question,
+             _json(run.board.model_dump()) if run.board else "",
+             _json(run.evidence), _json([e.model_dump() for e in run.events]),
+             run.cost_usd, run.turns, run.error, created, now),
+        )
+
+
+def get_onboarding_run(run_id: str) -> OnboardingRun | None:
+    with connect() as conn:
+        row = conn.execute(
+            "SELECT * FROM onboarding_runs WHERE id=?", (run_id,)).fetchone()
+    return _onboarding_from_row(row) if row else None
+
+
+def list_onboarding_runs(limit: int = 50) -> list[OnboardingRun]:
+    with connect() as conn:
+        rows = conn.execute(
+            "SELECT * FROM onboarding_runs ORDER BY created_at DESC LIMIT ?", (limit,)).fetchall()
+    return [_onboarding_from_row(r) for r in rows]
+
+
 # ------------------------------------------------------------------ analytics (RA.4/RA.5)
 def jobs_daily(days: int = 14) -> list[dict]:
     """New listings per day (by `first_seen`) over the last `days`, most-recent first."""
@@ -499,6 +554,18 @@ def _tracker_from_row(r: sqlite3.Row) -> TrackerEntry:
         stage=r["stage"], run_id=r["run_id"], fit_0_100=r["fit_0_100"],
         recommend_apply=None if r["recommend_apply"] is None else bool(r["recommend_apply"]),
         sponsorship=r["sponsorship"], notes=r["notes"],
+        created_at=_dt(r["created_at"]), updated_at=_dt(r["updated_at"]))
+
+
+def _onboarding_from_row(r: sqlite3.Row) -> OnboardingRun:
+    board = json.loads(r["board"]) if r["board"] else None
+    return OnboardingRun(
+        id=r["id"], name=r["name"], careers_url=r["careers_url"], method=r["method"],
+        state=r["state"], question=r["question"],
+        board=BoardRef(**board) if board else None,
+        evidence=json.loads(r["evidence"] or "{}"),
+        events=[OnboardEvent(**e) for e in json.loads(r["events"] or "[]")],
+        cost_usd=r["cost_usd"], turns=r["turns"], error=r["error"],
         created_at=_dt(r["created_at"]), updated_at=_dt(r["updated_at"]))
 
 

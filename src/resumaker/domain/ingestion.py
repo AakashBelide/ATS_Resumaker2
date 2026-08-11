@@ -20,6 +20,11 @@ TrackerStage = Literal["interested", "applied", "interview", "offer", "rejected"
 TRACKER_STAGES: tuple[str, ...] = (
     "interested", "applied", "interview", "offer", "rejected", "skipped")
 
+# Agentic onboarding run lifecycle (Phase C). deterministic-first -> agent fallback;
+# `needs_input` pauses for a human answer; `killed`=time/budget guard, `stopped`=manual.
+OnboardState = Literal[
+    "running", "needs_input", "resolved", "unresolved", "killed", "stopped", "error"]
+
 
 class BoardRef(BaseModel):
     """A company's posting board on one source (e.g. Greenhouse token 'databricks')."""
@@ -78,6 +83,33 @@ class RunRecord(BaseModel):
     error: str = ""
     created_at: datetime | None = None
     finished_at: datetime | None = None
+
+
+class OnboardEvent(BaseModel):
+    """One progress event in an onboarding run's timeline (frontend renders these)."""
+    stage: str                         # start | deterministic | agent | resume | stop
+    status: str                        # start | done | skip | error | needs_input
+    detail: str = ""
+    ts: float = 0.0
+
+
+class OnboardingRun(BaseModel):
+    """An agentic onboarding attempt (Phase C). The DB row is the source of truth so the run
+    survives restarts and the frontend can poll it (+ pop a dialog when `state==needs_input`)."""
+    id: str                            # run id
+    name: str
+    careers_url: str = ""
+    method: str = ""                   # deterministic | agent
+    state: OnboardState = "running"
+    question: str = ""                 # set when state == needs_input
+    board: BoardRef | None = None      # the resolved board (state == resolved)
+    evidence: dict = Field(default_factory=dict)   # e.g. {count, board_name, sample}
+    events: list[OnboardEvent] = Field(default_factory=list)
+    cost_usd: float = 0.0
+    turns: int = 0
+    error: str = ""
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
 
 
 class TrackerEntry(BaseModel):

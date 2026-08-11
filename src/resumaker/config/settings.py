@@ -62,6 +62,14 @@ class Settings(BaseSettings):
     api_host: str = "0.0.0.0"
     api_port: int = 8000
 
+    # -- agentic onboarding (Phase C) ----------------------------------------
+    # Deterministic-first always runs ($0, no sandbox). The sandboxed agent fallback is opt-in
+    # (needs Docker + a Claude token); off => onboarding is deterministic-only.
+    onboard_agent_enabled: bool = False
+    onboard_max_turns: int = 60           # usage cap: agent tool-call loop
+    onboard_time_limit_s: int = 2400      # time-based auto-kill (40 min)
+    onboard_budget_usd: float = 5.0       # usage cap: max cumulative $ per onboarding
+
     # -- watchlist ingestion + scheduler (RI) --------------------------------
     scheduler_enabled: bool = False       # if True, the API polls the watchlist on a cadence
     # Clean public JSON boards (Greenhouse/Lever/Ashby) have no bot protection - poll often.

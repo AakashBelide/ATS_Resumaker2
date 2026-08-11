@@ -5,6 +5,9 @@ from resumaker.domain.ingestion import (
     BoardRef,
     Company,
     JobRecord,
+    OnboardEvent,
+    OnboardingRun,
+    OnboardState,
     RunRecord,
     TrackerEntry,
     TrackerStage,
@@ -33,5 +36,5 @@ __all__ = [
     "JobPosting", "KeywordSet", "Knockout", "PipelineResult", "ResumeContent",
     "ResumeDoc", "SponsorSignal", "VerifyReport", "WeightedKeyword", "WorkModel",
     "BoardRef", "Company", "JobRecord", "RunRecord", "TrackerEntry", "TrackerStage",
-    "TRACKER_STAGES",
+    "TRACKER_STAGES", "OnboardingRun", "OnboardEvent", "OnboardState",
 ]

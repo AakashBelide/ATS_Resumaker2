@@ -3,17 +3,19 @@
 // resolves the ATS board (slug-probe -> careers-page parse); unresolved -> supply a URL.
 // The watchlist is grouped by ATS source with per-source counts + a source/text filter so a
 // 77-company list stays scannable.
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import CompanyLogo from "@/components/CompanyLogo";
 import Donut from "@/components/Donut";
-import { discovery, listCompanies, onboard, setCompanyActive, type Company, type OnboardResult } from "@/lib/api";
+import { discovery, getOnboardRun, listCompanies, provideOnboardInput, setCompanyActive, startOnboard, stopOnboard, type Company, type OnboardingRun } from "@/lib/api";
 
 export default function OnboardPage() {
   const [name, setName] = useState("");
   const [url, setUrl] = useState("");
   const [busy, setBusy] = useState(false);
-  const [res, setRes] = useState<OnboardResult | null>(null);
+  const [run, setRun] = useState<OnboardingRun | null>(null);
+  const [answer, setAnswer] = useState("");
+  const pollRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [error, setError] = useState("");
   const [companies, setCompanies] = useState<Company[]>([]);
   const [sourceFilter, setSourceFilter] = useState("");
@@ -28,15 +30,45 @@ export default function OnboardPage() {
       .catch(() => {});
   }, []);
 
+  const poll = useCallback((id: string) => {
+    const tick = async () => {
+      try {
+        const r = await getOnboardRun(id);
+        setRun(r);
+        if (r.state === "resolved") { setName(""); setUrl(""); refresh(); return; }
+        if (r.state === "running") { pollRef.current = setTimeout(tick, 1000); }
+        // needs_input / unresolved / killed / stopped / error -> stop polling
+      } catch { pollRef.current = setTimeout(tick, 2000); }
+    };
+    tick();
+  }, [refresh]);
+  useEffect(() => () => { if (pollRef.current) clearTimeout(pollRef.current); }, []);
+
   async function submit() {
     if (!name.trim()) return;
-    setBusy(true); setError(""); setRes(null);
+    if (pollRef.current) clearTimeout(pollRef.current);
+    setBusy(true); setError(""); setRun(null);
     try {
-      const r = await onboard(name.trim(), url.trim() || undefined, true);
-      setRes(r);
-      if (r.resolved) { setName(""); setUrl(""); refresh(); }
+      const r = await startOnboard(name.trim(), url.trim() || undefined);
+      setRun(r); poll(r.id);
     } catch (e) { setError(String(e)); } finally { setBusy(false); }
   }
+
+  async function sendAnswer() {
+    if (!run || !answer.trim()) return;
+    try {
+      const r = await provideOnboardInput(run.id, answer.trim());
+      setAnswer(""); setRun(r); poll(r.id);
+    } catch (e) { setError(String(e)); }
+  }
+
+  async function stopRun() {
+    if (!run) return;
+    if (pollRef.current) clearTimeout(pollRef.current);
+    try { setRun(await stopOnboard(run.id)); } catch (e) { setError(String(e)); }
+  }
+
+  const running = run?.state === "running";
 
   const srcOf = (c: Company) => c.boards[0]?.source ?? "unresolved";
 
@@ -92,26 +124,57 @@ export default function OnboardPage() {
                 <label>Careers URL (optional — helps resolve Workday/custom)</label>
                 <input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://…/careers" />
               </div>
-              <button className="btn btn-primary" onClick={submit} disabled={busy}>
-                {busy ? "resolving…" : "Onboard"}
+              <button className="btn btn-primary" onClick={submit} disabled={busy || running}>
+                {busy || running ? "resolving…" : "Onboard"}
               </button>
             </div>
             {error && <p className="error" style={{ marginTop: 14 }}>{error}</p>}
-            {res && (
-              <div className={`result ${res.resolved ? "ok" : "no"}`}>
-                {res.resolved ? (
-                  <>
-                    <b>Resolved</b> via <span className="mono">{res.method}</span> → {res.boards.map((b) => (
-                      <span key={b.source} className="tag" style={{ marginLeft: 6 }}>{b.source}/{b.token}</span>
-                    ))}
+            {run && (
+              <div className={`result ${run.state === "resolved" ? "ok" : ["running", "needs_input"].includes(run.state) ? "" : "no"}`}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+                  <span className="tag">{run.state}</span>
+                  <b>{run.name}</b>
+                  {run.method && <span className="mono muted" style={{ fontSize: 11.5 }}>via {run.method}</span>}
+                  {running && <button className="btn" style={{ marginLeft: "auto" }} onClick={stopRun}>Stop</button>}
+                </div>
+
+                {/* live progress timeline */}
+                <div className="mono" style={{ fontSize: 11.5, lineHeight: 1.75 }}>
+                  {run.events.map((e, i) => (
+                    <div key={i} className="muted">
+                      <span className="tag" style={{ marginRight: 6 }}>{e.status}</span>
+                      {e.stage}{e.detail ? ` — ${e.detail}` : ""}
+                    </div>
+                  ))}
+                </div>
+
+                {run.state === "resolved" && run.board && (
+                  <div style={{ marginTop: 8 }}>
+                    <b>Resolved</b> → <span className="tag">{run.board.source}/{run.board.token}</span>
                     <div className="muted" style={{ marginTop: 6, fontSize: 12.5 }}>Added to the watchlist and queued for the next ingest.</div>
-                  </>
-                ) : (
-                  <>
-                    <b>Unresolved.</b> {res.note}
-                    {res.tried.length > 0 && <div className="muted mono" style={{ marginTop: 6, fontSize: 11 }}>tried: {res.tried.join(", ")}</div>}
-                    <div className="muted" style={{ marginTop: 6, fontSize: 12.5 }}>Try adding the careers URL above.</div>
-                  </>
+                  </div>
+                )}
+
+                {run.state === "needs_input" && (
+                  <div className="panel" style={{ marginTop: 10, padding: 12 }}>
+                    <p style={{ margin: "0 0 6px" }}><b>The agent needs your input</b></p>
+                    <p className="muted" style={{ margin: "0 0 10px", fontSize: 13 }}>{run.question}</p>
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <input value={answer} onChange={(e) => setAnswer(e.target.value)}
+                             placeholder="careers URL or ATS board token"
+                             onKeyDown={(e) => { if (e.key === "Enter") sendAnswer(); }} style={{ flex: 1 }} />
+                      <button className="btn btn-primary" onClick={sendAnswer}>Answer</button>
+                    </div>
+                  </div>
+                )}
+
+                {["unresolved", "killed", "stopped", "error"].includes(run.state) && (
+                  <div className="muted" style={{ marginTop: 8, fontSize: 12.5 }}>
+                    {run.error || run.events[run.events.length - 1]?.detail || run.state}
+                    {run.state === "unresolved" && (
+                      <div style={{ marginTop: 6 }}>Try adding the careers URL above{run.turns ? ` · ${run.turns} turns · $${run.cost_usd.toFixed(3)}` : ""}.</div>
+                    )}
+                  </div>
                 )}
               </div>
             )}

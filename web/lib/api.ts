@@ -180,7 +180,6 @@ export async function getReport(runId: string): Promise<Report> {
 
 // ---- Onboarding (RI.0) ------------------------------------------------------
 export type Company = { id: number | null; name: string; active: boolean; boards: { source: string; token: string; extra: Record<string, string> }[] };
-export type OnboardResult = { name: string; resolved: boolean; method: string; boards: { source: string; token: string; extra: Record<string, string> }[]; note: string; tried: string[] };
 export const listCompanies = () => get<Company[]>("/v1/companies");
 export async function setCompanyActive(name: string, active: boolean): Promise<{ name: string; active: boolean }> {
   const r = await fetch(`${BASE}/v1/companies/${encodeURIComponent(name)}/active`, {
@@ -189,10 +188,33 @@ export async function setCompanyActive(name: string, active: boolean): Promise<{
   if (!r.ok) throw new Error(`setCompanyActive → ${r.status}`);
   return r.json();
 }
-export async function onboard(name: string, careers_url?: string, add = true): Promise<OnboardResult> {
+
+// Agentic onboarding (Phase C) — async, human-in-the-loop.
+export type OnboardState = "running" | "needs_input" | "resolved" | "unresolved" | "killed" | "stopped" | "error";
+export type OnboardEvent = { stage: string; status: string; detail: string; ts: number };
+export type OnboardingRun = {
+  id: string; name: string; careers_url: string; method: string; state: OnboardState;
+  question: string; board: { source: string; token: string; extra: Record<string, string> } | null;
+  evidence: Record<string, unknown>; events: OnboardEvent[]; cost_usd: number; turns: number;
+  error: string; created_at: string | null; updated_at: string | null;
+};
+export async function startOnboard(name: string, careers_url?: string): Promise<OnboardingRun> {
   const r = await fetch(`${BASE}/v1/onboard`, {
-    method: "POST", headers: headers(), body: JSON.stringify({ name, careers_url, add }),
+    method: "POST", headers: headers(), body: JSON.stringify({ name, careers_url }),
   });
-  if (!r.ok) throw new Error(`onboard → ${r.status}`);
+  if (!r.ok) throw new Error(`startOnboard → ${r.status}`);
+  return r.json();
+}
+export const getOnboardRun = (id: string) => get<OnboardingRun>(`/v1/onboard/${encodeURIComponent(id)}`);
+export async function provideOnboardInput(id: string, answer: string): Promise<OnboardingRun> {
+  const r = await fetch(`${BASE}/v1/onboard/${encodeURIComponent(id)}/input`, {
+    method: "POST", headers: headers(), body: JSON.stringify({ answer }),
+  });
+  if (!r.ok) throw new Error(`provideOnboardInput → ${r.status}`);
+  return r.json();
+}
+export async function stopOnboard(id: string): Promise<OnboardingRun> {
+  const r = await fetch(`${BASE}/v1/onboard/${encodeURIComponent(id)}/stop`, { method: "POST", headers: headers() });
+  if (!r.ok) throw new Error(`stopOnboard → ${r.status}`);
   return r.json();
 }

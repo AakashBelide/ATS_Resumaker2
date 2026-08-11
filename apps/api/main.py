@@ -19,6 +19,7 @@ from apps.api.routers import (
     discovery,
     health,
     jobs,
+    onboard,
     profile,
     runs,
     tracker,
@@ -56,7 +57,7 @@ def create_app() -> FastAPI:
     app = FastAPI(title="resumaker", version=__version__, lifespan=lifespan)
     app.add_middleware(
         CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
-    for r in (health.router, runs.router, jobs.router, discovery.router,
+    for r in (health.router, runs.router, jobs.router, onboard.router, discovery.router,
               tracker.router, profile.router, costs.router, dashboard.router):
         app.include_router(r)
     return app

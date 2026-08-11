@@ -13,7 +13,6 @@ from pydantic import BaseModel
 from apps.api.security import require_token
 from resumaker.domain import BoardRef, Company, JobRecord
 from resumaker.ingestion import ingest_company as _ingest
-from resumaker.ingestion import resolve as _resolve
 from resumaker.persistence import db
 from resumaker.providers.sources import available_sources
 
@@ -23,12 +22,6 @@ router = APIRouter(prefix="/v1", tags=["jobs"], dependencies=[Depends(require_to
 class CompanyIn(BaseModel):
     name: str
     boards: list[BoardRef]
-
-
-class OnboardIn(BaseModel):
-    name: str
-    careers_url: str | None = None
-    add: bool = True   # add to the watchlist if resolved
 
 
 @router.get("/sources")
@@ -58,18 +51,6 @@ def set_company_active(name: str, body: ActiveIn) -> dict:
     if not db.set_company_active(name, body.active):
         raise HTTPException(404, "company not found")
     return {"name": name, "active": body.active}
-
-
-@router.post("/onboard")
-def onboard(body: OnboardIn) -> dict:
-    """Auto-discover a company's board (slug-probe -> careers-page parse) and, if resolved
-    and `add`, put it on the watchlist. Unresolved -> caller supplies careers_url/token."""
-    res = _resolve(body.name, careers_url=body.careers_url)
-    if res.resolved and body.add:
-        db.add_company(Company(name=body.name, boards=res.boards))
-    return {"name": res.name, "resolved": res.resolved, "method": res.method,
-            "boards": [b.model_dump() for b in res.boards], "note": res.note,
-            "tried": res.tried}
 
 
 @router.get("/jobs", response_model=list[JobRecord])
