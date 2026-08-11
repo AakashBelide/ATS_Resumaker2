@@ -1,10 +1,11 @@
 {
   "manifest_version": 3,
-  "name": "resumaker",
-  "version": "0.1.0",
-  "description": "Capture the current job posting and tailor a grounded, ATS-optimized resume via the resumaker API.",
-  "permissions": ["activeTab", "storage", "scripting"],
-  "host_permissions": ["http://localhost:8000/*", "https://*/*"],
-  "action": { "default_popup": "popup.html", "default_title": "resumaker" },
+  "name": "ATS Resumaker",
+  "version": "0.2.0",
+  "description": "Capture the current job posting and add it to your ATS Resumaker tracker. CLI-first (works offline), with an API fallback. Backend is configurable.",
+  "permissions": ["activeTab", "storage", "nativeMessaging"],
+  "host_permissions": ["http://localhost/*", "http://127.0.0.1/*", "https://*/*"],
+  "action": { "default_popup": "popup.html", "default_title": "ATS Resumaker — Track this job" },
+  "options_page": "options.html",
   "background": { "service_worker": "background.js", "type": "module" }
 }

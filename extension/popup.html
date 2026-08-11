@@ -3,24 +3,35 @@
   <head>
     <meta charset="utf-8" />
     <style>
-      body { font: 13px system-ui, sans-serif; width: 320px; margin: 0; padding: 12px; background: #0b0d12; color: #e6e8ee; }
-      input { width: 100%; box-sizing: border-box; padding: 6px; margin: 4px 0; background: #11141b; color: #e6e8ee; border: 1px solid #333; border-radius: 4px; }
-      button { width: 100%; padding: 8px; margin-top: 6px; background: #3b82f6; color: #fff; border: 0; border-radius: 4px; cursor: pointer; }
-      .muted { opacity: 0.6; } .ok { color: #4ade80; } .err { color: #f87171; }
-      details { margin-top: 10px; } summary { cursor: pointer; opacity: 0.7; }
+      :root { --bg:#060A14; --surface:#0E1728; --line:rgba(126,164,224,.22); --text:#E9F0FB;
+        --muted:#93A7C9; --electric:#3B74FF; --cyan:#34D2E8; --good:#34e89e; --bad:#ff7a8a; }
+      body { font: 13.5px system-ui, -apple-system, sans-serif; width: 320px; margin: 0;
+        padding: 14px; background: var(--bg); color: var(--text); }
+      .hd { display:flex; align-items:center; gap:8px; margin-bottom:10px; }
+      .hd b { font-size:14.5px; letter-spacing:.2px; }
+      .hex { color: var(--electric); font-size:15px; }
+      .url { color: var(--muted); font-size:11.5px; word-break: break-all; line-height:1.5;
+        background: rgba(0,0,0,.28); border:1px solid var(--line); border-radius:8px; padding:8px 10px; }
+      button.primary { width:100%; padding:11px; margin-top:12px; background: linear-gradient(135deg,#3B74FF,#5B93FF);
+        color:#061024; font-weight:700; border:0; border-radius:9px; cursor:pointer; font-size:14px; }
+      button.primary:disabled { opacity:.55; cursor:default; }
+      .status { margin-top:10px; font-size:12.5px; min-height:16px; }
+      .ok { color: var(--good); } .err { color: var(--bad); } .muted { color: var(--muted); }
+      .row { display:flex; gap:14px; margin-top:12px; padding-top:10px; border-top:1px solid var(--line); }
+      .row a { color: var(--muted); font-size:12px; text-decoration:none; cursor:pointer; }
+      .row a:hover { color: var(--cyan); }
     </style>
   </head>
   <body>
-    <strong>resumaker</strong>
-    <p class="muted" id="url">reading current tab…</p>
-    <button id="go">Tailor for this JD</button>
-    <p id="status"></p>
-    <details>
-      <summary>Settings</summary>
-      <input id="apiBase" placeholder="API base (http://localhost:8000)" />
-      <input id="apiToken" placeholder="API token" type="password" />
-      <button id="save">Save</button>
-    </details>
+    <div class="hd"><span class="hex">⬡</span><b>ATS Resumaker</b></div>
+    <div class="url" id="url">reading current tab…</div>
+    <button class="primary" id="track">+ Track this job</button>
+    <div class="status muted" id="status"></div>
+    <div class="row">
+      <a id="open" target="_blank">open tracker ↗</a>
+      <a id="copy">copy CLI command</a>
+      <a id="opts" style="margin-left:auto">settings</a>
+    </div>
     <script src="popup.js"></script>
   </body>
 </html>
