@@ -23,6 +23,7 @@ from apps.api.routers import (
     profile,
     runs,
     tracker,
+    worker,
 )
 from resumaker import __version__
 from resumaker.config import get_settings
@@ -58,7 +59,7 @@ def create_app() -> FastAPI:
     app.add_middleware(
         CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
     for r in (health.router, runs.router, jobs.router, onboard.router, discovery.router,
-              tracker.router, profile.router, costs.router, dashboard.router):
+              tracker.router, profile.router, costs.router, dashboard.router, worker.router):
         app.include_router(r)
     return app
 

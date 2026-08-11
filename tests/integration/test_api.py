@@ -85,6 +85,49 @@ def test_start_run_returns_id(client, monkeypatch):
     assert r.status_code == 202 and r.json() == {"run_id": "run123", "status": "running"}
 
 
+def test_worker_ingest_tick(client, monkeypatch):
+    """The Cloud Scheduler target: one poll over the selected source set, returns a summary."""
+    from types import SimpleNamespace
+
+    # fake two boards, one with a new job — assert the count is summed, not the source internals
+    fake = [SimpleNamespace(new_jobs=[{"x": 1}]), SimpleNamespace(new_jobs=[])]
+    captured = {}
+
+    def fake_run_tick(sources):
+        captured["sources"] = sources
+        return fake
+    monkeypatch.setattr("resumaker.ingestion.scheduler.run_tick", fake_run_tick)
+
+    r = client.post("/v1/worker/ingest-tick", headers={"X-API-Key": "secret"},
+                    json={"sources": "fast"})
+    assert r.status_code == 200
+    assert r.json() == {"sources": "fast", "companies": 2, "new": 1}
+    assert captured["sources"] is not None and "greenhouse" in captured["sources"]  # fast set
+
+
+def test_worker_run_pipeline(client, monkeypatch):
+    """The Cloud Tasks target: runs one pipeline synchronously and returns the persisted record."""
+    from resumaker.domain import RunRecord
+
+    def fake_run_pipeline(**kw):
+        # simulate the orchestrator persisting a terminal run row under the supplied run_id
+        from resumaker.persistence import db
+        db.record_run(RunRecord(id=kw["run_id"], url=kw["url"], status="done", fit_0_100=71.0))
+        return type("R", (), {"error": ""})()
+    monkeypatch.setattr("apps.api.routers.worker.run_pipeline", fake_run_pipeline)
+
+    r = client.post("/v1/worker/run-pipeline", headers={"X-API-Key": "secret"},
+                    json={"url": "https://boards.greenhouse.io/x/jobs/1", "run_id": "wrk-1"})
+    assert r.status_code == 200
+    body = r.json()
+    assert body["id"] == "wrk-1" and body["status"] == "done" and body["fit_0_100"] == 71.0
+
+
+def test_worker_endpoints_require_token(client):
+    assert client.post("/v1/worker/ingest-tick", json={}).status_code == 401
+    assert client.post("/v1/worker/run-pipeline", json={"url": "x"}).status_code == 401
+
+
 def test_run_progress_is_polled_from_status_json(client):
     """Progress is served by polling `status.json` (not SSE), so any instance can report it."""
     h = {"X-API-Key": "secret"}
