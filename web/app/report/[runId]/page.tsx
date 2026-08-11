@@ -7,7 +7,7 @@ import { useParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
 import CompanyLogo from "@/components/CompanyLogo";
-import { artifactUrl, getReport, getRun, startRun, subscribe, type Report } from "@/lib/api";
+import { artifactUrl, getProgress, getReport, getRun, startRun, type Report } from "@/lib/api";
 
 function scoreColor(v: number) { return v >= 65 ? "hi" : v >= 45 ? "mid" : "lo"; }
 function pct(v: number) { return Math.round(v <= 1 ? v * 100 : v); }
@@ -48,15 +48,21 @@ export default function ReportPage() {
     setGen({ stage: "starting" }); setGenDone(null); setError("");
     try {
       const { run_id } = await startRun(r.url);
-      const unsub = subscribe(run_id, (stage, status) => setGen({ stage: `${stage} · ${status}` }));
+      // Poll progress (no SSE): status.json gives the live stage; `done` ends the loop, then
+      // one getRun tells us success vs error. status.json may not exist for the first tick.
       const poll = setInterval(async () => {
         try {
-          const rec = await getRun(run_id);
-          if (["done", "error", "matched"].includes(rec.status)) {
-            clearInterval(poll); unsub(); setGen(null); setGenDone(run_id);
+          const p = await getProgress(run_id);
+          if (p.current) setGen({ stage: p.current });
+          if (p.done) {
+            clearInterval(poll);
+            const rec = await getRun(run_id);
+            setGen(null);
+            if (rec.status === "error") setError("generation failed - see the run log");
+            else setGenDone(run_id);
           }
-        } catch { /* keep polling */ }
-      }, 3000);
+        } catch { /* status.json not written yet - keep polling */ }
+      }, 2000);
     } catch (e) { setError(String(e)); setGen(null); }
   }
 

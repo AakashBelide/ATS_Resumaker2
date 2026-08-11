@@ -37,15 +37,15 @@ export async function startRun(url: string): Promise<{ run_id: string }> {
   return r.json();
 }
 
-// Subscribe to a run's SSE progress stream. Returns an unsubscribe fn.
-export function subscribe(runId: string, onEvent: (stage: string, status: string) => void): () => void {
-  const es = new EventSource(`${BASE}/v1/runs/${runId}/events`);
-  es.addEventListener("progress", (e) => {
-    const [stage, status] = (e as MessageEvent).data.split(":");
-    onEvent(stage, status);
-  });
-  es.addEventListener("end", () => es.close());
-  return () => es.close();
+export type RunProgress = {
+  current: string; done: boolean; elapsed: number;
+  stages: { stage: string; status: string; detail: string; elapsed: number | null }[];
+};
+// Poll a run's progress snapshot (replaces SSE - a scale-to-zero backend can't hold a stream).
+export async function getProgress(runId: string): Promise<RunProgress> {
+  const r = await fetch(`${BASE}/v1/runs/${encodeURIComponent(runId)}/progress`, { headers: headers() });
+  if (!r.ok) throw new Error(`getProgress ${r.status}`);
+  return r.json();
 }
 
 export function artifactUrl(runId: string, name: string): string {

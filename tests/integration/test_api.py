@@ -83,3 +83,22 @@ def test_start_run_returns_id(client, monkeypatch):
     r = client.post("/v1/runs", headers={"X-API-Key": "secret"},
                     json={"url": "https://boards.greenhouse.io/x/jobs/1"})
     assert r.status_code == 202 and r.json() == {"run_id": "run123", "status": "running"}
+
+
+def test_run_progress_is_polled_from_status_json(client):
+    """Progress is served by polling `status.json` (not SSE), so any instance can report it."""
+    h = {"X-API-Key": "secret"}
+    out = get_settings().output_root / "run-xyz"
+    out.mkdir(parents=True)
+    (out / "status.json").write_text(json.dumps({
+        "current": "tailor", "done": False, "elapsed": 12.5,
+        "stages": [{"stage": "scrape", "status": "done", "detail": "", "elapsed": 2.0},
+                   {"stage": "tailor", "status": "start", "detail": "", "elapsed": None}]}))
+    p = client.get("/v1/runs/run-xyz/progress", headers=h)
+    assert p.status_code == 200
+    body = p.json()
+    assert body["current"] == "tailor" and body["done"] is False and len(body["stages"]) == 2
+
+    # unknown run -> empty, keep-polling snapshot (not a 404, so the client loop is simple)
+    empty = client.get("/v1/runs/nope/progress", headers=h).json()
+    assert empty["current"] == "" and empty["done"] is False

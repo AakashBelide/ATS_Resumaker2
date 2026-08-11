@@ -1,18 +1,22 @@
-"""Pipeline runs: start, poll, list, stream progress (SSE), and download artifacts.
+"""Pipeline runs: start, poll status + progress, list, and download artifacts.
 
 A POST starts a background run and returns its id immediately (the pipeline is minutes
-long). Clients then either poll GET /{id} or subscribe to the SSE event stream, and
-finally fetch artifacts (resume PDF/DOCX, cover letter, report).
+long). Clients poll GET /{id} for the terminal status and GET /{id}/progress for the live
+stage, then fetch artifacts (resume PDF/DOCX, cover letter, report).
+
+Progress is exposed by POLLING (not SSE): a scale-to-zero / multi-instance serverless
+deployment can't hold an open stream, and the in-process event queue isn't visible to
+another instance. `progress` reads the run's `status.json` snapshot (written by the
+ProgressReporter to the run dir - shared storage in the cloud), so any instance can serve
+it. Same file the CLI `watch` renders; nothing here is stateful.
 """
 from __future__ import annotations
 
-import asyncio
-import queue
+import json
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
-from sse_starlette.sse import EventSourceResponse
 
 from apps.api.jobs.worker import manager
 from apps.api.security import require_token
@@ -61,27 +65,31 @@ def get_run(run_id: str) -> RunRecord:
     return rec
 
 
-@router.get("/{run_id}/events")
-async def stream_events(run_id: str) -> EventSourceResponse:
-    """Server-Sent Events: one message per stage transition until the run ends. Reuses
-    the same progress stream the CLI/`watch` render."""
-    h = manager.handle(run_id)
-    if h is None:
-        raise HTTPException(404, "run not found or already reaped")
+class RunProgress(BaseModel):
+    current: str = ""            # the stage in flight (e.g. "tailor", "ats_verify")
+    done: bool = False           # the run has ended (success OR error - poll GET /{id} for which)
+    elapsed: float = 0.0
+    stages: list[dict] = []      # per-stage [{stage,status,detail,elapsed}] in order
 
-    async def gen():
-        while True:
-            try:
-                ev = h.events.get_nowait()
-            except queue.Empty:
-                await asyncio.sleep(0.25)
-                continue
-            if ev.get("stage") == "__end__":
-                yield {"event": "end", "data": "done"}
-                break
-            yield {"event": "progress", "data": f'{ev["stage"]}:{ev["status"]}:{ev["detail"]}'}
 
-    return EventSourceResponse(gen())
+@router.get("/{run_id}/progress", response_model=RunProgress)
+def get_progress(run_id: str) -> RunProgress:
+    """Current progress snapshot for a run, read from its `status.json` (poll this instead of
+    a stream). Before the run dir/status exists yet, returns an empty in-progress snapshot so
+    the client can keep polling. When the run's DB row is terminal, reports done even if the
+    file is missing (e.g. reaped)."""
+    status_path = get_settings().output_root / run_id / "status.json"
+    if status_path.is_file():
+        try:
+            snap = json.loads(status_path.read_text())
+            return RunProgress(current=snap.get("current", ""), done=bool(snap.get("done")),
+                               elapsed=float(snap.get("elapsed", 0.0)), stages=snap.get("stages", []))
+        except (json.JSONDecodeError, OSError):
+            pass  # mid-write or unreadable - fall through to a keep-polling snapshot
+    rec = db.get_run(run_id)
+    if rec is not None and rec.status in ("done", "error", "matched"):
+        return RunProgress(current=rec.status, done=True)
+    return RunProgress()  # unknown/just-started - empty snapshot, client keeps polling
 
 
 # Only these artifact names are servable, mapped by suffix within the run dir.
