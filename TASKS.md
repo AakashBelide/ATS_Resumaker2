@@ -300,7 +300,7 @@ first-class forever.** (Dual-mode adapter table in DEPLOYMENT.md.)
 | D.5 | **Artifacts → GCS** (signed URLs); **PDF on-demand** (ship .docx, render PDF only on download) | ⬜ Todo | keeps most runs light |
 | D.6 | **SSE → polling** in frontend (`/v1/runs/{id}`); deploy **frontend on Vercel** | ⬜ Todo | scale-to-zero can't hold a stream |
 | D.7 | **Onboarding on GitHub Actions** (workflow_dispatch; Docker sandbox; result→api; adapter draft→PR) | ⬜ Todo | Cloud Run can't nest Docker |
-| D.8 | **LLM auth**: cloud runs use metered Anthropic API (`RESUMAKER_DEFAULT_PROVIDER=anthropic`), not the subscription CLI (ToS) | ⬜ Todo | tiny cost; subscription CLI stays local/dev |
+| D.8 | **LLM = CLI-first + auto-fallback** (local & cloud): primary subscription `claude` CLI (cloud via `CLAUDE_CODE_OAUTH_TOKEN`); provider-layer auto-fallback to a configured API (`RESUMAKER_FALLBACK_PROVIDER=anthropic\|gemini`) on failure/rate-limit. Bundle CLI+token in worker/agent images | ⬜ Todo | $0 by default; API only on overflow. Ties to the CLI-agnostic backlog item |
 | D.9 | **Terraform IaC** (`deploy/terraform/`) — provision Cloud Run services, Artifact Registry, Cloud Scheduler (cron+tz), Cloud Tasks, GCS, Secret Manager, IAM + Vercel + GitHub Actions secrets; `terraform apply`/`destroy` | ⬜ Todo | migration-branch only; local setup = just `docker compose up` |
 
 **Fallback (documented):** a **$5/mo VPS** collapses all 8 pieces into one warm box (faster per-run, no

@@ -79,7 +79,7 @@ Each concern is config-selected with a **local default**, so the same codebase r
 | Scheduler | in-process APScheduler | Cloud Scheduler → `/ingest-tick` |
 | Pipeline run | in-process thread | Cloud Tasks → worker `/run-pipeline` |
 | Artifacts | `outputs/` file store | GCS bucket |
-| LLM | subscription `claude` CLI ($0) | metered Anthropic API |
+| LLM | subscription `claude` CLI ($0) | **same CLI-first** (`CLAUDE_CODE_OAUTH_TOKEN`) + auto-fallback to API on failure/rate-limit |
 | Onboarding sandbox | local Docker/bwrap | GitHub Actions dispatch |
 | Progress | polling (works both) | polling |
 
@@ -118,9 +118,13 @@ the free tiers.
 7. **Containerize for `$PORT`** (Dockerfile exists) — split into lean **api** + heavy **worker** images.
 
 ### Gotchas
-- **LLM auth in the cloud**: the *subscription* `claude` CLI on a cloud host is ToS-gray — use the
-  **metered Anthropic API** (`RESUMAKER_DEFAULT_PROVIDER=anthropic`) for cloud runs; cost is tiny.
-  Keep the subscription CLI for local/dev.
+- **LLM = CLI-first everywhere, API only as backup** (local AND cloud): primary is the subscription
+  `claude` CLI ($0/token; in the cloud via `claude setup-token` → `CLAUDE_CODE_OAUTH_TOKEN`, which
+  Anthropic supports for headless/CI). A provider-layer **auto-fallback** retries on a configured API
+  (`RESUMAKER_DEFAULT_PROVIDER=claude` + `RESUMAKER_FALLBACK_PROVIDER=anthropic|gemini`) on failure or
+  **subscription rate-limit**. The worker + onboard-agent images bundle the CLI + token secret; the API
+  key is the fallback secret. Real limit at this volume = subscription *weekly caps*, which the fallback
+  absorbs (then back to $0). Flip primary→API only if this ever becomes a multi-user product.
 - **Cold starts** ~1–3 s after idle; **no SSE** (poll the DB status); **no Docker sandbox on Cloud Run** (onboarding → Actions); **Turso** is mostly drop-in but test the DB layer.
 - $0 when idle; all within free tiers at the owner's estimates.
 
