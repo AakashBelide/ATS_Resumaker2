@@ -66,6 +66,51 @@ def test_registry_rejects_unknown_provider():
         get_provider("does-not-exist")
 
 
+class _Boom(LLMProvider):
+    name = "boom"
+
+    def complete(self, prompt, *, system=None, temperature=0.0, max_tokens=4096, task=""):
+        raise RuntimeError("rate limited")
+
+
+def test_fallback_provider_fails_over_and_is_lazy():
+    """FallbackProvider only builds the fallback when the primary actually fails, then routes
+    to it - and complete_json (base) rides the same failover."""
+    from resumaker.providers.llm.registry import FallbackProvider
+
+    built = {"n": 0}
+
+    def factory():
+        built["n"] += 1
+        return FakeProvider()
+
+    fb = FallbackProvider(_Boom(), factory)
+    assert built["n"] == 0                       # lazy: not built until needed
+    assert fb.name == "boom"                     # identity of the primary (cost attribution)
+    r = fb.complete("hi", task="t")              # fallback call #1
+    assert r.provider == "fake" and built["n"] == 1
+    fb.complete("again")                         # #2 - fallback reused, not rebuilt
+    assert built["n"] == 1
+    assert fb.complete_json("give me json") == {"n": 3}   # #3, base.complete_json -> failover
+
+
+def test_get_provider_wraps_with_fallback_when_configured(monkeypatch):
+    from resumaker.providers.llm import registry
+
+    s = Settings(default_provider="claude", fallback_provider="gemini")
+    monkeypatch.setattr(registry, "get_settings", lambda: s)
+    # don't actually build claude/gemini - stub the builder
+    monkeypatch.setattr(registry, "_build", lambda name, **kw: FakeProvider(model=name))
+
+    p = registry.get_provider("claude", cache=False)
+    assert isinstance(p, registry.FallbackProvider)
+    # no fallback wrapping when none configured
+    s2 = Settings(default_provider="claude", fallback_provider=None)
+    monkeypatch.setattr(registry, "get_settings", lambda: s2)
+    p2 = registry.get_provider("claude", cache=False)
+    assert not isinstance(p2, registry.FallbackProvider)
+
+
 def test_sources_registry():
     assert "greenhouse" in available_sources()
     assert get_source("greenhouse").source == "greenhouse"

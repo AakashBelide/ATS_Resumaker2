@@ -46,6 +46,11 @@ class Settings(BaseSettings):
     # `default_provider` picks the engine for cognitive stages: claude | anthropic | gemini.
     # `claude` = Claude CLI (subscription, $0 tokens); `anthropic` = Anthropic API (credits).
     default_provider: str = "claude"
+    # CLI-first EVERYWHERE (local + cloud): keep `claude` primary and set a paid API fallback
+    # that the provider layer switches to automatically when the CLI fails / is rate-limited.
+    # Unset by default (no fallback), so nothing breaks without an API key. claude | anthropic |
+    # gemini. Cloud auth for the CLI is the OAuth token (CLAUDE_CODE_OAUTH_TOKEN).
+    fallback_provider: str | None = None
     model_fast: str = "claude-haiku-4-5"          # cheap extraction passes
     model_standard: str = "claude-sonnet-4-5"     # structuring / analysis
     model_quality: str = "claude-opus-4-8"        # tailoring / fact-critical
