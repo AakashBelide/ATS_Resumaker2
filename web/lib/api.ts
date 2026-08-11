@@ -99,10 +99,16 @@ export function discovery(q: DiscoveryQuery = {}): Promise<Discovery> {
 export type TrackerEntry = {
   id: number | null; job_id: number | null; url: string; company: string; title: string;
   stage: string; run_id: string; fit_0_100: number | null; recommend_apply: boolean | null;
-  sponsorship: string; notes: string; created_at: string | null; updated_at: string | null;
+  sponsorship: string; match_error: string | null;
+  notes: string; created_at: string | null; updated_at: string | null;
 };
 export function listTracker(stage?: string): Promise<TrackerEntry[]> {
   return get<TrackerEntry[]>(`/v1/tracker${qs({ stage })}`);
+}
+export async function rematchTracker(id: number): Promise<TrackerEntry> {
+  const r = await fetch(`${BASE}/v1/tracker/${id}/rematch`, { method: "POST", headers: headers() });
+  if (!r.ok) throw new Error(`rematchTracker → ${r.status}`);
+  return r.json();
 }
 export async function addTracker(body: { job_id?: number; url?: string; run_match?: boolean }): Promise<TrackerEntry> {
   const r = await fetch(`${BASE}/v1/tracker`, { method: "POST", headers: headers(), body: JSON.stringify(body) });

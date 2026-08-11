@@ -270,6 +270,15 @@ The agent acts on **attacker-controlled scraped web content**, so it needs tools
 
 ---
 
+### Interim reliability fixes (2026-08-11, on `main`)
+
+- **Oracle Cloud JDs now scrape.** Added `_oracle_cloud` handler in `providers/scrape/scraper.py`: the CE careers page (`*.oraclecloud.com`, JS-rendered — a plain GET returns an empty shell) is fetched via the public `recruitingCEJobRequisitionDetails/{Id}` JSON API (the page's own source). Fixes match/resume for the whole Oracle family (JPMC, Amex, Citizens, Staples, Ford…). Test: `test_oracle_cloud_scraper`.
+- **Failed matches are visible + retryable.** Added `tracker.match_error` (DB col + additive migration + `TrackerEntry` field). `_apply_match` records the error (and clears it on success) instead of leaving `fit=NULL`, which the UI could not distinguish from "in progress" → eternal `matching…` + infinite polling. New `POST /v1/tracker/{id}/rematch`; Tracker page shows a `failed · retry` state and stops polling failed rows. Test: `test_tracker_match_failure_sets_error_then_retry_clears`. **Note:** matches still run as in-process `BackgroundTask` (no durability if the process dies mid-run) — **D.3 (Cloud Tasks worker)** makes them durable/retryable.
+- **Unique run slugs.** `files.run_slug(..., unique_key=url)` appends a 6-char hash so same-titled postings don't collide on run dir / report URL (e.g. `…-01fcf4`). API path was already unique via its uuid run_id; this closes the CLI/direct/match path.
+- **Dev-stack port fight killed.** The old v1 Docker stack had `restart=always` and kept resurrecting on IPv6 `[::]:8000`, stealing the browser's `localhost` (a *different* Postgres DB) → intermittent 404s. Disabled its restart policy + stopped it.
+
+---
+
 # DEPLOYMENT — serverless on Cloud Run (planned, 2026-08-11)
 
 Full plan + capacity math + gotchas in **[pocs/agentic_onboard/DEPLOYMENT.md](pocs/agentic_onboard/DEPLOYMENT.md)**.

@@ -171,6 +171,72 @@ def test_tracker_add_requires_target(tmp_db):
         tracker.add(run_match=False)
 
 
+def test_tracker_match_failure_sets_error_then_retry_clears(tmp_db, monkeypatch):
+    """A failed match records `match_error` (not an eternal 'matching…'); a later successful
+    rematch clears it and fills in fit/decision."""
+    from types import SimpleNamespace
+
+    from resumaker.domain import JobRecord
+    from resumaker.ingestion import tracker
+    from resumaker.persistence import db
+
+    jid, _ = db.upsert_job(JobRecord(source="oracle_cloud", external_id="9",
+                                     title="Data Engineer", company="JPMC",
+                                     location="TX", url="https://x/job/9", content_hash="9"))
+
+    failed = SimpleNamespace(error="RuntimeError: all extraction passes failed",
+                             job=None, fit=None, decision=None, sponsorship=None, out_dir="")
+    monkeypatch.setattr("resumaker.pipeline.run_pipeline", lambda **kw: failed)
+    e = tracker.add(job_id=jid)
+    assert e.fit_0_100 is None and e.match_error and "extraction" in e.match_error
+
+    # retry with a now-succeeding pipeline clears the error and populates the match
+    ok = SimpleNamespace(error="",
+                         job=SimpleNamespace(company="JPMorgan Chase", title="Data Engineer III"),
+                         fit=SimpleNamespace(final_0_100=44.1),
+                         decision=SimpleNamespace(recommend_apply=False),
+                         sponsorship={"verdict": "likely"}, out_dir="/tmp/outputs/jpmc-de")
+    monkeypatch.setattr("resumaker.pipeline.run_pipeline", lambda **kw: ok)
+    cleared = tracker.clear_match_error(e.id)
+    assert cleared.match_error is None
+    tracker.run_match_for(e.id)
+    got = db.get_tracker(e.id)
+    assert got.match_error is None and got.fit_0_100 == 44.1 and got.run_id == "jpmc-de"
+
+
+def test_oracle_cloud_scraper(monkeypatch):
+    """The oracle_cloud handler recognizes CE careers URLs and pulls the JD from the public
+    requisition-detail JSON API (the JS page's own source), not the empty HTML shell."""
+    import httpx
+
+    from resumaker.providers.scrape import scraper
+
+    detail = {"Title": "Data Engineer III", "PrimaryLocation": "Houston, TX",
+              "ExternalDescriptionStr": "<p>Build <b>data</b> pipelines.</p>",
+              "ExternalResponsibilitiesStr": "<ul><li>Own ETL</li></ul>"}
+
+    class _Resp:
+        def raise_for_status(self): pass
+        def json(self): return detail
+
+    seen = {}
+
+    def fake_get(url, **kw):
+        seen["url"] = url
+        return _Resp()
+
+    monkeypatch.setattr(httpx, "get", fake_get)
+    url = "https://jpmc.fa.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1001/job/210759920"
+    r = scraper._oracle_cloud(url)
+    assert r is not None and r.source_type == "oracle_cloud"
+    assert r.title == "Data Engineer III" and r.company == "jpmc"
+    low = r.raw_text.lower()
+    assert "pipelines" in low and "own etl" in low   # both JD fields stitched + de-HTML'd
+    assert "recruitingCEJobRequisitionDetails/210759920" in seen["url"]
+    # a non-oracle URL is not claimed by this handler
+    assert scraper._oracle_cloud("https://boards.greenhouse.io/acme/jobs/1") is None
+
+
 def test_dashboard_stats(tmp_db):
     from resumaker.analytics import dashboard_stats
     from resumaker.domain import JobRecord, TrackerEntry

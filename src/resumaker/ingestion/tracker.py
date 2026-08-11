@@ -23,14 +23,29 @@ class TrackerError(ValueError):
 
 
 def _apply_match(entry: TrackerEntry) -> None:
-    """Run the match pipeline for a tracked entry and populate its match fields in place."""
+    """Run the match pipeline for a tracked entry and populate its match fields in place. On any
+    failure (pipeline error or exception) we record `match_error` so the UI shows a 'failed' state
+    (retryable) instead of an eternal 'matching…' - the row is the source of truth, so a failed
+    match must be visibly distinct from one still in flight."""
     from resumaker.pipeline import run_pipeline
-    res = run_pipeline(url=entry.url, match_only=True)
-    if res.error:
-        _log.warning("tracker match failed", extra={"url": entry.url, "error": res.error})
+    try:
+        res = run_pipeline(url=entry.url, match_only=True)
+    except Exception as e:  # noqa: BLE001 - surface any crash as a retryable failed state
+        _log.warning("tracker match crashed", extra={"url": entry.url, "error": str(e)})
+        entry.match_error = str(e)
+        entry.fit_0_100 = None
+        entry.recommend_apply = None
+        return
     if res.job is not None:                       # prefer the structured JD's fields
         entry.company = res.job.company or entry.company
         entry.title = res.job.title or entry.title
+    if res.error:
+        _log.warning("tracker match failed", extra={"url": entry.url, "error": res.error})
+        entry.match_error = res.error
+        entry.fit_0_100 = None
+        entry.recommend_apply = None
+        return
+    entry.match_error = None                       # success: clear any prior failure
     entry.fit_0_100 = res.fit.final_0_100 if res.fit else None
     entry.recommend_apply = res.decision.recommend_apply if res.decision else None
     entry.sponsorship = (res.sponsorship or {}).get("verdict", "") if res.sponsorship else ""
@@ -71,6 +86,17 @@ def run_match_for(entry_id: int) -> None:
         return
     _apply_match(entry)
     db.upsert_tracker(entry)
+
+
+def clear_match_error(entry_id: int) -> TrackerEntry | None:
+    """Clear a failed entry's `match_error` so the UI flips from 'failed' back to 'matching…'
+    before a retry runs. Returns the updated entry, or None if it doesn't exist."""
+    entry = db.get_tracker(entry_id)
+    if entry is None:
+        return None
+    entry.match_error = None
+    db.upsert_tracker(entry)
+    return db.get_tracker(entry_id)
 
 
 def set_stage(entry_id: int, stage: str) -> TrackerEntry:

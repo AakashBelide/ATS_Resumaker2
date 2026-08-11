@@ -7,7 +7,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import CompanyLogo from "@/components/CompanyLogo";
-import { listTracker, setTrackerStage, type TrackerEntry } from "@/lib/api";
+import { listTracker, rematchTracker, setTrackerStage, type TrackerEntry } from "@/lib/api";
 
 const STAGES = ["interested", "applied", "interview", "offer", "rejected", "skipped"];
 const PAGE_SIZES = [10, 20, 50];
@@ -35,7 +35,8 @@ export default function TrackerPage() {
 
   // a freshly-tracked entry's match runs in the background (run_id fills in when done);
   // poll every 4s while any are still matching so fit/decision appear without a manual refresh.
-  const anyPending = rows.some((r) => !r.run_id && r.fit_0_100 == null);
+  // a failed match (match_error set) is NOT pending — it stops polling and shows a retry.
+  const anyPending = rows.some((r) => !r.run_id && r.fit_0_100 == null && !r.match_error);
   useEffect(() => {
     if (!anyPending) return;
     const t = setTimeout(load, 4000);
@@ -45,6 +46,12 @@ export default function TrackerPage() {
   async function onStage(id: number, stage: string) {
     setRows((prev) => prev.map((r) => (r.id === id ? { ...r, stage } : r)));  // optimistic
     try { await setTrackerStage(id, stage); } catch (e) { setError(String(e)); load(); }
+  }
+
+  async function onRetry(id: number) {
+    // optimistic: clear the error so the row flips back to "matching…" and polling resumes
+    setRows((prev) => prev.map((r) => (r.id === id ? { ...r, match_error: null } : r)));
+    try { await rematchTracker(id); } catch (e) { setError(String(e)); load(); }
   }
 
   const counts = useMemo(() => {
@@ -111,7 +118,7 @@ export default function TrackerPage() {
               </thead>
               <tbody>
                 {pageRows.map((e) => {
-                  const pending = !e.run_id && e.fit_0_100 == null;
+                  const pending = !e.run_id && e.fit_0_100 == null && !e.match_error;
                   return (
                   <tr key={e.id}>
                     <td>
@@ -128,6 +135,11 @@ export default function TrackerPage() {
                     <td className="c">
                       {e.fit_0_100 != null
                         ? <span className={`fit ${fitClass(e.fit_0_100)}`}>{Math.round(e.fit_0_100)}</span>
+                        : e.match_error
+                          ? <span className="match-failed" title={e.match_error}>
+                              failed
+                              <button className="btn btn-sm" onClick={() => e.id != null && onRetry(e.id)}>retry</button>
+                            </span>
                         : pending ? <span className="matching mono">matching…</span> : <span className="muted">—</span>}
                     </td>
                     <td className="c">

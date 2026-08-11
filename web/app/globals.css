@@ -508,6 +508,9 @@ button, input, select, textarea { font-family: inherit; }
 .clear-btn:hover { border-color: var(--bad); background: rgba(255,122,138,0.08); }
 .matching { color: var(--sky); font-size: 11px; letter-spacing: .5px; animation: pulse 1.4s ease-in-out infinite; }
 @keyframes pulse { 0%,100% { opacity: .5; } 50% { opacity: 1; } }
+.match-failed { display: inline-flex; align-items: center; gap: 6px; color: var(--bad); font-size: 11px; letter-spacing: .5px; }
+.match-failed .btn { padding: 1px 7px; font-size: 10px; border-color: rgba(255,122,138,0.30); color: var(--bad); }
+.match-failed .btn:hover { border-color: var(--bad); background: rgba(255,122,138,0.08); }
 
 /* ============================================================
    Responsive: off-canvas rail drawer + fluid content below 860px

@@ -138,6 +138,37 @@ def _workday(url: str) -> RawJD | None:
     )
 
 
+# --------------------------------------------------------------- Oracle Recruiting Cloud (CE)
+def _oracle_cloud(url: str) -> RawJD | None:
+    """Oracle CE careers pages (jpmc/amex/citizens/staples/ford...) are JS-rendered - a plain
+    HTTP GET returns an empty shell. The JD lives behind the same public JSON API the page calls:
+    the requisition-detail resource, keyed by requisition Id (path form; siteNumber is rejected
+    as a query param here). We stitch the HTML description/responsibilities/qualifications fields."""
+    m = re.search(
+        r"https?://([\w.-]+\.oraclecloud\.com)/hcmUI/CandidateExperience/[^/]+/sites/([^/]+)/job/(\d+)",
+        url)
+    if not m:
+        return None
+    host, site, rid = m.group(1), m.group(2), m.group(3)
+    api = (f"https://{host}/hcmRestApi/resources/latest/recruitingCEJobRequisitionDetails/{rid}"
+           f"?onlyData=true&expand=all")
+    r = httpx.get(api, headers={"User-Agent": UA, "Accept": "application/json"},
+                  timeout=25, follow_redirects=True)
+    r.raise_for_status()
+    j = r.json() or {}
+    if not j.get("Title") and isinstance(j.get("items"), list) and j["items"]:
+        j = j["items"][0]  # a few tenants wrap the row in items[]
+    parts = [j.get(k, "") for k in ("ExternalDescriptionStr", "ExternalResponsibilitiesStr",
+                                    "ExternalQualificationsStr", "CorporateDescriptionStr")]
+    return RawJD(
+        raw_text=_html_to_text("\n".join(p for p in parts if p)),
+        source_type="oracle_cloud", source_url=url,
+        title=j.get("Title", ""), company=host.split(".", 1)[0],
+        location=j.get("PrimaryLocation", ""),
+        extra={"req_id": rid, "site": site},
+    )
+
+
 # --------------------------------------------------------------- Playwright fallback
 def _playwright(url: str) -> RawJD:
     from playwright.sync_api import sync_playwright
@@ -153,7 +184,7 @@ def _playwright(url: str) -> RawJD:
     return RawJD(raw_text=_html_to_text(content), source_type="playwright", source_url=url)
 
 
-_API_HANDLERS = [_greenhouse, _lever, _ashby, _workday]
+_API_HANDLERS = [_greenhouse, _lever, _ashby, _workday, _oracle_cloud]
 
 
 def scrape(url: str) -> RawJD:

@@ -127,6 +127,8 @@ class TrackerEntry(BaseModel):
     fit_0_100: float | None = None
     recommend_apply: bool | None = None
     sponsorship: str = ""              # resolved verdict, e.g. "likely" / "not_eligible"
+    match_error: str | None = None     # set when the match failed; lets the UI show "failed"
+                                       # (not an eternal "matching…") and offer a retry
     notes: str = ""
     created_at: datetime | None = None
     updated_at: datetime | None = None

@@ -6,6 +6,7 @@ there. Kept dependency-free and deterministic so the same JD maps to the same di
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import re
 from pathlib import Path
@@ -21,8 +22,15 @@ def slugify(*parts: str) -> str:
     return re.sub(r"-{2,}", "-", text) or "run"
 
 
-def run_slug(company: str = "", role: str = "", fallback: str = "") -> str:
-    return slugify(company, role) if (company or role) else (slugify(fallback) or "run")
+def run_slug(company: str = "", role: str = "", fallback: str = "", unique_key: str = "") -> str:
+    """Kebab slug from company+role (or `fallback`). When `unique_key` is given (the posting URL
+    or external_id), append a short stable hash so two same-titled postings don't collide on the
+    same run dir / report URL, e.g. `snowflake-solution-engineer-a1b2c3`. Kept deterministic: the
+    same key always yields the same suffix, so re-runs of one posting reuse its dir."""
+    base = slugify(company, role) if (company or role) else (slugify(fallback) or "run")
+    if unique_key:
+        return f"{base}-{hashlib.sha1(unique_key.encode('utf-8')).hexdigest()[:6]}"
+    return base
 
 
 def run_dir(slug: str, *, create: bool = True) -> Path:

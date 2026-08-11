@@ -84,6 +84,7 @@ CREATE TABLE IF NOT EXISTS tracker (
     fit_0_100        REAL,
     recommend_apply  INTEGER,
     sponsorship      TEXT NOT NULL DEFAULT '',
+    match_error      TEXT,
     notes            TEXT NOT NULL DEFAULT '',
     created_at       TEXT NOT NULL,
     updated_at       TEXT NOT NULL,
@@ -155,6 +156,9 @@ def _migrate(conn: sqlite3.Connection) -> None:
         conn.execute("ALTER TABLE jobs ADD COLUMN posted_at TEXT NOT NULL DEFAULT ''")
     if "comp" not in cols:
         conn.execute("ALTER TABLE jobs ADD COLUMN comp TEXT NOT NULL DEFAULT ''")
+    tcols = {r["name"] for r in conn.execute("PRAGMA table_info(tracker)").fetchall()}
+    if "match_error" not in tcols:
+        conn.execute("ALTER TABLE tracker ADD COLUMN match_error TEXT")
 
 
 # ------------------------------------------------------------------ runs
@@ -465,17 +469,17 @@ def upsert_tracker(entry: TrackerEntry) -> int:
     with connect() as conn:
         cur = conn.execute(
             """INSERT INTO tracker (job_id, url, company, title, stage, run_id, fit_0_100,
-                   recommend_apply, sponsorship, notes, created_at, updated_at)
-               VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
+                   recommend_apply, sponsorship, match_error, notes, created_at, updated_at)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
                ON CONFLICT(url) DO UPDATE SET
                    job_id=excluded.job_id, company=excluded.company, title=excluded.title,
                    run_id=excluded.run_id, fit_0_100=excluded.fit_0_100,
                    recommend_apply=excluded.recommend_apply, sponsorship=excluded.sponsorship,
-                   updated_at=excluded.updated_at
+                   match_error=excluded.match_error, updated_at=excluded.updated_at
                RETURNING id""",
             (entry.job_id, entry.url, entry.company, entry.title, entry.stage, entry.run_id,
-             entry.fit_0_100, _b(entry.recommend_apply), entry.sponsorship, entry.notes,
-             now, now))
+             entry.fit_0_100, _b(entry.recommend_apply), entry.sponsorship, entry.match_error,
+             entry.notes, now, now))
         row = cur.fetchone()
         assert row is not None
         return int(row["id"])
@@ -553,7 +557,7 @@ def _tracker_from_row(r: sqlite3.Row) -> TrackerEntry:
         id=r["id"], job_id=r["job_id"], url=r["url"], company=r["company"], title=r["title"],
         stage=r["stage"], run_id=r["run_id"], fit_0_100=r["fit_0_100"],
         recommend_apply=None if r["recommend_apply"] is None else bool(r["recommend_apply"]),
-        sponsorship=r["sponsorship"], notes=r["notes"],
+        sponsorship=r["sponsorship"], match_error=r["match_error"], notes=r["notes"],
         created_at=_dt(r["created_at"]), updated_at=_dt(r["updated_at"]))
 
 

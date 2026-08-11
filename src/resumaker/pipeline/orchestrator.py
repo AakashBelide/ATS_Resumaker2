@@ -97,7 +97,8 @@ def run_pipeline(url: str | None = None, *, job=None, out_dir: str | None = None
         res.job = job
 
         # resolve the out-dir now so status.json + all artifacts land together
-        slug = run_id or files.run_slug(job.company, job.title, fallback=url or "job")
+        slug = run_id or files.run_slug(job.company, job.title, fallback=url or "job",
+                                        unique_key=url or "")
         resolved_out = out_dir or str(files.run_dir(slug))
         out_dir = resolved_out
         if reporter.out_dir is None:
@@ -195,7 +196,8 @@ def _save(res: PipelineResult, url: str | None, job, out_dir: str | None = None)
     elif out_dir:
         out = Path(out_dir)
     else:
-        out = files.run_dir(files.run_slug(job.company, job.title, fallback=url or "job"))
+        out = files.run_dir(files.run_slug(job.company, job.title, fallback=url or "job",
+                                           unique_key=url or ""))
     out.mkdir(parents=True, exist_ok=True)
     res.out_dir = str(out)
 

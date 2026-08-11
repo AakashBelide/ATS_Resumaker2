@@ -48,6 +48,18 @@ def add_tracked(body: TrackAddIn, background_tasks: BackgroundTasks) -> TrackerE
     return entry
 
 
+@router.post("/tracker/{entry_id}/rematch", response_model=TrackerEntry)
+def rematch(entry_id: int, background_tasks: BackgroundTasks) -> TrackerEntry:
+    """Re-run the match for an entry that previously failed (or to refresh it). Returns the entry
+    immediately with `match_error` cleared so the UI flips back to 'matching…'; the match runs in
+    the background and fills in fit/decision on the next poll."""
+    entry = tracker.clear_match_error(entry_id)
+    if entry is None:
+        raise HTTPException(404, f"tracker entry {entry_id} not found")
+    background_tasks.add_task(tracker.run_match_for, entry_id)
+    return entry
+
+
 @router.patch("/tracker/{entry_id}/stage", response_model=TrackerEntry)
 def set_stage(entry_id: int, body: StageIn) -> TrackerEntry:
     try:
