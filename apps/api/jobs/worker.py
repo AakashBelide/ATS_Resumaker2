@@ -37,7 +37,14 @@ class RunManager:
         self._runs: dict[str, RunHandle] = {}
 
     def start(self, url: str, **options) -> str:
+        """Mint a run id and execute it in-process. Convenience wrapper over `submit`."""
         run_id = uuid.uuid4().hex[:12]
+        self.submit(run_id, url, **options)
+        return run_id
+
+    def submit(self, run_id: str, url: str, **options) -> None:
+        """Execute a pipeline run in-process under the given run id (the InProcessQueue path).
+        The id is supplied by the caller so it matches the DB/artifacts and any queue payload."""
         handle = RunHandle(run_id=run_id, url=url)
         self._runs[run_id] = handle
 
@@ -57,7 +64,6 @@ class RunManager:
 
         self._pool.submit(task)
         _log.info("run started", extra={"run_id": run_id, "url": url})
-        return run_id
 
     def handle(self, run_id: str) -> RunHandle | None:
         return self._runs.get(run_id)

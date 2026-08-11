@@ -42,8 +42,18 @@ class RunStarted(BaseModel):
 
 @router.post("", response_model=RunStarted, status_code=202)
 def start_run(req: RunRequest) -> RunStarted:
-    run_id = manager.start(req.url, gate=req.gate, make_cover_letter=req.make_cover_letter,
-                           target_pages=req.target_pages, semantic_method=req.semantic_method)
+    """Start a pipeline run. Mints the id here so it's stable across the DB, artifacts, and any
+    queue payload, then hands off to the config-selected queue (in-process locally, Cloud Tasks
+    in the cloud - same call site)."""
+    import uuid
+
+    from apps.api.jobs.queue import get_job_queue
+
+    run_id = uuid.uuid4().hex[:12]
+    get_job_queue().submit_pipeline(run_id, req.url, {
+        "gate": req.gate, "make_cover_letter": req.make_cover_letter,
+        "target_pages": req.target_pages, "semantic_method": req.semantic_method,
+    })
     return RunStarted(run_id=run_id)
 
 
@@ -99,19 +109,27 @@ _ARTIFACTS = {"report.json", "cover_letter.txt", "content.json", "JD.txt",
 
 @router.get("/{run_id}/artifacts/{name}")
 def get_artifact(run_id: str, name: str):
-    from fastapi.responses import FileResponse
-    run_dir = get_settings().output_root / run_id
-    if not run_dir.is_dir():
-        raise HTTPException(404, "run dir not found")
+    """Serve an artifact via the config-selected store: local disk streams inline; GCS redirects
+    to a short-lived signed URL. Role-slug filenames (resume.pdf/docx) resolve by suffix within
+    the run dir."""
+    from fastapi.responses import FileResponse, RedirectResponse
+
+    from resumaker.persistence.artifacts import get_artifact_store
+    store = get_artifact_store()
+    run_dir = store.local_run_dir(run_id)
+    resolved = name
     if name in ("resume.pdf", "resume.docx"):  # role-slug filename; resolve by suffix
         suffix = "." + name.split(".")[1]
         match = next((f for f in run_dir.glob(f"*{suffix}")), None)
         if match is None:
             raise HTTPException(404, f"no {suffix} artifact")
-        return FileResponse(match)
-    if name not in _ARTIFACTS:
+        resolved = match.name
+    elif name not in _ARTIFACTS:
         raise HTTPException(400, "unknown artifact")
-    path = run_dir / Path(name).name  # basename only - no path traversal
+    signed = store.url(run_id, resolved)         # non-None only for the GCS backend
+    if signed:
+        return RedirectResponse(signed)
+    path = run_dir / Path(resolved).name         # basename only - no path traversal
     if not path.is_file():
         raise HTTPException(404, "artifact not found")
     return FileResponse(path)

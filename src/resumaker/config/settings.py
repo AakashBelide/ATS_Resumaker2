@@ -75,6 +75,23 @@ class Settings(BaseSettings):
     api_host: str = "0.0.0.0"
     api_port: int = 8000
 
+    # -- job queue (dual-mode: in-process ThreadPool OR Cloud Tasks) ---------------------------
+    # "inprocess" (default): run pipelines on the local ThreadPoolExecutor. "cloud_tasks":
+    # enqueue an HTTP task to the worker service (Cloud Run request-based). Cloud needs
+    # gcp_project/region + tasks_queue + worker_url; local ignores them.
+    job_queue: str = "inprocess"          # inprocess | cloud_tasks
+    worker_url: str | None = None         # worker service base URL (Cloud Tasks HTTP target)
+    tasks_queue: str = "resumaker-pipeline"  # Cloud Tasks queue id
+    gcp_project: str | None = None
+    gcp_region: str | None = None
+
+    # -- artifact store (dual-mode: local disk OR GCS) ----------------------------------------
+    # "local" (default): artifacts live under output_dir on disk. "gcs": the run still writes
+    # to a local temp dir (LibreOffice needs a real FS), then publishes to a bucket; the API
+    # serves a signed URL. Cloud needs gcs_bucket.
+    artifact_backend: str = "local"       # local | gcs
+    gcs_bucket: str | None = None
+
     # -- agentic onboarding (Phase C) ----------------------------------------
     # Deterministic-first always runs ($0, no sandbox). The sandboxed agent fallback is opt-in
     # (needs Docker + a Claude token); off => onboarding is deterministic-only.

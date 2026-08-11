@@ -16,6 +16,7 @@ identical. Protected by the same single-user token; Cloud Scheduler/Tasks send i
 """
 from __future__ import annotations
 
+import contextlib
 import uuid
 
 from fastapi import APIRouter, Depends
@@ -25,6 +26,7 @@ from apps.api.security import require_token
 from resumaker.domain import RunRecord
 from resumaker.observability.logging import get_logger
 from resumaker.persistence import db
+from resumaker.persistence.artifacts import get_artifact_store
 from resumaker.pipeline import run_pipeline
 
 _log = get_logger("resumaker.api.worker")
@@ -82,6 +84,10 @@ def run_pipeline_endpoint(body: RunPipelineIn) -> RunRecord:
     res = run_pipeline(url=body.url, run_id=run_id, gate=body.gate, match_only=body.match_only,
                        make_cover_letter=body.make_cover_letter, target_pages=body.target_pages,
                        semantic_method=body.semantic_method)
+    # publish artifacts to durable storage (no-op on the local backend; GCS upload in cloud, so
+    # they survive this ephemeral instance). Never fail the run if publishing hiccups.
+    with contextlib.suppress(Exception):
+        get_artifact_store().publish(run_id)
     rec = db.get_run(run_id)
     if rec is not None:
         return rec
