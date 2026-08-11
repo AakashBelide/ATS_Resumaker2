@@ -302,7 +302,7 @@ first-class forever.** (Dual-mode adapter table in DEPLOYMENT.md.)
 | # | Task | Status | Notes |
 |---|------|--------|-------|
 | D.0 | Pre-flight sign-ups + verify free tiers (GCP+card+$1 budget alert, Turso, Vercel, Anthropic API key, confirm Resend/Actions) | ⬜ Todo | card needed: GCP + Anthropic; rest cardless. See DEPLOYMENT.md §pre-flight |
-| D.1 | **DB → Turso** — `persistence/db.py` `connect()` to libSQL; exercise repository methods | ⬜ Todo | biggest task; SQL unchanged (SQLite-compatible) |
+| D.1 | **DB → Turso** — `persistence/db.py` `connect()` to libSQL; exercise repository methods | ✅ Done | Dual-mode: stdlib `sqlite3` (default) OR libSQL/Turso via `libsql_shim.py` (sqlite3.Row-compatible; eager-materialize to dodge libSQL's "statements in progress"). Selected by `TURSO_DATABASE_URL` / `RESUMAKER_DB_BACKEND=libsql`. **128 tests pass on BOTH backends** + onboarding smoke via libSQL. Real-Turso creds are a config swap (embedded replica). |
 | D.2 | Split images: lean **api** + heavy **worker** (LibreOffice/curl_cffi); **prebuilt** to Artifact Registry; listen on `$PORT` | ⬜ Todo | building per-run blows the budget |
 | D.3 | **worker** endpoints `POST /ingest-tick` (drop APScheduler) + `POST /run-pipeline`; status → `runs` (Turso) | ⬜ Todo | request-based services only |
 | D.4 | **Cloud Scheduler** cron → `/ingest-tick`; **Cloud Tasks** queue → `/run-pipeline` | ⬜ Todo | Scheduler=cron, Tasks=work queue (SQS/Celery-style) |

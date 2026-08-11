@@ -57,6 +57,14 @@ class Settings(BaseSettings):
     anthropic_api_key: str | None = Field(default=None, validation_alias="ANTHROPIC_API_KEY")
     gemini_api_key: str | None = Field(default=None, validation_alias="GEMINI_API_KEY")
 
+    # -- persistence backend (dual-mode: local SQLite file OR hosted Turso/libSQL) ------------
+    # "sqlite" (stdlib, local file — default) | "libsql" (libSQL driver). libSQL is auto-selected
+    # when TURSO_DATABASE_URL is set (cloud); RESUMAKER_DB_BACKEND=libsql exercises the libSQL path
+    # against a LOCAL file (no cloud account needed). Same SQL; db.py is backend-agnostic.
+    db_backend: str = "sqlite"
+    turso_url: str | None = Field(default=None, validation_alias="TURSO_DATABASE_URL")
+    turso_auth_token: str | None = Field(default=None, validation_alias="TURSO_AUTH_TOKEN")
+
     # -- API service ---------------------------------------------------------
     api_token: str | None = None          # required to call the API when set (single-user auth)
     api_host: str = "0.0.0.0"

@@ -14,6 +14,7 @@ import sqlite3
 from collections.abc import Iterator
 from contextlib import contextmanager
 from datetime import UTC, datetime, timedelta
+from typing import Any
 
 from resumaker.config import get_settings
 from resumaker.domain.ingestion import (
@@ -125,13 +126,24 @@ def _now() -> str:
 
 @contextmanager
 def connect() -> Iterator[sqlite3.Connection]:
-    """A per-call connection with sane pragmas. Commits on clean exit, rolls back on error."""
-    path = get_settings().db_path
+    """A per-call connection with sane pragmas. Commits on clean exit, rolls back on error.
+
+    Dual-mode: stdlib `sqlite3` on a local file by default; libSQL (Turso) when configured. Both
+    expose the same surface (execute/executemany/executescript + `row["col"]` cursors), so the
+    rest of this module is backend-agnostic."""
+    s = get_settings()
+    path = s.db_path
     path.parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(path, check_same_thread=False)
-    conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA foreign_keys = ON")
-    conn.execute("PRAGMA journal_mode = WAL")
+    if s.turso_url or s.db_backend == "libsql":
+        from resumaker.persistence.libsql_shim import connect as _libsql_connect  # noqa: PLC0415
+        conn: Any = _libsql_connect(db_path=str(path), turso_url=s.turso_url,
+                                    auth_token=s.turso_auth_token)
+        conn.execute("PRAGMA foreign_keys = ON")   # WAL is a local-file concept; skip for libSQL
+    else:
+        conn = sqlite3.connect(path, check_same_thread=False)
+        conn.row_factory = sqlite3.Row
+        conn.execute("PRAGMA foreign_keys = ON")
+        conn.execute("PRAGMA journal_mode = WAL")
     try:
         yield conn
         conn.commit()
@@ -527,7 +539,7 @@ def _b(v: bool | None) -> int | None:
     return None if v is None else int(v)
 
 
-def _json(d: dict) -> str:
+def _json(d: Any) -> str:
     return json.dumps(d)
 
 
