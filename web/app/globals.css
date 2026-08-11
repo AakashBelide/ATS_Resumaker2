@@ -85,7 +85,7 @@ button, input, select, textarea { font-family: inherit; }
 }
 .rail-brand { display: flex; align-items: center; gap: 11px; padding: 4px 8px 22px; }
 .rail-hex { width: 30px; height: 30px; color: var(--electric); flex-shrink: 0; }
-.rail-brand b { font-family: var(--font-display); font-size: 18px; font-weight: 700; letter-spacing: 0.3px; }
+.rail-brand b { font-family: var(--font-display); font-size: 16px; font-weight: 700; letter-spacing: 0.2px; }
 .rail-brand span { display: block; font-family: var(--font-mono); font-size: 8.5px; letter-spacing: 2px;
     text-transform: uppercase; color: var(--muted); margin-top: 3px; }
 .rail-link {

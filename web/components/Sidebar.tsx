@@ -49,8 +49,8 @@ export default function Sidebar() {
             </svg>
           </span>
           <div className="rail-brand-txt">
-            <b>resumaker</b>
-            <span>ATS · watchlist</span>
+            <b>ATS Resumaker</b>
+            <span>watchlist · discovery</span>
           </div>
           <button className="rail-collapse" aria-label="collapse sidebar" title="collapse / expand"
                   onClick={() => setCollapsed((c) => !c)}>

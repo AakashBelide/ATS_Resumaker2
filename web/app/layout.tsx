@@ -14,8 +14,9 @@ const mono = Space_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "resumaker",
+  title: "ATS Resumaker",
   description: "Grounded, ATS-optimized job discovery + application tracking.",
+  icons: { icon: "/icon.svg" },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

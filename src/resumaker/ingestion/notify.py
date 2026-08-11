@@ -84,29 +84,28 @@ def build_digest(jobs: list[JobRecord]) -> tuple[str, str, str]:
     """Return (subject, html, text) for a grouped, readable digest of the given postings."""
     from resumaker.ingestion.service import title_level
     n = len(jobs)
-    subject = f"resumaker — {n} new on-target posting{'' if n == 1 else 's'}"
+    subject = f"ATS Resumaker — {n} new on-target posting{'' if n == 1 else 's'}"
     ordered = sorted(jobs, key=lambda j: (j.company.lower(), j.title.lower()))
 
-    rows_html, rows_text = [], []
+    cards_html, rows_text = [], []
     for j in ordered:
         meta = " · ".join(x for x in [j.location, (j.comp or ""), title_level(j.title), j.source] if x)
-        rows_html.append(
-            "<tr><td style='padding:11px 0;border-bottom:1px solid #1e2a44'>"
+        cards_html.append(
+            "<div style='background:#0E1728;border:1px solid #1e2a44;border-radius:12px;"
+            "padding:14px 16px;margin:0 0 12px'>"
             f"<a href='{html_lib.escape(j.url)}' style='color:#8FBBFF;text-decoration:none;"
             f"font-weight:600;font-size:15px'>{html_lib.escape(j.title)}</a>"
-            f"<div style='color:#93A7C9;font-size:13px;margin-top:3px'>"
-            f"{html_lib.escape(j.company)} — {html_lib.escape(meta)}</div></td></tr>")
+            f"<div style='color:#93A7C9;font-size:13px;margin-top:5px'>"
+            f"{html_lib.escape(j.company)} — {html_lib.escape(meta)}</div></div>")
         rows_text.append(f"- {j.title} — {j.company} ({meta})\n  {j.url}")
 
     html_body = (
         "<div style='background:#060A14;color:#E9F0FB;"
         "font-family:system-ui,-apple-system,Arial,sans-serif;padding:24px'>"
         f"<h2 style='margin:0 0 4px;font-size:20px'>{n} new on-target posting{'' if n == 1 else 's'}</h2>"
-        "<p style='color:#93A7C9;margin:0 0 16px;font-size:13px'>from your resumaker watchlist</p>"
-        f"<table style='width:100%;border-collapse:collapse'>{''.join(rows_html)}</table>"
-        "<p style='color:#5b6b86;font-size:11px;margin-top:22px'>"
-        "You’re receiving this because RESUMAKER_NOTIFY_TO is set in your .env.</p></div>")
-    text_body = (f"{n} new on-target posting{'' if n == 1 else 's'} from your resumaker watchlist:\n\n"
+        "<p style='color:#93A7C9;margin:0 0 18px;font-size:13px'>from your ATS Resumaker watchlist</p>"
+        f"{''.join(cards_html)}</div>")
+    text_body = (f"{n} new on-target posting{'' if n == 1 else 's'} from your ATS Resumaker watchlist:\n\n"
                  + "\n\n".join(rows_text))
     return subject, html_body, text_body
 
