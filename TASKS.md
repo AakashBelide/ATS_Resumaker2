@@ -281,6 +281,15 @@ functions — not free-tier) + Turso + Cloud Scheduler + Cloud Tasks + GCS + Ver
 tz `America/New_York`; 8 AM run catches overnight — idempotent dedup, no issue); **≤300 résumés/mo**;
 **≤200 onboards/mo**. Fits free (~43% of Cloud Run vCPU-s, ~800/2000 Actions min) **with prebuilt images**.
 
+**Build strategy (owner, 2026-08-11):** build onboarding integration (**Phase C**) against the CURRENT
+stack (SQLite, in-process scheduler/worker, local Docker sandbox) on **`main`** — fully working locally.
+Then a **`serverless-migration`** branch adds cloud adapters + Terraform (D.1–D.9); merge to `main` when
+validated. **Dual-mode is a hard requirement:** every cloud piece is a config-selected adapter behind a
+seam with a **local default**, so the app runs fully locally (`docker compose up` — no GCP/Turso/Vercel;
+tunnel a port via cloudflared/tailscale for remote access) OR serverless (set cloud env). The libSQL
+client opens both a local `file:` DB and remote Turso, so the DB layer doesn't fork. **Local stays
+first-class forever.** (Dual-mode adapter table in DEPLOYMENT.md.)
+
 | # | Task | Status | Notes |
 |---|------|--------|-------|
 | D.0 | Pre-flight sign-ups + verify free tiers (GCP+card+$1 budget alert, Turso, Vercel, Anthropic API key, confirm Resend/Actions) | ⬜ Todo | card needed: GCP + Anthropic; rest cardless. See DEPLOYMENT.md §pre-flight |
@@ -292,6 +301,7 @@ tz `America/New_York`; 8 AM run catches overnight — idempotent dedup, no issue
 | D.6 | **SSE → polling** in frontend (`/v1/runs/{id}`); deploy **frontend on Vercel** | ⬜ Todo | scale-to-zero can't hold a stream |
 | D.7 | **Onboarding on GitHub Actions** (workflow_dispatch; Docker sandbox; result→api; adapter draft→PR) | ⬜ Todo | Cloud Run can't nest Docker |
 | D.8 | **LLM auth**: cloud runs use metered Anthropic API (`RESUMAKER_DEFAULT_PROVIDER=anthropic`), not the subscription CLI (ToS) | ⬜ Todo | tiny cost; subscription CLI stays local/dev |
+| D.9 | **Terraform IaC** (`deploy/terraform/`) — provision Cloud Run services, Artifact Registry, Cloud Scheduler (cron+tz), Cloud Tasks, GCS, Secret Manager, IAM + Vercel + GitHub Actions secrets; `terraform apply`/`destroy` | ⬜ Todo | migration-branch only; local setup = just `docker compose up` |
 
 **Fallback (documented):** a **$5/mo VPS** collapses all 8 pieces into one warm box (faster per-run, no
 cold starts) — same Docker Compose, so serverless↔VPS is a redeploy, not a rewrite.

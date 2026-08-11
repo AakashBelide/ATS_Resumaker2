@@ -69,6 +69,28 @@ Artifact Registry — the small api image fits the 0.5 GB free; the worker image
 as Cloud Run services (`--min-instances=0`) → Cloud Scheduler cron → Cloud Tasks queue → GitHub
 Actions workflow for onboarding → Vercel frontend pointed at the api URL.
 
+### Dual-mode: local stays first-class (no cloud required)
+The migration **ADDS cloud adapters behind existing seams** — it never forks the app into cloud-only.
+Each concern is config-selected with a **local default**, so the same codebase runs both ways:
+
+| Concern | Local default (no cloud env) | Cloud (env-selected) |
+|---|---|---|
+| DB | SQLite `file:` DB | Turso (`TURSO_URL`) — **same libSQL client opens both**, no fork |
+| Scheduler | in-process APScheduler | Cloud Scheduler → `/ingest-tick` |
+| Pipeline run | in-process thread | Cloud Tasks → worker `/run-pipeline` |
+| Artifacts | `outputs/` file store | GCS bucket |
+| LLM | subscription `claude` CLI ($0) | metered Anthropic API |
+| Onboarding sandbox | local Docker/bwrap | GitHub Actions dispatch |
+| Progress | polling (works both) | polling |
+
+- **Local:** `git clone && docker compose up` → full app, $0, no GCP/Turso/Vercel/Actions. Tunnel a
+  port (cloudflared / tailscale / ngrok) for remote access without hosting.
+- **Cloud:** set the cloud env + `terraform apply` (D.9) provisions everything.
+
+**Build order:** Phase C (onboarding integration) is built on `main` against the **current local
+stack**; the cloud adapters + Terraform land on a **`serverless-migration`** branch and merge back
+once validated. Local is a first-class target forever.
+
 ### Prebuilt images — what / where / cost
 Build once on code-change, store, and **pull at runtime** (~1 min) — never build per run.
 
