@@ -69,6 +69,22 @@ Artifact Registry — the small api image fits the 0.5 GB free; the worker image
 as Cloud Run services (`--min-instances=0`) → Cloud Scheduler cron → Cloud Tasks queue → GitHub
 Actions workflow for onboarding → Vercel frontend pointed at the api URL.
 
+### Prebuilt images — what / where / cost
+Build once on code-change, store, and **pull at runtime** (~1 min) — never build per run.
+
+| Image | Contains | Used by | Stored in | ~size |
+|---|---|---|---|---|
+| `api` | FastAPI + core + Turso client (no LibreOffice/Playwright/Node) | Cloud Run `api` | **Artifact Registry** | ~250 MB |
+| `worker` | + LibreOffice + curl_cffi (+ Playwright only if needed) + LLM client | Cloud Run `worker` | **Artifact Registry** | ~400–700 MB |
+| `onboard-agent` | Node + Claude CLI + resolver tools (`onboard-agent:poc`) | GitHub Actions sandbox | **ghcr.io** | ~300 MB |
+| `onboard-proxy` | tiny egress proxy | GitHub Actions sandbox | **ghcr.io** | ~30 MB |
+
+**Cost:** pulls are free (same-region Cloud Run↔Artifact Registry; Actions↔ghcr); builds are free
+(Cloud Build 120 min/day or an Actions build job). Storage: Artifact Registry free = 0.5 GB → `api`+
+`worker` slightly over → **~a few cents/month (accepted)**; ghcr private free = 500 MB → onboarding
+images fit. **Set a "keep latest 1–2 versions" cleanup policy** so old pushes don't accumulate past
+the free tiers.
+
 ### Code changes (the refactor)
 1. **DB layer** — `persistence/db.py` `connect()` → libSQL/Turso (SQL unchanged; sync `libsql` client
    ≈ `sqlite3` — exercise the repository methods). *Biggest task.*
