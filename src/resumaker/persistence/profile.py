@@ -58,6 +58,21 @@ def save_preferences(data: dict) -> None:
     invalidate()
 
 
+def load_mailer_filter() -> dict:
+    """Title include/exclude for the EMAIL DIGEST ('preferences, but for the mailer'): only new
+    on-target postings whose title passes this filter get emailed. Default empty = no extra
+    filtering. Editable in Profile; applied by `notify.pending()` before sending."""
+    from resumaker.persistence import db
+    doc = db.get_document("mailer_filter")
+    return doc if doc is not None else {"include": [], "exclude": []}
+
+
+def save_mailer_filter(data: dict) -> None:
+    from resumaker.persistence import db
+    db.put_document("mailer_filter", {"include": list(data.get("include") or []),
+                                      "exclude": list(data.get("exclude") or [])})
+
+
 def invalidate() -> None:
     """Drop cached profile/preferences after an update writes to the DB."""
     load_profile.cache_clear()

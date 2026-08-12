@@ -332,6 +332,19 @@ _AVOID_EXTRA = {
 }
 
 
+def title_matches(title: str, include: list[str] | None, exclude: list[str] | None) -> bool:
+    """Ad-hoc title gate (case-insensitive substring): keep the title only if it contains at
+    least ONE of the `include` words (when any are given) and NONE of the `exclude` words. Empty
+    lists = no constraint. Shared by the Discovery title filter and the email digest filter, so a
+    user can, e.g., require 'AI' and drop 'Java'/'Manager' titles."""
+    t = (title or "").lower()
+    inc = [w.lower() for w in (include or []) if w.strip()]
+    exc = [w.lower() for w in (exclude or []) if w.strip()]
+    if exc and any(w in t for w in exc):
+        return False
+    return not (inc and not any(w in t for w in inc))
+
+
 def matches_preferences(title: str) -> bool:
     """True if the title is on-target: it's in the tech field (broad keyword net) and matches
     none of the avoid roles / pure-ops noise. See _ONTARGET_RE above for the rationale."""

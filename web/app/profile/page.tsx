@@ -3,18 +3,31 @@
 // proposals mined from tracked jobs (view-only here; accept via CLI `profile set`).
 import { useEffect, useState } from "react";
 
-import { profileProposals, profileSummary, type ProfileSummary, type Proposal } from "@/lib/api";
+import { getMailerFilter, profileProposals, profileSummary, saveMailerFilter, type ProfileSummary, type Proposal } from "@/lib/api";
 import { groupSkills } from "@/lib/skills";
 
 export default function ProfilePage() {
   const [p, setP] = useState<ProfileSummary | null>(null);
   const [prop, setProp] = useState<{ have_but_unlisted: Proposal[]; recurring_gaps: Proposal[] } | null>(null);
   const [error, setError] = useState("");
+  const [mailInc, setMailInc] = useState("");
+  const [mailExc, setMailExc] = useState("");
+  const [mailSaved, setMailSaved] = useState<"" | "saving" | "saved">("");
 
   useEffect(() => {
     profileSummary().then(setP).catch((e) => setError(String(e)));
     profileProposals().then(setProp).catch(() => {});
+    getMailerFilter().then((mf) => { setMailInc(mf.include.join(", ")); setMailExc(mf.exclude.join(", ")); }).catch(() => {});
   }, []);
+
+  async function saveMailer() {
+    const csv = (s: string) => s.split(",").map((x) => x.trim()).filter(Boolean);
+    setMailSaved("saving");
+    try {
+      await saveMailerFilter({ include: csv(mailInc), exclude: csv(mailExc) });
+      setMailSaved("saved"); setTimeout(() => setMailSaved(""), 2000);
+    } catch (e) { setError(String(e)); setMailSaved(""); }
+  }
 
   const prefs = (p?.preferences ?? {}) as Record<string, unknown>;
   const arr = (k: string) => (Array.isArray(prefs[k]) ? (prefs[k] as string[]) : []);
@@ -48,6 +61,25 @@ export default function ProfilePage() {
                 <span className="chips">{arr("target_roles").map((r) => <span key={r} className="chip">{r}</span>)}</span>
                 <span className="k">Avoid roles</span>
                 <span className="chips">{arr("avoid_roles").map((r) => <span key={r} className="chip">{r}</span>)}</span>
+              </div>
+            </div>
+
+            <div className="block">
+              <div className="block-head"><h2>Email digest filter</h2><span className="count">only email matching titles</span></div>
+              <div className="panel">
+                <p className="muted" style={{ fontSize: 13, marginBottom: 12 }}>
+                  On top of the on-target gate, only email new postings whose <b>title</b> has ANY of the
+                  &ldquo;has&rdquo; words and NONE of the &ldquo;no&rdquo; words. Leave blank for no extra filtering.
+                </p>
+                <div className="filters" style={{ marginBottom: 12 }}>
+                  <div className="field"><label>title has</label>
+                    <input placeholder="ai, ml (any)" value={mailInc} onChange={(e) => setMailInc(e.target.value)} /></div>
+                  <div className="field"><label>title no</label>
+                    <input placeholder="java, manager" value={mailExc} onChange={(e) => setMailExc(e.target.value)} /></div>
+                </div>
+                <button className="btn btn-sm btn-primary" onClick={saveMailer} disabled={mailSaved === "saving"}>
+                  {mailSaved === "saving" ? "saving…" : mailSaved === "saved" ? "saved ✓" : "save"}
+                </button>
               </div>
             </div>
 

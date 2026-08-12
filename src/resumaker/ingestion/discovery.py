@@ -24,6 +24,8 @@ class DiscoveryFilters:
     source: str | None = None
     location: str | None = None       # substring, e.g. "boston" / "ny" / "remote"
     keyword: str | None = None        # matches TITLE or COMPANY substring
+    title_include: list[str] | None = None  # title must contain ANY of these words
+    title_exclude: list[str] | None = None  # title must contain NONE of these words
     since_days: int | None = None     # only postings first seen within N days
     on_target: bool = False           # apply the preference gate (target roles, no avoid)
     state: list[str] | None = None    # multi-select: US state codes / "OTHER" (unresolved/remote)
@@ -47,7 +49,8 @@ def _match_state(job: JobRecord, states_sel: list[str]) -> bool:
 
 def _apply(rows: list[JobRecord], *, keyword: str | None, company: list[str] | None,
            source: str | None, on_target: bool, level: list[str] | None,
-           state: list[str] | None) -> list[JobRecord]:
+           state: list[str] | None, title_include: list[str] | None = None,
+           title_exclude: list[str] | None = None) -> list[JobRecord]:
     """Apply the in-memory filters (everything except location/since, which run in SQL). Done
     here - not SQL - so each facet can be computed with its OWN dimension excluded, keeping the
     dropdowns switchable after a selection. keyword matches TITLE or COMPANY."""
@@ -55,6 +58,9 @@ def _apply(rows: list[JobRecord], *, keyword: str | None, company: list[str] | N
     if keyword:
         k = keyword.lower()
         out = [r for r in out if k in r.title.lower() or k in r.company.lower()]
+    if title_include or title_exclude:
+        from resumaker.ingestion.service import title_matches
+        out = [r for r in out if title_matches(r.title, title_include, title_exclude)]
     if company:
         out = [r for r in out if r.company in company]
     if source:
@@ -88,21 +94,24 @@ def discover(f: DiscoveryFilters) -> DiscoveryResult:
     base = db.query_jobs(location_like=f.location, since_days=f.since_days,
                          order=f.order, limit=100_000, offset=0)
 
+    ti, tx = f.title_include, f.title_exclude
     filtered = _apply(base, keyword=f.keyword, company=f.company, source=f.source,
-                      on_target=f.on_target, level=f.level, state=f.state)
+                      on_target=f.on_target, level=f.level, state=f.state,
+                      title_include=ti, title_exclude=tx)
     total = len(filtered)
     page = filtered[f.offset:f.offset + f.limit]
 
     # Each facet is computed with ITS OWN dimension excluded, so selecting a value never
-    # collapses that dropdown to a single option (you can always switch).
+    # collapses that dropdown to a single option (you can always switch). The free-text title
+    # filter narrows all facets (like keyword).
     for_co = _apply(base, keyword=f.keyword, company=None, source=f.source,
-                    on_target=f.on_target, level=f.level, state=f.state)
+                    on_target=f.on_target, level=f.level, state=f.state, title_include=ti, title_exclude=tx)
     for_src = _apply(base, keyword=f.keyword, company=f.company, source=None,
-                     on_target=f.on_target, level=f.level, state=f.state)
+                     on_target=f.on_target, level=f.level, state=f.state, title_include=ti, title_exclude=tx)
     for_states = _apply(base, keyword=f.keyword, company=f.company, source=f.source,
-                        on_target=f.on_target, level=f.level, state=None)
+                        on_target=f.on_target, level=f.level, state=None, title_include=ti, title_exclude=tx)
     for_levels = _apply(base, keyword=f.keyword, company=f.company, source=f.source,
-                        on_target=f.on_target, level=None, state=f.state)
+                        on_target=f.on_target, level=None, state=f.state, title_include=ti, title_exclude=tx)
     facets = {
         "companies": dict(Counter(r.company for r in for_co).most_common()),
         "sources": dict(Counter(r.source for r in for_src).most_common()),
