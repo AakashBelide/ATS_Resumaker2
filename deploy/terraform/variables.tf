@@ -50,7 +50,7 @@ variable "ingest_cron_slow" {
 variable "mailer_cron" {
   type        = string
   description = "Initial cron for the email digest (the Mailer 'frequency' rewrites it live)."
-  default     = "0 * * * *" // hourly; quiet hours defer at night
+  default     = "15 * * * *" // hourly at :15 - AFTER the top-of-hour ingest sweep; night defers
 }
 
 variable "scheduler_timezone" {

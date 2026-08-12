@@ -15,12 +15,15 @@ from resumaker.observability.logging import get_logger
 _log = get_logger("resumaker.ingestion.schedule_sync")
 
 # Allowed send cadences -> their cron (Cloud Scheduler). "off" pauses the job (empty cron).
+# The digest fires at :15 (not :00) so it runs AFTER the top-of-hour ingest sweep has written
+# that hour's new postings - otherwise the mailer reads the DB ~30s before ingestion finishes and
+# misses them (they'd wait for the next send). Fast ingest completes in ~1-2 min, so :15 is safe.
 FREQUENCIES: dict[str, str] = {
     "off": "",
-    "hourly": "0 * * * *",
-    "every_4h": "0 */4 * * *",
-    "every_12h": "0 */12 * * *",
-    "daily": "0 8 * * *",
+    "hourly": "15 * * * *",
+    "every_4h": "15 */4 * * *",
+    "every_12h": "15 */12 * * *",
+    "daily": "15 8 * * *",
 }
 
 

@@ -124,6 +124,16 @@ class Settings(BaseSettings):
     # A sweep fetches boards grouped by ATS source (== host): groups run concurrently up to
     # this many at a time, while companies *within* a group stay serial + jittered (same host).
     ingest_fetch_workers: int = 5
+    # Per-tenant sources (Workday etc.) are the exception: each company is its OWN host (a distinct
+    # subdomain), so within that group we fetch this many company boards concurrently instead of
+    # serially - cutting the long Workday tail that blew the slow sweep past the 30-min deadline,
+    # while staying gentle on the shared platform (each tenant's own pages remain serial+jittered).
+    ingest_per_tenant_workers: int = 3
+    # Hard wall-clock budget for one sweep (seconds): once passed, no NEW board fetch starts (in-
+    # flight ones finish), so a throttling host can't run a tick past the scheduler deadline.
+    # Idempotent re-ingest means skipped boards self-heal next run; boards are shuffled so a cut
+    # never starves the same ones. Fast sweeps finish in ~2 min, well under this.
+    ingest_time_budget_s: int = 1200
     # The Cloud Scheduler job whose cron the Mailer "frequency" control rewrites - the dedicated
     # email-digest job (decoupled from ingestion). Blank / non-cloud -> the sync is a no-op.
     mailer_scheduler_job: str = "resumaker-mailer"

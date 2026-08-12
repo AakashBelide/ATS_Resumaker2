@@ -13,7 +13,7 @@ const FREQ = [
   { value: "hourly", label: "every hour" },
   { value: "every_4h", label: "every 4 hours" },
   { value: "every_12h", label: "every 12 hours" },
-  { value: "daily", label: "daily · 8am" },
+  { value: "daily", label: "daily · 8:15am" },
 ];
 
 export default function MailerPage() {

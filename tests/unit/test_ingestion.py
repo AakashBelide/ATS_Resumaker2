@@ -919,3 +919,29 @@ def test_microsoft_parse_response():
     assert stubs[0].external_id == "1846000" and "Redmond" in stubs[0].location
     assert stubs[0].title == "Senior Software Engineer" and stubs[0].updated_at.startswith("2026")
     assert stubs[1].location == "Remote, US"
+
+
+def test_fetch_source_group_concurrency_and_budget(monkeypatch):
+    """Per-tenant groups fetch every board (concurrently); a deadline already in the past starts
+    no new fetch (the sweep's wall-clock budget), so a throttling host can't overrun the tick."""
+    import time
+
+    from resumaker.domain import BoardRef, Company
+    from resumaker.ingestion import service
+
+    calls: list[str] = []
+
+    def _fake(company, board):
+        calls.append(board.token)
+        return (company, board, [], "")
+
+    monkeypatch.setattr(service, "_fetch_board", _fake)
+    items = [(Company(name=f"c{i}"), BoardRef(source="workday", token=f"t{i}")) for i in range(6)]
+
+    out = service._fetch_source_group(items, deadline=None, workers=3)   # concurrent per-tenant
+    assert len(out) == 6 and sorted(calls) == [f"t{i}" for i in range(6)]
+
+    calls.clear()
+    past = time.monotonic() - 1
+    assert service._fetch_source_group(items, deadline=past, workers=3) == [] and calls == []
+    assert service._fetch_source_group(items, deadline=past, workers=1) == [] and calls == []
