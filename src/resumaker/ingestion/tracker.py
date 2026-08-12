@@ -36,9 +36,13 @@ def _apply_match(entry: TrackerEntry) -> None:
         entry.fit_0_100 = None
         entry.recommend_apply = None
         return
-    if res.job is not None:                       # prefer the structured JD's fields
-        entry.company = res.job.company or entry.company
-        entry.title = res.job.title or entry.title
+    if res.job is not None:
+        # Keep the ATS posting's own company/title (from the watchlist) - it's the accurate
+        # listing text. The JD-extracted fields only *fill in* a raw-URL add that had none;
+        # they must not clobber a good title (e.g. a JD body that says "Software Engineering
+        # III" would otherwise overwrite the real posting title "AI Engineer").
+        entry.company = entry.company or res.job.company or ""
+        entry.title = entry.title or res.job.title or ""
     if res.error:
         _log.warning("tracker match failed", extra={"url": entry.url, "error": res.error})
         entry.match_error = res.error

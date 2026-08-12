@@ -8,7 +8,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import Spinner from "@/components/Spinner";
 
 import CompanyLogo from "@/components/CompanyLogo";
-import { listTracker, rematchTracker, setTrackerStage, type TrackerEntry } from "@/lib/api";
+import { deleteTracker, listTracker, rematchTracker, setTrackerStage, type TrackerEntry } from "@/lib/api";
 
 const STAGES = ["interested", "applied", "interview", "offer", "rejected", "skipped"];
 const PAGE_SIZES = [10, 20, 50];
@@ -23,6 +23,7 @@ export default function TrackerPage() {
   const [rows, setRows] = useState<TrackerEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
   const [search, setSearch] = useState("");
   const [stageFilter, setStageFilter] = useState("");
   const [page, setPage] = useState(0);
@@ -49,10 +50,23 @@ export default function TrackerPage() {
     try { await setTrackerStage(id, stage); } catch (e) { setError(String(e)); load(); }
   }
 
-  async function onRetry(id: number) {
-    // optimistic: clear the error so the row flips back to "matching…" and polling resumes
-    setRows((prev) => prev.map((r) => (r.id === id ? { ...r, match_error: null } : r)));
+  async function onRematch(id: number) {
+    // optimistic: clear the prior outcome so the row flips back to "matching…" and polling
+    // resumes. Works both as a retry (failed match) and a re-run (stale/wrong report).
+    setRows((prev) => prev.map((r) => (r.id === id
+      ? { ...r, match_error: null, fit_0_100: null, recommend_apply: null, run_id: "" } : r)));
     try { await rematchTracker(id); } catch (e) { setError(String(e)); load(); }
+  }
+
+  async function onDelete(id: number, label: string) {
+    if (!window.confirm(`Remove "${label}" from the tracker? This can't be undone.`)) return;
+    const prev = rows;
+    setRows((r) => r.filter((x) => x.id !== id));   // optimistic
+    try {
+      await deleteTracker(id);
+      setNotice(`Removed "${label}" from the tracker.`);
+      setTimeout(() => setNotice(""), 4000);
+    } catch (e) { setError(String(e)); setRows(prev); }
   }
 
   const counts = useMemo(() => {
@@ -104,6 +118,7 @@ export default function TrackerPage() {
 
         {loading && <Spinner />}
         {error && <p className="error">{error}</p>}
+        {notice && <p className="notice">{notice}</p>}
         {!loading && rows.length === 0 && (
           <div className="empty">Nothing tracked yet. Add jobs from Discovery with “+ Track”.</div>
         )}
@@ -139,7 +154,7 @@ export default function TrackerPage() {
                         : e.match_error
                           ? <span className="match-failed" title={e.match_error}>
                               failed
-                              <button className="btn btn-sm" onClick={() => e.id != null && onRetry(e.id)}>retry</button>
+                              <button className="btn btn-sm" onClick={() => e.id != null && onRematch(e.id)}>retry</button>
                             </span>
                         : pending ? <span className="matching mono">matching…</span> : <span className="muted">—</span>}
                     </td>
@@ -157,9 +172,19 @@ export default function TrackerPage() {
                     </td>
                     <td className="c mono muted">{fmtDate(e.created_at)}</td>
                     <td className="c">
-                      {e.run_id
-                        ? <Link className="btn btn-sm" href={`/report/${encodeURIComponent(e.run_id)}`}>open ↗</Link>
-                        : <span className="muted">—</span>}
+                      <div className="row-actions">
+                        {e.run_id
+                          ? <Link className="btn btn-sm" href={`/report/${encodeURIComponent(e.run_id)}`}>open ↗</Link>
+                          : <span className="muted">—</span>}
+                        {!pending && (
+                          <button className="btn btn-sm" title="re-run the match"
+                                  onClick={() => e.id != null && onRematch(e.id)}>re-match</button>
+                        )}
+                        <button className="btn btn-sm btn-danger" title="remove from tracker"
+                                onClick={() => e.id != null && onDelete(e.id, e.title || e.company || "this job")}>
+                          delete
+                        </button>
+                      </div>
                     </td>
                   </tr>
                   );

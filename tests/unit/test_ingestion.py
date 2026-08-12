@@ -174,7 +174,8 @@ def test_tracker_add_runs_match_and_lifecycle(tmp_db, monkeypatch):
     e = tracker.add(job_id=jid)
     assert e.stage == "interested" and e.fit_0_100 == 78.0 and e.recommend_apply is True
     assert e.sponsorship == "likely" and e.run_id == "anthropic-mle"
-    assert e.title == "Machine Learning Engineer"      # structured JD title preferred
+    assert e.title == "ML Engineer"                    # the ATS posting title is kept, not the
+    assert e.company == "Anthropic"                    # JD-extracted one (which can differ/mislead)
 
     # lifecycle
     assert tracker.set_stage(e.id, "applied").stage == "applied"
@@ -190,6 +191,21 @@ def test_tracker_add_runs_match_and_lifecycle(tmp_db, monkeypatch):
     assert len(tracker.list_tracked()) == 1
     assert len(tracker.list_tracked(stage="applied")) == 1
     assert len(tracker.list_tracked(stage="interested")) == 0
+
+
+def test_tracker_raw_url_add_fills_title_from_jd(tmp_db, monkeypatch):
+    # A raw-URL add has no watchlist title/company, so the JD-extracted fields fill them in.
+    from types import SimpleNamespace
+
+    from resumaker.ingestion import tracker
+    res = SimpleNamespace(
+        error="", job=SimpleNamespace(company="Stripe", title="Full Stack Engineer"),
+        fit=SimpleNamespace(final_0_100=60.0), decision=SimpleNamespace(recommend_apply=True),
+        sponsorship={"verdict": "unclear"}, out_dir="/tmp/outputs/stripe-fse")
+    monkeypatch.setattr("resumaker.pipeline.run_pipeline", lambda **kw: res)
+
+    e = tracker.add(url="https://stripe.com/jobs/123")
+    assert e.title == "Full Stack Engineer" and e.company == "Stripe"
 
 
 def test_tracker_add_requires_target(tmp_db):
