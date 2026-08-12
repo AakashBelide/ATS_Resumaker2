@@ -15,6 +15,9 @@ locals {
     RESUMAKER_SCHEDULER_ENABLED = "false" // cloud uses Cloud Scheduler, not the in-process loop
     RESUMAKER_NOTIFY_TO         = var.notify_to   // digest recipient ("" -> email disabled)
     RESUMAKER_NOTIFY_FROM       = var.notify_from
+    // Remote-only Turso: no embedded replica on these scale-to-zero services, so no full re-sync
+    // per cold start (Embedded Syncs ~0) and cold starts are instant. ~30-50ms/query network cost.
+    RESUMAKER_TURSO_REMOTE_ONLY = "true"
   }
 
   // env-var name -> Secret Manager secret_id, only for secrets that were actually created.

@@ -144,7 +144,8 @@ def _shared_turso_conn() -> Any:
         from resumaker.persistence.libsql_shim import connect as _libsql_connect  # noqa: PLC0415
         _turso_conn = _libsql_connect(db_path=str(s.db_path), turso_url=s.turso_url,
                                       auth_token=s.turso_auth_token,
-                                      sync_interval=s.turso_sync_interval_s)
+                                      sync_interval=s.turso_sync_interval_s,
+                                      remote_only=s.turso_remote_only)
         _turso_conn.execute("PRAGMA foreign_keys = ON")
     return _turso_conn
 
@@ -174,7 +175,7 @@ def connect(durable: bool = False) -> Iterator[sqlite3.Connection]:
             try:
                 yield conn
                 conn.commit()
-                if durable:
+                if durable and not s.turso_remote_only:   # remote-only already wrote to the primary
                     with suppress(Exception):   # best-effort push; background sync still catches it
                         conn.sync()
             except Exception:
@@ -495,15 +496,16 @@ def list_companies(active_only: bool = True) -> list[Company]:
     with connect() as conn:
         q = "SELECT * FROM companies" + (" WHERE active=1" if active_only else "")
         rows = conn.execute(q).fetchall()
-        out: list[Company] = []
-        for r in rows:
-            boards = conn.execute(
-                "SELECT source, token, extra FROM company_boards WHERE company_id=?",
-                (r["id"],)).fetchall()
-            out.append(Company(
-                id=r["id"], name=r["name"], active=bool(r["active"]),
-                created_at=_dt(r["created_at"]),
-                boards=[_board(b) for b in boards]))
+        # ONE query for every board, grouped in memory - not a per-company query. The N+1 was
+        # ~free on a local replica but ~75ms x N (seconds) over a remote-only connection.
+        boards_by_company: dict[int, list] = {}
+        for b in conn.execute(
+                "SELECT company_id, source, token, extra FROM company_boards").fetchall():
+            boards_by_company.setdefault(b["company_id"], []).append(_board(b))
+        out = [Company(id=r["id"], name=r["name"], active=bool(r["active"]),
+                       created_at=_dt(r["created_at"]),
+                       boards=boards_by_company.get(r["id"], []))
+               for r in rows]
     return out
 
 

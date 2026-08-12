@@ -95,6 +95,12 @@ class LibsqlConnection:
     def commit(self) -> None:
         self._conn.commit()
 
+    def sync(self) -> None:
+        # Embedded replica: push/pull with the primary. Remote-only connections have nothing to
+        # sync (writes already hit the primary), so this is a no-op there.
+        if hasattr(self._conn, "sync"):
+            self._conn.sync()
+
     def rollback(self) -> None:
         # libSQL may not implement rollback identically; best-effort.
         if hasattr(self._conn, "rollback"):
@@ -105,17 +111,25 @@ class LibsqlConnection:
 
 
 def connect(*, db_path: str, turso_url: str | None, auth_token: str | None,
-            sync_interval: int | None = None) -> LibsqlConnection:
-    """Open a libSQL connection: remote Turso when `turso_url` is set, else a local file (used to
-    exercise the libSQL path locally). Pragmas/schema are applied by the caller.
+            sync_interval: int | None = None, remote_only: bool = False) -> LibsqlConnection:
+    """Open a libSQL connection. Three modes:
 
-    For Turso (embedded replica), `sync_interval` enables background auto-sync so the caller can
-    hold ONE long-lived connection and read the local replica instantly, instead of paying a full
-    ~3s sync per short-lived connection. `check_same_thread=False` lets that shared connection be
-    used across the API's worker threads."""
+      - remote-only (`remote_only`, Turso): no local file - every query goes straight to the Turso
+        primary over HTTP. Best on scale-to-zero (no cold-start sync, ~0 Embedded Syncs, always
+        latest); costs ~30-50ms network per query.
+      - embedded replica (Turso, default): a local file kept in sync with the primary. `sync_interval`
+        enables background auto-sync so ONE long-lived connection serves local-replica reads in ~ms
+        (a full sync per short-lived connection would be a ~3s round-trip).
+      - local file (no `turso_url`): exercises the libSQL path locally.
+
+    `check_same_thread=False` lets the shared connection be used across the API's worker threads."""
     import libsql_experimental as libsql  # noqa: PLC0415
 
-    if turso_url:
+    if turso_url and remote_only:
+        # No replica: pass the Turso URL as the database so libSQL talks to the primary directly.
+        conn = libsql.connect(database=turso_url, auth_token=auth_token or "",
+                              check_same_thread=False)
+    elif turso_url:
         # Embedded replica: a local file kept in sync with Turso (fast reads, durable via Turso).
         conn = libsql.connect(db_path, sync_url=turso_url, auth_token=auth_token or "",
                               sync_interval=sync_interval, check_same_thread=False)
