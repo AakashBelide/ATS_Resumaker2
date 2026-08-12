@@ -296,6 +296,50 @@ def upsert_job(job: JobRecord) -> tuple[int, bool]:
         return int(existing["id"]), changed
 
 
+def upsert_jobs_bulk(jobs: list[JobRecord]) -> list[tuple[int, bool]]:
+    """Upsert many postings in ONE transaction; returns [(id, is_new_or_changed), ...] aligned to
+    `jobs`. The embedded-replica push happens once per transaction, so batching a whole ingest
+    tick's writes here turns thousands of cross-region round-trips into one. Unchanged postings
+    (the vast majority on a re-poll) are NOT rewritten one-by-one - their `last_seen` is refreshed
+    in a single batched UPDATE. New -> INSERT; content-hash changed -> UPDATE."""
+    if not jobs:
+        return []
+    now = _now()
+    with connect() as conn:
+        # one local read of every existing posting's identity + hash (replica hit, ~ms)
+        existing: dict[tuple[str, str], tuple[int, str]] = {
+            (r["source"], r["external_id"]): (r["id"], r["content_hash"])
+            for r in conn.execute("SELECT id, source, external_id, content_hash FROM jobs").fetchall()}
+        results: list[tuple[int, bool]] = []
+        seen_ids: list[int] = []
+        for job in jobs:
+            row = existing.get((job.source, job.external_id))
+            if row is None:
+                cur = conn.execute(
+                    """INSERT INTO jobs (source, external_id, url, title, company, location,
+                           content_hash, status, posted_at, comp, first_seen, last_seen)
+                       VALUES (?,?,?,?,?,?,?,?,?,?,?,?)""",
+                    (job.source, job.external_id, job.url, job.title, job.company,
+                     job.location, job.content_hash, "new", job.posted_at, job.comp, now, now))
+                jid = int(cur.lastrowid or 0)
+                existing[(job.source, job.external_id)] = (jid, job.content_hash)  # de-dupe in-batch
+                results.append((jid, True))
+            elif row[1] != job.content_hash:
+                conn.execute(
+                    "UPDATE jobs SET last_seen=?, content_hash=?, url=?, title=?, location=?, comp=? "
+                    "WHERE id=?",
+                    (now, job.content_hash, job.url, job.title, job.location, job.comp, row[0]))
+                results.append((row[0], True))
+            else:
+                seen_ids.append(row[0])
+                results.append((row[0], False))
+        for i in range(0, len(seen_ids), 500):   # batched last_seen refresh (chunked for the IN limit)
+            chunk = seen_ids[i:i + 500]
+            conn.execute(f"UPDATE jobs SET last_seen=? WHERE id IN ({','.join('?' * len(chunk))})",
+                         (now, *chunk))
+    return results
+
+
 def set_job_status(job_id: int, status: str) -> None:
     with connect() as conn:
         conn.execute("UPDATE jobs SET status=? WHERE id=?", (status, job_id))
