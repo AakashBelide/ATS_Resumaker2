@@ -68,6 +68,7 @@ def run_pipeline(url: str | None = None, *, job=None, out_dir: str | None = None
     on_progress    : callback(stage, status, detail); status in start|done|skip|error.
     """
     db.init_db()
+    started = datetime.now(UTC)           # real run start, so the indexed duration is accurate
     p = on_progress or _noop
     timings: dict[str, float] = {}
     res = PipelineResult(url=url or "")
@@ -139,7 +140,7 @@ def run_pipeline(url: str | None = None, *, job=None, out_dir: str | None = None
             res.timings = timings
             reporter.emit("match_only", "done", "analysis complete; resume/cover on demand")
             _save(res, url, job, out_dir)
-            _index_run(slug, res, status="matched")
+            _index_run(slug, res, status="matched", started=started)
             reporter.finish()
             return res
 
@@ -149,7 +150,7 @@ def run_pipeline(url: str | None = None, *, job=None, out_dir: str | None = None
             reporter.emit("gate", "skip", "apply-decision negative; skipping resume/cover")
             res.timings = timings
             _save(res, url, job, out_dir)
-            _index_run(slug, res, status="gated_out")
+            _index_run(slug, res, status="gated_out", started=started)
             reporter.finish()
             return res
 
@@ -175,7 +176,7 @@ def run_pipeline(url: str | None = None, *, job=None, out_dir: str | None = None
 
         res.timings = timings
         _save(res, url, job, out_dir)
-        _index_run(slug, res, status="done")
+        _index_run(slug, res, status="done", started=started)
         metrics.inc("resumaker_runs_total", status="done")
         return res
     except Exception as e:  # noqa: BLE001
@@ -213,8 +214,10 @@ def _save(res: PipelineResult, url: str | None, job, out_dir: str | None = None)
                      res.model_dump_json(indent=1, exclude={"resume": {"content"}}))
 
 
-def _index_run(run_id: str, res: PipelineResult, *, status: str) -> None:
-    """Upsert the run's queryable metadata into SQLite (files stay canonical)."""
+def _index_run(run_id: str, res: PipelineResult, *, status: str, started: datetime) -> None:
+    """Upsert the run's queryable metadata into SQLite (files stay canonical). `started` is the
+    real run start, so created_at..finished_at is the actual duration (both had been stamped at
+    the end, making every run read 0s / a generation read the whole match->generate span)."""
     try:
         db.record_run(RunRecord(
             id=run_id, url=res.url, out_dir=res.out_dir, status=status,
@@ -224,7 +227,7 @@ def _index_run(run_id: str, res: PipelineResult, *, status: str) -> None:
             fact_gate_pass=(res.fact_gate.passed if res.fact_gate else None),
             ats_verify_pass=(res.ats_verify.passed if res.ats_verify else None),
             page_count=(res.resume.page_count if res.resume else None),
-            error=res.error, created_at=datetime.now(UTC),
+            error=res.error, created_at=started,
             finished_at=datetime.now(UTC)))
     except Exception as e:  # noqa: BLE001 - indexing must never fail the run
         _log.warning("run indexing failed", extra={"run_id": run_id, "error": str(e)})

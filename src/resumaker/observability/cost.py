@@ -20,6 +20,14 @@ from resumaker.config import get_settings
 _lock = threading.Lock()
 
 
+def _use_db() -> bool:
+    """In the cloud (Turso/libSQL) the usage log lives in the DB: a local JSONL file is per-instance
+    and lost on scale-to-zero, and the worker (which runs the LLM) and the API (which shows Metrics)
+    are different instances. Local dev/tests keep the simple JSONL file."""
+    s = get_settings()
+    return bool(s.turso_url) or s.db_backend == "libsql"
+
+
 class BudgetExceeded(RuntimeError):
     """Raised when a Gemini API call would exceed the configured budget."""
 
@@ -46,6 +54,9 @@ def _iter_records():
 
 def gemini_total() -> float:
     """Sum of recorded Gemini API cost so far (USD)."""
+    if _use_db():
+        from resumaker.persistence import db
+        return db.usage_gemini_total()
     return sum(float(r.get("cost_usd", 0.0) or 0.0)
                for r in _iter_records() if r.get("provider") == "gemini")
 
@@ -73,23 +84,35 @@ def record(provider: str, model: str, in_tok: int, out_tok: int,
         "cost_usd": round(float(cost_usd or 0.0), 6),
         "task": task,
     }
+    if _use_db():
+        try:
+            from resumaker.persistence import db
+            db.record_usage(ts=rec["ts"], provider=provider, model=model, input_tokens=in_tok,
+                            output_tokens=out_tok, cost_usd=rec["cost_usd"], task=task)
+            return
+        except Exception:  # noqa: BLE001 - usage logging must never break an LLM call; fall back to file
+            pass
     with _lock, _usage_path().open("a") as fh:
         fh.write(json.dumps(rec) + "\n")
 
 
 def summary() -> dict:
     """Aggregate usage per provider + the Gemini budget headroom."""
-    agg: dict[str, dict] = {}
-    for rec in _iter_records():
-        p = rec.get("provider", "unknown")
-        a = agg.setdefault(p, {"calls": 0, "input_tokens": 0,
-                               "output_tokens": 0, "cost_usd": 0.0})
-        a["calls"] += 1
-        a["input_tokens"] += int(rec.get("input_tokens", 0) or 0)
-        a["output_tokens"] += int(rec.get("output_tokens", 0) or 0)
-        a["cost_usd"] += float(rec.get("cost_usd", 0.0) or 0.0)
-    for a in agg.values():
-        a["cost_usd"] = round(a["cost_usd"], 6)
+    if _use_db():
+        from resumaker.persistence import db
+        agg = db.usage_summary()
+    else:
+        agg = {}
+        for rec in _iter_records():
+            p = rec.get("provider", "unknown")
+            a = agg.setdefault(p, {"calls": 0, "input_tokens": 0,
+                                   "output_tokens": 0, "cost_usd": 0.0})
+            a["calls"] += 1
+            a["input_tokens"] += int(rec.get("input_tokens", 0) or 0)
+            a["output_tokens"] += int(rec.get("output_tokens", 0) or 0)
+            a["cost_usd"] += float(rec.get("cost_usd", 0.0) or 0.0)
+        for a in agg.values():
+            a["cost_usd"] = round(a["cost_usd"], 6)
     cap = get_settings().gemini_budget_usd
     spent = gemini_total()
     agg["_gemini_budget"] = {

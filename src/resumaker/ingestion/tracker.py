@@ -13,9 +13,19 @@ from pathlib import Path
 
 from resumaker.domain import TRACKER_STAGES, TrackerEntry
 from resumaker.observability.logging import get_logger
-from resumaker.persistence import db
+from resumaker.persistence import db, files
 
 _log = get_logger("resumaker.tracker")
+
+
+def _ats_run_id(entry: TrackerEntry) -> str | None:
+    """A stable run_id / folder name from the ATS posting's company + title (what the tracker
+    keeps), NOT the JD-extracted title - so a run reads 'morgan-stanley-ai-engineer-<hash>', not
+    the JD body's 'software-engineering-iii'. The URL hash keeps it unique + reproducible. None
+    when the entry has neither (a raw-URL add with no title yet) -> the pipeline derives one."""
+    if not (entry.company or entry.title):
+        return None
+    return files.run_slug(entry.company, entry.title, fallback=entry.url, unique_key=entry.url)
 
 
 class TrackerError(ValueError):
@@ -29,11 +39,11 @@ def _apply_match(entry: TrackerEntry) -> None:
     match must be visibly distinct from one still in flight."""
     from resumaker.pipeline import run_pipeline
     try:
-        # Reuse the entry's existing run_id (the stable match slug) when it has one, so a re-match
-        # lands in the SAME run folder even if the refreshed title would derive a different slug -
-        # entry.run_id is the one durable id for this tracked job (match report + on-demand resume
-        # + cover all live under it). A first add has no id yet -> the pipeline derives one.
-        res = run_pipeline(url=entry.url, match_only=True, run_id=entry.run_id or None)
+        # Reuse the entry's existing run_id when it has one (a re-match lands in the SAME folder
+        # even if the refreshed title would derive a different slug); on first match derive the id
+        # from the ATS company+title so the folder/run reads the real posting name, not the JD one.
+        # entry.run_id is the one durable id for this tracked job (match report + resume + cover).
+        res = run_pipeline(url=entry.url, match_only=True, run_id=entry.run_id or _ats_run_id(entry))
     except Exception as e:  # noqa: BLE001 - surface any crash as a retryable failed state
         _log.warning("tracker match crashed", extra={"url": entry.url, "error": str(e)})
         entry.match_error = str(e)

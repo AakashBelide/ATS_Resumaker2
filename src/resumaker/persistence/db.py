@@ -119,7 +119,18 @@ CREATE TABLE IF NOT EXISTS documents (
     json        TEXT NOT NULL,               -- the document as JSON
     updated_at  TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS llm_usage (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    ts            TEXT NOT NULL,
+    provider      TEXT NOT NULL,             -- claude | anthropic | gemini
+    model         TEXT NOT NULL DEFAULT '',
+    input_tokens  INTEGER NOT NULL DEFAULT 0,
+    output_tokens INTEGER NOT NULL DEFAULT 0,
+    cost_usd      REAL NOT NULL DEFAULT 0,   -- $0 for the Claude CLI (subscription; visibility only)
+    task          TEXT NOT NULL DEFAULT ''
+);
 CREATE INDEX IF NOT EXISTS idx_runs_created ON runs(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_usage_provider ON llm_usage(provider);
 CREATE INDEX IF NOT EXISTS idx_jobs_status ON jobs(status);
 CREATE INDEX IF NOT EXISTS idx_tracker_stage ON tracker(stage);
 CREATE INDEX IF NOT EXISTS idx_onboarding_created ON onboarding_runs(created_at DESC);
@@ -257,7 +268,7 @@ def record_run(run: RunRecord) -> None:
                    fact_gate_pass=excluded.fact_gate_pass,
                    ats_verify_pass=excluded.ats_verify_pass, page_count=excluded.page_count,
                    cost_usd=excluded.cost_usd, error=excluded.error,
-                   finished_at=excluded.finished_at""",
+                   created_at=excluded.created_at, finished_at=excluded.finished_at""",
             (run.id, run.job_id, run.url, run.out_dir, run.status,
              _b(run.recommend_apply), run.fit_0_100, run.ats_overall,
              _b(run.fact_gate_pass), _b(run.ats_verify_pass), run.page_count,
@@ -283,6 +294,38 @@ def delete_run(run_id: str) -> int:
     artifact store's delete_run). Returns rows deleted; a no-op if the run was never indexed."""
     with connect() as conn:
         return conn.execute("DELETE FROM runs WHERE id=?", (run_id,)).rowcount
+
+
+# ------------------------------------------------------------------ llm usage
+def record_usage(*, ts: str, provider: str, model: str, input_tokens: int,
+                 output_tokens: int, cost_usd: float, task: str = "") -> None:
+    """Append one LLM call to the durable usage log. Used in the cloud (Turso) so usage survives a
+    scale-to-zero instance AND is visible across services - the worker records it, the API reads it
+    for the Metrics page (a local JSONL log would be per-instance + ephemeral)."""
+    with connect() as conn:
+        conn.execute(
+            "INSERT INTO llm_usage (ts, provider, model, input_tokens, output_tokens, cost_usd, task) "
+            "VALUES (?,?,?,?,?,?,?)",
+            (ts, provider, model, int(input_tokens or 0), int(output_tokens or 0),
+             float(cost_usd or 0.0), task))
+
+
+def usage_summary() -> dict[str, dict]:
+    """Per-provider aggregate (calls/tokens/cost) from the durable usage log."""
+    with connect() as conn:
+        rows = conn.execute(
+            "SELECT provider, COUNT(*) AS calls, SUM(input_tokens) AS it, "
+            "SUM(output_tokens) AS ot, SUM(cost_usd) AS c FROM llm_usage GROUP BY provider").fetchall()
+    return {r["provider"]: {"calls": int(r["calls"]), "input_tokens": int(r["it"] or 0),
+                            "output_tokens": int(r["ot"] or 0), "cost_usd": round(float(r["c"] or 0.0), 6)}
+            for r in rows}
+
+
+def usage_gemini_total() -> float:
+    """Total recorded Gemini API spend (USD) from the durable usage log (for the budget cap)."""
+    with connect() as conn:
+        row = conn.execute("SELECT SUM(cost_usd) AS c FROM llm_usage WHERE provider='gemini'").fetchone()
+    return float((row["c"] if row else 0) or 0.0)
 
 
 def set_run_status(run_id: str, status: str, url: str = "") -> None:

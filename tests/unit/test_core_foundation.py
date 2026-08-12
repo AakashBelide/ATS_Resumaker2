@@ -112,6 +112,20 @@ def test_set_run_status_updates_in_place_and_inserts(tmp_settings):
     assert got2 is not None and got2.status == "running" and got2.url == "http://y"
 
 
+def test_llm_usage_log_db(tmp_settings):
+    """Durable per-provider usage log in the DB (used in cloud so usage survives scale-to-zero and
+    is visible from the API even though the worker recorded it)."""
+    db.init_db()
+    db.record_usage(ts="2026-08-12T00:00:00+00:00", provider="claude", model="opus",
+                    input_tokens=100, output_tokens=50, cost_usd=0.0, task="tailor")
+    db.record_usage(ts="2026-08-12T00:01:00+00:00", provider="gemini", model="flash",
+                    input_tokens=200, output_tokens=80, cost_usd=0.012, task="fallback")
+    s = db.usage_summary()
+    assert s["claude"]["calls"] == 1 and s["claude"]["input_tokens"] == 100
+    assert s["gemini"]["cost_usd"] == 0.012 and s["gemini"]["output_tokens"] == 80
+    assert db.usage_gemini_total() == 0.012
+
+
 def test_local_artifact_find_by_suffix(tmp_settings, monkeypatch):
     """find() resolves a role-slug artifact (resume PDF/DOCX) by suffix - the path used to serve
     resume.pdf/docx (which have company-role filenames, not a fixed name)."""
