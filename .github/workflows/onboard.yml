@@ -37,11 +37,10 @@ jobs:
         with:
           python-version: "3.13"
 
-      - run: uv sync --frozen --extra api
+      # `scrape` pulls playwright (in a different extra than `api`) — the runner-side deterministic
+      # discovery + fingerprint need it. The lean cloud API deliberately omits it (no browser there).
+      - run: uv sync --frozen --extra api --extra scrape
 
-      # Headless browser for the runner-side deterministic discovery (JS-only / Algolia careers
-      # pages whose board creds exist only at runtime). The lean cloud API has no browser, so this
-      # JS-heavy fingerprinting lives here on the runner.
       - name: Install headless browser
         run: uv run playwright install --with-deps chromium
 
