@@ -11,6 +11,7 @@ const LEVELS = ["intern", "junior", "mid", "senior", "staff", "manager"];
 const FREQ = [
   { value: "off", label: "off (paused)" },
   { value: "hourly", label: "every hour" },
+  { value: "every_2h", label: "every 2 hours" },
   { value: "every_4h", label: "every 4 hours" },
   { value: "every_12h", label: "every 12 hours" },
   { value: "daily", label: "daily · 8:15am" },
