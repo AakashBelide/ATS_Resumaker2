@@ -40,6 +40,13 @@ api = [
 scrape = [
     "playwright>=1.62.0",
 ]
+# Cloud runtime backends (D.4/D.5): GCS artifact store + Cloud Tasks work queue. Only needed
+# when RESUMAKER_ARTIFACT_BACKEND=gcs / RESUMAKER_JOB_QUEUE=cloud_tasks (the Cloud Run deploy);
+# the `google.cloud` namespace is absent without these, so both backends import-fail otherwise.
+cloud = [
+    "google-cloud-storage>=2.18.0",
+    "google-cloud-tasks>=2.16.0",
+]
 # NOTE: a headless/stealth tier (for Tesla/Meta/Qualcomm/Google - bot-protected custom
 # career sites) was evaluated with Scrapling and deliberately NOT included: it pins an
 # older playwright (conflicts with our `scrape` extra), needs a heavy camoufox/patchright

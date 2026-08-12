@@ -111,6 +111,10 @@ export async function rematchTracker(id: number): Promise<TrackerEntry> {
   if (!r.ok) throw new Error(`rematchTracker → ${r.status}`);
   return r.json();
 }
+export async function deleteTracker(id: number): Promise<void> {
+  const r = await fetch(`${BASE}/v1/tracker/${id}`, { method: "DELETE", headers: headers() });
+  if (!r.ok) throw new Error(`deleteTracker → ${r.status}`);
+}
 export async function addTracker(body: { job_id?: number; url?: string; run_match?: boolean }): Promise<TrackerEntry> {
   const r = await fetch(`${BASE}/v1/tracker`, { method: "POST", headers: headers(), body: JSON.stringify(body) });
   if (!r.ok) throw new Error(`addTracker → ${r.status}`);

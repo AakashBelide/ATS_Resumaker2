@@ -149,6 +149,10 @@ button, input, select, textarea { font-family: inherit; }
     box-shadow: 0 8px 22px rgba(59,116,255,0.28); }
 .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 12px 28px rgba(59,116,255,0.42); }
 .btn-sm { padding: 7px 12px; font-size: 13px; }
+.btn-danger { color: var(--bad); border-color: rgba(255,122,138,0.35); }
+.btn-danger:hover { border-color: rgba(255,122,138,0.7); background: rgba(255,122,138,0.10); }
+.row-actions { display: inline-flex; gap: 8px; align-items: center; justify-content: flex-end; }
+.notice { color: var(--good, #7fe0a8); font-size: 13px; }
 
 /* ---- stat cards (mission-panel derived) ---- */
 .stat-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 26px; }

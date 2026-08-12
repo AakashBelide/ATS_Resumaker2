@@ -93,6 +93,55 @@ def test_service_dedupes_on_reingest(tmp_db, monkeypatch):
     assert r3.new == 1 and r3.unchanged == 1
 
 
+def test_ingest_all_skips_companies_off_the_selected_sources(tmp_db, monkeypatch):
+    # A narrowed sweep (per-cadence polling) must not even touch companies whose boards are
+    # all on other ATSs - otherwise the fast tick's wall-time scales with the whole watchlist
+    # and blows past the Cloud Scheduler attempt deadline.
+    from resumaker.persistence import db
+    db.add_company(Company(name="FastCo", boards=[BoardRef(source="greenhouse", token="fastco")]))
+    db.add_company(Company(name="SlowCo", boards=[BoardRef(source="workday", token="slowco")]))
+
+    polled: list[str] = []
+
+    class Fake:
+        def list_postings(self, token, **kw):
+            polled.append(token)
+            return []
+
+    monkeypatch.setattr(service, "get_source", lambda name: Fake())
+    monkeypatch.setattr(service.time, "sleep", lambda *_: None)
+
+    service.ingest_all(sources={"greenhouse"})
+    assert polled == ["fastco"]                             # SlowCo skipped entirely
+
+
+def test_ingest_all_concurrent_across_sources_is_correct(tmp_db, monkeypatch):
+    # Boards on different sources fetch concurrently (grouped by host); the serial DB-write
+    # phase must still record every posting exactly once, with no cross-thread write races.
+    from resumaker.persistence import db
+    db.add_company(Company(name="Acme", boards=[BoardRef(source="greenhouse", token="acme")]))
+    db.add_company(Company(name="Globex", boards=[BoardRef(source="lever", token="globex")]))
+
+    def stubs_for(src):
+        return [PostingStub(source=src, external_id=f"{src}-{i}", title="ML Engineer",
+                            location="Boston", updated_at="2026-01-0" + str(i)) for i in (1, 2)]
+
+    class Fake:
+        def __init__(self, src): self.src = src
+        def list_postings(self, token, **kw): return stubs_for(self.src)
+
+    monkeypatch.setattr(service, "get_source", lambda name: Fake(name))
+    monkeypatch.setattr(service.time, "sleep", lambda *_: None)
+
+    results = service.ingest_all()
+    by_co = {r.company: r for r in results}
+    assert by_co["Acme"].new == 2 and by_co["Globex"].new == 2
+    assert len(db.list_jobs()) == 4                         # every posting persisted once
+
+    r2 = {r.company: r for r in service.ingest_all()}       # idempotent re-ingest
+    assert r2["Acme"].new == 0 and r2["Acme"].unchanged == 2
+
+
 def test_discovery_filters_and_facets(tmp_db, monkeypatch):
     from resumaker.domain import JobRecord
     from resumaker.ingestion import DiscoveryFilters, discover
@@ -152,7 +201,8 @@ def test_tracker_add_runs_match_and_lifecycle(tmp_db, monkeypatch):
     e = tracker.add(job_id=jid)
     assert e.stage == "interested" and e.fit_0_100 == 78.0 and e.recommend_apply is True
     assert e.sponsorship == "likely" and e.run_id == "anthropic-mle"
-    assert e.title == "Machine Learning Engineer"      # structured JD title preferred
+    assert e.title == "ML Engineer"                    # the ATS posting title is kept, not the
+    assert e.company == "Anthropic"                    # JD-extracted one (which can differ/mislead)
 
     # lifecycle
     assert tracker.set_stage(e.id, "applied").stage == "applied"
@@ -168,6 +218,21 @@ def test_tracker_add_runs_match_and_lifecycle(tmp_db, monkeypatch):
     assert len(tracker.list_tracked()) == 1
     assert len(tracker.list_tracked(stage="applied")) == 1
     assert len(tracker.list_tracked(stage="interested")) == 0
+
+
+def test_tracker_raw_url_add_fills_title_from_jd(tmp_db, monkeypatch):
+    # A raw-URL add has no watchlist title/company, so the JD-extracted fields fill them in.
+    from types import SimpleNamespace
+
+    from resumaker.ingestion import tracker
+    res = SimpleNamespace(
+        error="", job=SimpleNamespace(company="Stripe", title="Full Stack Engineer"),
+        fit=SimpleNamespace(final_0_100=60.0), decision=SimpleNamespace(recommend_apply=True),
+        sponsorship={"verdict": "unclear"}, out_dir="/tmp/outputs/stripe-fse")
+    monkeypatch.setattr("resumaker.pipeline.run_pipeline", lambda **kw: res)
+
+    e = tracker.add(url="https://stripe.com/jobs/123")
+    assert e.title == "Full Stack Engineer" and e.company == "Stripe"
 
 
 def test_tracker_add_requires_target(tmp_db):
