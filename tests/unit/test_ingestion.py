@@ -115,6 +115,27 @@ def test_ingest_all_skips_companies_off_the_selected_sources(tmp_db, monkeypatch
     assert polled == ["fastco"]                             # SlowCo skipped entirely
 
 
+def test_upsert_jobs_bulk_new_changed_unchanged(tmp_db):
+    # The batched writer classifies each posting correctly and (crucially) does NOT rewrite
+    # unchanged rows one-by-one - it returns changed=False for them.
+    from resumaker.domain import JobRecord
+    from resumaker.persistence import db
+
+    def rec(eid, title, ch):
+        return JobRecord(source="greenhouse", external_id=eid, title=title, company="Acme",
+                         url=f"https://x/{eid}", content_hash=ch)
+
+    r1 = db.upsert_jobs_bulk([rec("1", "AI Engineer", "h1"), rec("2", "ML Engineer", "h2")])
+    assert [c for _, c in r1] == [True, True]              # both new
+    assert len(db.list_jobs()) == 2
+
+    # re-poll: id 1 unchanged, id 2 content changed -> [unchanged, changed]
+    r2 = db.upsert_jobs_bulk([rec("1", "AI Engineer", "h1"), rec("2", "ML Engineer II", "h2b")])
+    assert [c for _, c in r2] == [False, True]
+    assert r2[0][0] == r1[0][0]                            # same id, no new row
+    assert len(db.list_jobs()) == 2                        # still 2 (no duplicates)
+
+
 def test_ingest_all_concurrent_across_sources_is_correct(tmp_db, monkeypatch):
     # Boards on different sources fetch concurrently (grouped by host); the serial DB-write
     # phase must still record every posting exactly once, with no cross-thread write races.

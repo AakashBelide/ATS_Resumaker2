@@ -135,25 +135,48 @@ def ingest_all(*, preferred_only: bool = False, us_only: bool = True,
                 groups.setdefault(b.source, []).append((c, b))
 
     results: dict[str, IngestResult] = {}
-
-    def _write(fetched: list) -> None:                # single-threaded DB consumer
-        for company, board, stubs, error in fetched:
-            res = results.setdefault(company.name, IngestResult(company=company.name))
-            if error:
-                res.errors.append(error)
-                continue
-            if not stubs:
-                _log.warning("board returned no postings", extra={"company": company.name,
-                             "source": board.source, "token": board.token})
-            _record_stubs(res, company, stubs, tech_only=tech_only,
-                          preferred_only=preferred_only, us_only=us_only)
-
+    fetched: list = []
     if groups:
         workers = max(1, min(len(groups), get_settings().ingest_fetch_workers))
         with cf.ThreadPoolExecutor(max_workers=workers) as ex:
             futures = [ex.submit(_fetch_source_group, items) for items in groups.values()]
-            for fut in cf.as_completed(futures):      # write each group the moment it finishes
-                _write(fut.result())
+            for fut in cf.as_completed(futures):
+                fetched.extend(fut.result())
+
+    # Filter every fetched board's postings into records (no DB yet), then write the WHOLE tick in
+    # ONE batched transaction. Per-posting upserts would each be a cross-region embedded-replica
+    # push (~thousands of round-trips ~= minutes); one batch is a single push (~= seconds), and
+    # unchanged postings aren't rewritten at all (their last_seen is refreshed in one statement).
+    to_upsert: list[tuple[str, JobRecord]] = []
+    for company, board, stubs, error in fetched:
+        res = results.setdefault(company.name, IngestResult(company=company.name))
+        if error:
+            res.errors.append(error)
+            continue
+        if not stubs:
+            _log.warning("board returned no postings", extra={"company": company.name,
+                         "source": board.source, "token": board.token})
+        for stub in stubs:
+            if tech_only and not is_tech_role(stub.title):
+                continue
+            if preferred_only and not matches_preferences(stub.title):
+                continue
+            if us_only and not is_us_location(stub.location):
+                continue
+            to_upsert.append((company.name, JobRecord(
+                source=stub.source, external_id=stub.external_id, url=stub.url, title=stub.title,
+                company=company.name, location=stub.location, content_hash=_content_hash(stub),
+                posted_at=stub.updated_at, comp=stub.comp)))
+
+    for (cname, rec), (jid, changed) in zip(to_upsert, db.upsert_jobs_bulk(
+            [rec for _, rec in to_upsert]), strict=True):
+        res = results[cname]
+        if changed:
+            res.new += 1
+            rec.id = jid
+            res.new_jobs.append(rec)
+        else:
+            res.unchanged += 1
 
     out: list[IngestResult] = []
     for c in companies:                               # keep watchlist order; emit metrics/logs
