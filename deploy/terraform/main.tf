@@ -84,3 +84,11 @@ resource "google_project_iam_member" "run_scheduler_admin" {
   role    = "roles/cloudscheduler.admin"
   member  = "serviceAccount:${google_service_account.run.email}"
 }
+
+// Serving a GCS report is a V4 signed URL. Cloud Run's runtime creds are a bare token (no private
+// key), so the SA signs via the IAM signBlob API - which needs Token Creator on ITSELF.
+resource "google_service_account_iam_member" "run_self_token_creator" {
+  service_account_id = google_service_account.run.name
+  role               = "roles/iam.serviceAccountTokenCreator"
+  member             = "serviceAccount:${google_service_account.run.email}"
+}

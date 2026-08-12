@@ -84,7 +84,25 @@ class GCSArtifactStore:
         blob = self._bucket().blob(f"{run_id}/{Path(name).name}")
         if not blob.exists():
             return None
-        return blob.generate_signed_url(expiration=timedelta(seconds=self._ttl))
+        # On Cloud Run the runtime credentials are a bare OAuth token with no private key, so
+        # generate_signed_url can't sign locally. Sign via the IAM signBlob API instead by
+        # passing the SA email + a fresh access token (needs roles/iam.serviceAccountTokenCreator
+        # on the SA itself). Off-cloud creds that DO carry a private key sign directly (kwargs stay
+        # empty). See google-cloud-storage signed-URL docs for the compute-credentials path.
+        sign_kwargs: dict = {}
+        try:
+            import google.auth
+            from google.auth.transport.requests import Request
+            creds, _ = google.auth.default()
+            creds.refresh(Request())
+            email = getattr(creds, "service_account_email", None)
+            token = getattr(creds, "token", None)
+            if email and email != "default" and token:
+                sign_kwargs = {"service_account_email": email, "access_token": token}
+        except Exception:  # noqa: BLE001 - fall back to direct signing (local key-based creds)
+            pass
+        return blob.generate_signed_url(version="v4", method="GET",
+                                        expiration=timedelta(seconds=self._ttl), **sign_kwargs)
 
 
 def get_artifact_store() -> ArtifactStore:
