@@ -22,13 +22,13 @@ locals {
       TURSO_DATABASE_URL  = "turso-database-url"
       TURSO_AUTH_TOKEN    = "turso-auth-token"
     },
-    contains(keys(local.secrets), "anthropic-api-key") ? { ANTHROPIC_API_KEY = "anthropic-api-key" } : {},
-    contains(keys(local.secrets), "gemini-api-key") ? { GEMINI_API_KEY = "gemini-api-key" } : {},
+    contains(local.active_secrets, "anthropic-api-key") ? { ANTHROPIC_API_KEY = "anthropic-api-key" } : {},
+    contains(local.active_secrets, "gemini-api-key") ? { GEMINI_API_KEY = "gemini-api-key" } : {},
   )
   // The worker also gets the Claude CLI subscription token (CLI-first LLM).
   worker_secret_env = merge(
     local.api_secret_env,
-    contains(keys(local.secrets), "claude-code-oauth-token") ? { CLAUDE_CODE_OAUTH_TOKEN = "claude-code-oauth-token" } : {},
+    contains(local.active_secrets, "claude-code-oauth-token") ? { CLAUDE_CODE_OAUTH_TOKEN = "claude-code-oauth-token" } : {},
   )
 }
 
