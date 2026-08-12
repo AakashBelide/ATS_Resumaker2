@@ -14,3 +14,8 @@ worker_image = "us-central1-docker.pkg.dev/gen-lang-client-0654703653/resumaker/
 
 // LLM failover engine when the Claude CLI fails (optional): "" | anthropic | gemini
 fallback_provider = "gemini"
+
+// Agentic onboarding (GitHub Actions runner). Needs TF_VAR_github_token (a PAT with Actions
+// read/write) + the repo secret CLAUDE_CODE_OAUTH_TOKEN for the workflow's sandbox.
+onboard_agent_enabled = true
+github_repo           = "AakashBelide/ATS_Resumaker2"

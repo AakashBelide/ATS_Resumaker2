@@ -24,6 +24,7 @@ locals {
     },
     contains(local.active_secrets, "anthropic-api-key") ? { ANTHROPIC_API_KEY = "anthropic-api-key" } : {},
     contains(local.active_secrets, "gemini-api-key") ? { GEMINI_API_KEY = "gemini-api-key" } : {},
+    contains(local.active_secrets, "github-token") ? { RESUMAKER_GITHUB_TOKEN = "github-token" } : {},
   )
   // The worker also gets the Claude CLI subscription token (CLI-first LLM).
   worker_secret_env = merge(
@@ -52,9 +53,12 @@ resource "google_cloud_run_v2_service" "api" {
 
       dynamic "env" {
         for_each = merge(local.common_env, {
-          RESUMAKER_JOB_QUEUE   = "cloud_tasks"
-          RESUMAKER_WORKER_URL  = google_cloud_run_v2_service.worker.uri
-          RESUMAKER_TASKS_QUEUE = google_cloud_tasks_queue.pipeline.name
+          RESUMAKER_JOB_QUEUE             = "cloud_tasks"
+          RESUMAKER_WORKER_URL            = google_cloud_run_v2_service.worker.uri
+          RESUMAKER_TASKS_QUEUE           = google_cloud_tasks_queue.pipeline.name
+          RESUMAKER_ONBOARD_AGENT_ENABLED = tostring(var.onboard_agent_enabled)
+          RESUMAKER_ONBOARD_RUNNER        = "actions"
+          RESUMAKER_GITHUB_REPO           = var.github_repo
         })
         content {
           name  = env.key
