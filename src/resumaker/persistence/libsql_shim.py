@@ -104,15 +104,22 @@ class LibsqlConnection:
         self._conn.close()
 
 
-def connect(*, db_path: str, turso_url: str | None, auth_token: str | None) -> LibsqlConnection:
+def connect(*, db_path: str, turso_url: str | None, auth_token: str | None,
+            sync_interval: int | None = None) -> LibsqlConnection:
     """Open a libSQL connection: remote Turso when `turso_url` is set, else a local file (used to
-    exercise the libSQL path locally). Pragmas/schema are applied by the caller."""
+    exercise the libSQL path locally). Pragmas/schema are applied by the caller.
+
+    For Turso (embedded replica), `sync_interval` enables background auto-sync so the caller can
+    hold ONE long-lived connection and read the local replica instantly, instead of paying a full
+    ~3s sync per short-lived connection. `check_same_thread=False` lets that shared connection be
+    used across the API's worker threads."""
     import libsql_experimental as libsql  # noqa: PLC0415
 
     if turso_url:
         # Embedded replica: a local file kept in sync with Turso (fast reads, durable via Turso).
-        conn = libsql.connect(db_path, sync_url=turso_url, auth_token=auth_token or "")
-        conn.sync()
+        conn = libsql.connect(db_path, sync_url=turso_url, auth_token=auth_token or "",
+                              sync_interval=sync_interval, check_same_thread=False)
+        conn.sync()   # one initial pull; subsequent freshness comes from the background auto-sync
     else:
         conn = libsql.connect(db_path)
     return LibsqlConnection(conn)

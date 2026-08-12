@@ -69,6 +69,10 @@ class Settings(BaseSettings):
     db_backend: str = "sqlite"
     turso_url: str | None = Field(default=None, validation_alias="TURSO_DATABASE_URL")
     turso_auth_token: str | None = Field(default=None, validation_alias="TURSO_AUTH_TOKEN")
+    # A Turso connect + full sync is a ~3s network round-trip, so we open ONE shared connection
+    # and let libSQL auto-sync in the background every N seconds (reads then hit the local replica
+    # in ~ms). Lower = fresher cross-instance reads; higher = fewer background syncs.
+    turso_sync_interval_s: int = 60
 
     # -- API service ---------------------------------------------------------
     api_token: str | None = None          # required to call the API when set (single-user auth)

@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import json
 import sqlite3
+import threading
 from collections.abc import Iterator
 from contextlib import contextmanager
 from datetime import UTC, datetime, timedelta
@@ -129,20 +130,52 @@ def _now() -> str:
     return datetime.now(UTC).isoformat()
 
 
+_turso_lock = threading.Lock()
+_turso_conn: Any = None
+
+
+def _shared_turso_conn() -> Any:
+    """Process-wide Turso connection. A connect + initial sync is a ~3s network round-trip, so we
+    open it ONCE and reuse it; libSQL keeps the local replica fresh via background auto-sync
+    (turso_sync_interval_s). Reads then hit the replica in ~ms instead of syncing per query."""
+    global _turso_conn
+    if _turso_conn is None:
+        s = get_settings()
+        from resumaker.persistence.libsql_shim import connect as _libsql_connect  # noqa: PLC0415
+        _turso_conn = _libsql_connect(db_path=str(s.db_path), turso_url=s.turso_url,
+                                      auth_token=s.turso_auth_token,
+                                      sync_interval=s.turso_sync_interval_s)
+        _turso_conn.execute("PRAGMA foreign_keys = ON")
+    return _turso_conn
+
+
 @contextmanager
 def connect() -> Iterator[sqlite3.Connection]:
-    """A per-call connection with sane pragmas. Commits on clean exit, rolls back on error.
+    """A DB connection with sane pragmas. Commits on clean exit, rolls back on error.
 
     Dual-mode: stdlib `sqlite3` on a local file by default; libSQL (Turso) when configured. Both
     expose the same surface (execute/executemany/executescript + `row["col"]` cursors), so the
-    rest of this module is backend-agnostic."""
+    rest of this module is backend-agnostic. The hosted-Turso path REUSES one long-lived,
+    background-syncing connection (opening + syncing per call is a ~3s round-trip); the local
+    paths open a cheap per-call connection."""
     s = get_settings()
     path = s.db_path
     path.parent.mkdir(parents=True, exist_ok=True)
-    if s.turso_url or s.db_backend == "libsql":
+    if s.turso_url:
+        # shared, background-syncing connection: serialize access (DB ops are short) and NEVER
+        # close it - it lives for the process and keeps the replica warm.
+        with _turso_lock:
+            conn: Any = _shared_turso_conn()
+            try:
+                yield conn
+                conn.commit()
+            except Exception:
+                conn.rollback()
+                raise
+        return
+    if s.db_backend == "libsql":
         from resumaker.persistence.libsql_shim import connect as _libsql_connect  # noqa: PLC0415
-        conn: Any = _libsql_connect(db_path=str(path), turso_url=s.turso_url,
-                                    auth_token=s.turso_auth_token)
+        conn = _libsql_connect(db_path=str(path), turso_url=None, auth_token=None)
         conn.execute("PRAGMA foreign_keys = ON")   # WAL is a local-file concept; skip for libSQL
     else:
         conn = sqlite3.connect(path, check_same_thread=False)
