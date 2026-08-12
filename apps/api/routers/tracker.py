@@ -4,9 +4,10 @@ frontend Tracker page renders this + advances the application `stage`.
 """
 from __future__ import annotations
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
+from apps.api.jobs.queue import get_job_queue
 from apps.api.security import require_token
 from resumaker.domain import TrackerEntry
 from resumaker.ingestion import tracker
@@ -34,29 +35,30 @@ def list_tracked(stage: str | None = None) -> list[TrackerEntry]:
 
 
 @router.post("/tracker", response_model=TrackerEntry, status_code=201)
-def add_tracked(body: TrackAddIn, background_tasks: BackgroundTasks) -> TrackerEntry:
+def add_tracked(body: TrackAddIn) -> TrackerEntry:
     """Add a job (by watchlist `job_id` or raw `url`) INSTANTLY (stage=interested) and, when
-    `run_match` (default), schedule the ~1-2 min match in the background so the '+Track' click
-    never blocks. The entry appears immediately; fit/decision/sponsorship fill in shortly and
+    `run_match` (default), run the ~1-2 min match off-request (locally on a thread; in cloud
+    enqueued to the worker) so the '+Track' click never blocks. The entry appears immediately;
+    fit/decision/sponsorship fill in shortly and
     show on the next Tracker refresh."""
     try:
         entry = tracker.add(job_id=body.job_id, url=body.url, run_match=False)
     except tracker.TrackerError as e:
         raise HTTPException(400, str(e)) from None
     if body.run_match and entry.id is not None:
-        background_tasks.add_task(tracker.run_match_for, entry.id)
+        get_job_queue().submit_tracker_match(entry.id)
     return entry
 
 
 @router.post("/tracker/{entry_id}/rematch", response_model=TrackerEntry)
-def rematch(entry_id: int, background_tasks: BackgroundTasks) -> TrackerEntry:
-    """Re-run the match for an entry that previously failed (or to refresh it). Returns the entry
-    immediately with `match_error` cleared so the UI flips back to 'matching…'; the match runs in
-    the background and fills in fit/decision on the next poll."""
+def rematch(entry_id: int) -> TrackerEntry:
+    """Re-run the match for an entry (failed, or to refresh a stale report/title). Returns the
+    entry immediately with `match_error` cleared so the UI flips back to 'matching…'; the match
+    runs off-request (worker in cloud) and fills in fit/decision on the next poll."""
     entry = tracker.clear_match_error(entry_id)
     if entry is None:
         raise HTTPException(404, f"tracker entry {entry_id} not found")
-    background_tasks.add_task(tracker.run_match_for, entry_id)
+    get_job_queue().submit_tracker_match(entry_id)
     return entry
 
 

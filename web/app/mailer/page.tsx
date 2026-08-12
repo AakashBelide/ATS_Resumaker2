@@ -135,7 +135,8 @@ export default function MailerPage() {
                 </div>
                 <p className="muted" style={{ fontSize: 12.5, marginTop: 10 }}>
                   When a run has more than <b>max per email</b> matches, the digest sends that many and reads
-                  &ldquo;X of N&rdquo; &mdash; the rest are on Discovery. Frequency controls the ingest + send cadence.
+                  &ldquo;X of N&rdquo; &mdash; the rest are on Discovery. Frequency sets how often the digest is sent
+                  (its own schedule, independent of discovery); &ldquo;off&rdquo; pauses email without affecting ingestion.
                 </p>
               </div>
             </div>

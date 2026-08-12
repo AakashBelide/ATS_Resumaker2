@@ -28,6 +28,7 @@ locals {
     "anthropic-api-key"       = var.anthropic_api_key
     "gemini-api-key"          = var.gemini_api_key
     "github-token"            = var.github_token
+    "resend-api-key"          = var.resend_api_key
   }
   active_secrets = nonsensitive(toset([for k, v in local.secret_values : k if v != ""]))
 }

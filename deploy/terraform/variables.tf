@@ -47,6 +47,12 @@ variable "ingest_cron_slow" {
   default     = "0 9 * * *"
 }
 
+variable "mailer_cron" {
+  type        = string
+  description = "Initial cron for the email digest (the Mailer 'frequency' rewrites it live)."
+  default     = "0 * * * *" // hourly; quiet hours defer at night
+}
+
 variable "scheduler_timezone" {
   type    = string
   default = "America/New_York"
@@ -80,6 +86,26 @@ variable "fallback_provider" {
   type        = string
   description = "LLM failover engine when the CLI fails: '' | anthropic | gemini."
   default     = ""
+}
+
+// -- email digest (Mailer) ---------------------------------------------------------------------
+variable "resend_api_key" {
+  type        = string
+  description = "Resend API key so the ingestor can send the email digest. Blank -> email off."
+  sensitive   = true
+  default     = ""
+}
+
+variable "notify_to" {
+  type        = string
+  description = "Digest recipient email. Blank -> email disabled."
+  default     = ""
+}
+
+variable "notify_from" {
+  type        = string
+  description = "Verified-domain From address for the digest."
+  default     = "onboarding@resend.dev"
 }
 
 // -- agentic onboarding (GitHub Actions runner) ------------------------------------------------

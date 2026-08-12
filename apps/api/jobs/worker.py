@@ -65,6 +65,11 @@ class RunManager:
         self._pool.submit(task)
         _log.info("run started", extra={"run_id": run_id, "url": url})
 
+    def submit_background(self, fn, *args) -> None:
+        """Run an arbitrary callable off the request thread (e.g. a tracker match locally). The
+        cloud path enqueues to the worker instead; this keeps the same fire-and-forget shape."""
+        self._pool.submit(fn, *args)
+
     def handle(self, run_id: str) -> RunHandle | None:
         return self._runs.get(run_id)
 

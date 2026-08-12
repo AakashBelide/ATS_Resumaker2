@@ -1,10 +1,8 @@
 """Mailer send-frequency -> Cloud Scheduler (approach B).
 
-The email digest is sent as part of the fast ingest tick, so the Mailer page's "frequency"
-control maps directly to the fast Cloud Scheduler job's cron: changing it rewrites that job's
-schedule live, and "off" pauses the job. Because emails ride on ingestion, this couples the
-two - "daily" means the fast boards are polled (and emailed) once a day; "off" pauses fast
-ingestion entirely.
+The email digest has its own Cloud Scheduler job (`resumaker-mailer`, decoupled from ingestion),
+so the Mailer page's "frequency" control maps directly to that job's cron: changing it rewrites
+the schedule live, and "off" pauses the job (no emails) without touching discovery.
 
 Cloud-only: without a GCP project configured (local dev / tests) this is a no-op. Lazy-imports
 google-cloud-scheduler (the `cloud` extra) so the dependency only matters in the deploy.
@@ -33,12 +31,12 @@ def sync_mailer_frequency(frequency: str) -> str:
     if frequency not in FREQUENCIES:
         frequency = "hourly"
     s = get_settings()
-    if not (s.gcp_project and s.gcp_region and s.ingest_scheduler_job):
+    if not (s.gcp_project and s.gcp_region and s.mailer_scheduler_job):
         return "skipped (no gcp)"
     try:
         from google.cloud import scheduler_v1  # lazy: only when the cloud backend is deployed
         client = scheduler_v1.CloudSchedulerServiceClient()
-        name = client.job_path(s.gcp_project, s.gcp_region, s.ingest_scheduler_job)
+        name = client.job_path(s.gcp_project, s.gcp_region, s.mailer_scheduler_job)
         if frequency == "off":
             client.pause_job(name=name)
             _log.info("mailer frequency synced", extra={"frequency": frequency, "state": "paused"})

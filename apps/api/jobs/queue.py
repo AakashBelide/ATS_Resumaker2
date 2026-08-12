@@ -25,6 +25,7 @@ _log = get_logger("resumaker.api.queue")
 
 class JobQueue(Protocol):
     def submit_pipeline(self, run_id: str, url: str, options: dict[str, Any]) -> None: ...
+    def submit_tracker_match(self, entry_id: int) -> None: ...
 
 
 class InProcessQueue:
@@ -35,6 +36,10 @@ class InProcessQueue:
 
     def submit_pipeline(self, run_id: str, url: str, options: dict[str, Any]) -> None:
         self._manager.submit(run_id, url, **options)
+
+    def submit_tracker_match(self, entry_id: int) -> None:
+        from resumaker.ingestion import tracker
+        self._manager.submit_background(tracker.run_match_for, entry_id)
 
 
 class CloudTasksQueue:
@@ -74,6 +79,27 @@ class CloudTasksQueue:
         }
         client.create_task(parent=parent, task=task)
         _log.info("enqueued pipeline task", extra={"run_id": run_id, "queue": self._queue})
+
+    def submit_tracker_match(self, entry_id: int) -> None:
+        """Enqueue a tracked entry's match to the worker (Claude CLI + CPU + GCS publish). No
+        task name -> not deduped, so every re-match click runs (unlike run ids, which dedupe)."""
+        from google.cloud import tasks_v2
+
+        client = tasks_v2.CloudTasksClient()
+        parent = client.queue_path(self._project, self._region, self._queue)
+        headers = {"Content-Type": "application/json"}
+        if self._token:
+            headers["X-API-Key"] = self._token
+        task = {
+            "http_request": {
+                "http_method": tasks_v2.HttpMethod.POST,
+                "url": f"{self._worker_url}/v1/worker/tracker-match",
+                "headers": headers,
+                "body": json.dumps({"entry_id": entry_id}).encode(),
+            },
+        }
+        client.create_task(parent=parent, task=task)
+        _log.info("enqueued tracker match", extra={"entry_id": entry_id, "queue": self._queue})
 
 
 def get_job_queue() -> JobQueue:

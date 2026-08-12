@@ -235,6 +235,33 @@ def test_tracker_raw_url_add_fills_title_from_jd(tmp_db, monkeypatch):
     assert e.title == "Full Stack Engineer" and e.company == "Stripe"
 
 
+def test_rematch_refreshes_title_from_watchlist(tmp_db, monkeypatch):
+    # A re-match must CORRECT a stale/wrong stored title back to the ATS listing title (the fix
+    # for entries whose title was clobbered by an earlier buggy JD-extracted match).
+    from types import SimpleNamespace
+
+    from resumaker.domain import JobRecord
+    from resumaker.ingestion import tracker
+    from resumaker.persistence import db
+
+    jid, _ = db.upsert_job(JobRecord(source="workday", external_id="1", title="AI Engineer",
+                                     company="Morgan Stanley", url="https://ms/1", content_hash="1"))
+    e = tracker.add(job_id=jid, run_match=False)
+    db.set_tracker_stage(e.id, "interested")
+    # simulate the old bug: the row got a wrong title from a JD-extracted match
+    e.title = "Software Engineering III"
+    db.upsert_tracker(e)
+
+    res = SimpleNamespace(error="", job=SimpleNamespace(company="Morgan Stanley", title="whatever"),
+                          fit=SimpleNamespace(final_0_100=74.0),
+                          decision=SimpleNamespace(recommend_apply=True),
+                          sponsorship={"verdict": "likely"}, out_dir="/tmp/outputs/ms-ai")
+    monkeypatch.setattr("resumaker.pipeline.run_pipeline", lambda **kw: res)
+
+    tracker.run_match_for(e.id)
+    assert db.get_tracker(e.id).title == "AI Engineer"     # corrected from the watchlist
+
+
 def test_tracker_add_requires_target(tmp_db):
     from resumaker.ingestion import tracker
     with pytest.raises(tracker.TrackerError):
@@ -346,7 +373,7 @@ def test_mailer_frequency_sync_noop_off_cloud(monkeypatch):
     from resumaker.ingestion import schedule_sync
     monkeypatch.setattr(schedule_sync, "get_settings",
                         lambda: SimpleNamespace(gcp_project=None, gcp_region="us-central1",
-                                                ingest_scheduler_job="resumaker-ingest-fast"))
+                                                mailer_scheduler_job="resumaker-mailer"))
     assert schedule_sync.sync_mailer_frequency("hourly") == "skipped (no gcp)"
 
 
