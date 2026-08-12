@@ -39,6 +39,12 @@ jobs:
 
       - run: uv sync --frozen --extra api
 
+      # Build the sandbox images (proxy -> agent base -> resolver) BEFORE the resolve step.
+      # The resolver is FROM onboard-sandbox:poc (a local-only tag), so without this the runtime
+      # `docker compose run resolver` fails at the base image and the agent never actually runs.
+      - name: Build onboarding sandbox images
+        run: uv run python -c "from resumaker.onboarding.sandbox import runner; runner.build(quiet=False)"
+
       - name: Resolve (sandboxed Claude agent)
         env:
           CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
