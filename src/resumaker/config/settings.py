@@ -102,7 +102,6 @@ class Settings(BaseSettings):
     onboard_agent_enabled: bool = False
     onboard_max_turns: int = 60           # usage cap: agent tool-call loop
     onboard_time_limit_s: int = 2400      # time-based auto-kill (40 min)
-    onboard_budget_usd: float = 5.0       # usage cap: max cumulative $ per onboarding
     # Where the sandboxed resolve runs: "docker" (local Docker sandbox - default) or "actions"
     # (dispatch a GitHub Actions run; Cloud Run can't nest Docker, so cloud uses this). Actions
     # mode needs a repo + PAT with `actions:write` + `contents:write` (for adapter-draft PRs).
