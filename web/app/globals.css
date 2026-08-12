@@ -255,6 +255,7 @@ button, input, select, textarea { font-family: inherit; }
 .chip { font-family: var(--font-mono); font-size: 11.5px; color: var(--muted); background: rgba(255,255,255,0.03);
     border: 1px solid var(--line); border-radius: 20px; padding: 5px 11px; cursor: pointer; }
 .chip:hover { color: var(--text); border-color: var(--line-2); }
+.chip.on { color: var(--sky); background: rgba(90,170,255,0.12); border-color: rgba(90,170,255,0.35); }
 .chip b { color: var(--sky); font-weight: 600; }
 
 /* ---- section blocks ---- */
