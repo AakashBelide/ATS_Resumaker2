@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import ast
 import json
+import os
 import tempfile
 from pathlib import Path
 
@@ -191,6 +192,11 @@ def validate_adapter(code: str, board: dict, *, allow_hosts: list[str] | None = 
         (d / "shim.py").write_text(_SHIM)
         (d / "board.json").write_text(json.dumps(
             {"token": board.get("token", ""), "extra": board.get("extra") or {}}))
+        # The sandbox runs as non-root uid 10001; TemporaryDirectory is 0700, so on a Linux host
+        # (the Actions runner) that user can't read the bind-mounted /gate. Make it world-readable.
+        os.chmod(td, 0o755)
+        for f in ("adapter.py", "shim.py", "board.json"):
+            os.chmod(d / f, 0o644)
         res = runner.run(["python3", "/gate/shim.py"], service="agent", project=project,
                          extra_allow=extra_allow, mounts=[(td, "/gate")], timeout=timeout)
     if res.timed_out:
