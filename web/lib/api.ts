@@ -29,9 +29,13 @@ export async function getRun(runId: string): Promise<RunRecord> {
   return r.json();
 }
 
-export async function startRun(url: string): Promise<{ run_id: string }> {
+// `runId` (optional): when generating from a tracked job, pass that job's stable id so the
+// tailored resume is written into its match-report folder (overwriting report.json with the
+// resume-bearing version). The report page then shows the documents on reload - no id to remember.
+export async function startRun(url: string, runId?: string): Promise<{ run_id: string }> {
   const r = await fetch(`${BASE}/v1/runs`, {
-    method: "POST", headers: headers(), body: JSON.stringify({ url }),
+    method: "POST", headers: headers(),
+    body: JSON.stringify(runId ? { url, run_id: runId } : { url }),
   });
   if (!r.ok) throw new Error(`startRun ${r.status}`);
   return r.json();
@@ -106,6 +110,11 @@ export type TrackerEntry = {
 export function listTracker(stage?: string): Promise<TrackerEntry[]> {
   return get<TrackerEntry[]>(`/v1/tracker${qs({ stage })}`);
 }
+// The tracked entry for a match run (authoritative ATS title/company), or null for an ad-hoc run.
+export async function getTrackerByRun(runId: string): Promise<TrackerEntry | null> {
+  const r = await fetch(`${BASE}/v1/tracker/by-run/${encodeURIComponent(runId)}`, { headers: headers() });
+  return r.ok ? r.json() : null;
+}
 export async function rematchTracker(id: number): Promise<TrackerEntry> {
   const r = await fetch(`${BASE}/v1/tracker/${id}/rematch`, { method: "POST", headers: headers() });
   if (!r.ok) throw new Error(`rematchTracker → ${r.status}`);
@@ -150,7 +159,8 @@ export async function savePreferences(p: Preferences): Promise<Preferences> {
 
 export type MailerPrefs = {
   include: string[]; exclude: string[]; levels: string[]; states: string[];
-  quiet_start: string; quiet_end: string; timezone: string; max_postings: number; frequency: string;
+  quiet_enabled: boolean; quiet_start: string; quiet_end: string;
+  timezone: string; max_postings: number; frequency: string;
 };
 export const getMailerPrefs = () => get<MailerPrefs>("/v1/mailer/prefs");
 export async function saveMailerPrefs(p: MailerPrefs): Promise<MailerPrefs> {

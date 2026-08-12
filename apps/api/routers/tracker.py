@@ -34,6 +34,16 @@ def list_tracked(stage: str | None = None) -> list[TrackerEntry]:
     return tracker.list_tracked(stage=stage)
 
 
+@router.get("/tracker/by-run/{run_id}", response_model=TrackerEntry)
+def tracked_by_run(run_id: str) -> TrackerEntry:
+    """The tracked entry for a match run, so the report page can show the authoritative ATS
+    posting title/company. 404 when the run isn't a tracked job (e.g. an ad-hoc run)."""
+    entry = tracker.get_by_run(run_id)
+    if entry is None:
+        raise HTTPException(404, "no tracked job for this run")
+    return entry
+
+
 @router.post("/tracker", response_model=TrackerEntry, status_code=201)
 def add_tracked(body: TrackAddIn) -> TrackerEntry:
     """Add a job (by watchlist `job_id` or raw `url`) INSTANTLY (stage=interested) and, when

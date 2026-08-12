@@ -241,6 +241,85 @@ def test_tracker_add_runs_match_and_lifecycle(tmp_db, monkeypatch):
     assert len(tracker.list_tracked(stage="interested")) == 0
 
 
+def test_tracker_remove_cascades_run_and_artifacts(tmp_db, monkeypatch):
+    """Deleting a tracked job cascades: its run folder (via the artifact store) AND the run's DB
+    index row are removed, so nothing is left orphaned."""
+    from types import SimpleNamespace
+
+    from resumaker.domain import JobRecord, RunRecord
+    from resumaker.ingestion import tracker
+    from resumaker.persistence import db
+
+    jid, _ = db.upsert_job(JobRecord(source="greenhouse", external_id="9", title="AI Engineer",
+                                     company="Acme", url="https://x/jobs/9", content_hash="9"))
+    res = SimpleNamespace(error="", job=SimpleNamespace(company="Acme", title="AI Engineer"),
+                          fit=SimpleNamespace(final_0_100=70.0),
+                          decision=SimpleNamespace(recommend_apply=True),
+                          sponsorship={"verdict": "none"}, out_dir="/tmp/o/acme-ai")
+    monkeypatch.setattr("resumaker.pipeline.run_pipeline", lambda **kw: res)
+
+    deleted: list[str] = []
+    monkeypatch.setattr("resumaker.persistence.artifacts.get_artifact_store",
+                        lambda: SimpleNamespace(publish=lambda rid: None,
+                                                delete_run=lambda rid: deleted.append(rid)))
+
+    e = tracker.add(job_id=jid)
+    rid = e.run_id
+    db.record_run(RunRecord(id=rid, url="https://x/jobs/9", out_dir="/tmp/o/acme-ai",
+                            status="matched"))
+    assert db.get_run(rid) is not None
+
+    assert tracker.remove(e.id) == 1
+    assert deleted == [rid]                 # artifacts cascade-deleted
+    assert db.get_run(rid) is None          # run index row cascade-deleted
+    assert db.get_tracker(e.id) is None     # tracker row gone
+
+
+def test_tracker_lookup_by_run_id(tmp_db, monkeypatch):
+    """get_by_run resolves a match run_id back to its tracked entry (authoritative ATS title)."""
+    from types import SimpleNamespace
+
+    from resumaker.domain import JobRecord
+    from resumaker.ingestion import tracker
+    from resumaker.persistence import db
+
+    jid, _ = db.upsert_job(JobRecord(source="greenhouse", external_id="7", title="AI Engineer",
+                                     company="Acme", url="https://x/jobs/7", content_hash="7"))
+    res = SimpleNamespace(error="", job=SimpleNamespace(company="Acme", title="Software Engineering III"),
+                          fit=SimpleNamespace(final_0_100=71.0),
+                          decision=SimpleNamespace(recommend_apply=True),
+                          sponsorship={"verdict": "likely"}, out_dir="/tmp/o/acme-ai7")
+    monkeypatch.setattr("resumaker.pipeline.run_pipeline", lambda **kw: res)
+
+    e = tracker.add(job_id=jid)
+    assert e.title == "AI Engineer"                   # ATS title kept over the JD "Software Engineering III"
+    found = tracker.get_by_run(e.run_id)
+    assert found is not None and found.id == e.id and found.title == "AI Engineer"
+    assert tracker.get_by_run("no-such-run") is None
+
+
+def test_quiet_hours_enabled_flag_and_default_window(tmp_db):
+    """quiet_enabled=False is never quiet (email 24/7); an enabled-but-empty window inherits the
+    overnight 00:00-08:00 default so it applies without a manual re-save."""
+    from resumaker.ingestion.notify import _in_quiet_hours
+    from resumaker.persistence import db
+    from resumaker.persistence.profile import load_mailer_prefs
+
+    # disabled -> never quiet even inside a configured window
+    assert _in_quiet_hours({"quiet_enabled": False, "quiet_start": "00:00",
+                            "quiet_end": "08:00", "timezone": "UTC"}) is False
+
+    # legacy doc: quiet enabled (default) but empty window -> coalesced to the overnight default
+    db.put_document("mailer_prefs", {"quiet_start": "", "quiet_end": ""})
+    mp = load_mailer_prefs()
+    assert mp["quiet_enabled"] is True and (mp["quiet_start"], mp["quiet_end"]) == ("00:00", "08:00")
+
+    # explicitly disabled -> window left untouched, never quiet
+    db.put_document("mailer_prefs", {"quiet_enabled": False, "quiet_start": "", "quiet_end": ""})
+    mp2 = load_mailer_prefs()
+    assert mp2["quiet_enabled"] is False and _in_quiet_hours(mp2) is False
+
+
 def test_tracker_raw_url_add_fills_title_from_jd(tmp_db, monkeypatch):
     # A raw-URL add has no watchlist title/company, so the JD-extracted fields fill them in.
     from types import SimpleNamespace

@@ -15,6 +15,7 @@ signed URL in the cloud. Mirrors the JobQueue / AgentRunner seams.
 """
 from __future__ import annotations
 
+from contextlib import suppress
 from pathlib import Path
 from typing import Protocol
 
@@ -29,6 +30,7 @@ class ArtifactStore(Protocol):
     def publish(self, run_id: str) -> None: ...
     def open(self, run_id: str, name: str) -> bytes | None: ...
     def url(self, run_id: str, name: str) -> str | None: ...
+    def delete_run(self, run_id: str) -> None: ...
 
 
 class LocalArtifactStore:
@@ -48,6 +50,11 @@ class LocalArtifactStore:
 
     def url(self, run_id: str, name: str) -> str | None:
         return None  # no external URL - the API streams the file
+
+    def delete_run(self, run_id: str) -> None:
+        import shutil
+        d = get_settings().output_root / run_id
+        shutil.rmtree(d, ignore_errors=True)
 
 
 class GCSArtifactStore:
@@ -78,6 +85,14 @@ class GCSArtifactStore:
     def open(self, run_id: str, name: str) -> bytes | None:
         blob = self._bucket().blob(f"{run_id}/{Path(name).name}")
         return blob.download_as_bytes() if blob.exists() else None
+
+    def delete_run(self, run_id: str) -> None:
+        # Remove every blob under gs://bucket/<run_id>/ (the whole run folder), then the local
+        # temp copy. Used to clear stale artifacts before a re-match and to purge a deleted job.
+        for blob in self._bucket().list_blobs(prefix=f"{run_id}/"):
+            with suppress(Exception):
+                blob.delete()
+        self._local.delete_run(run_id)
 
     def url(self, run_id: str, name: str) -> str | None:
         from datetime import timedelta

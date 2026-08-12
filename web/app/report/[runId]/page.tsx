@@ -8,7 +8,7 @@ import { useCallback, useEffect, useState } from "react";
 import Spinner from "@/components/Spinner";
 
 import CompanyLogo from "@/components/CompanyLogo";
-import { artifactUrl, getProgress, getReport, getRun, startRun, type Report } from "@/lib/api";
+import { artifactUrl, getProgress, getReport, getRun, getTrackerByRun, startRun, type Report, type TrackerEntry } from "@/lib/api";
 
 function scoreColor(v: number) { return v >= 65 ? "hi" : v >= 45 ? "mid" : "lo"; }
 function pct(v: number) { return Math.round(v <= 1 ? v * 100 : v); }
@@ -36,19 +36,27 @@ export default function ReportPage() {
   const [r, setR] = useState<Report | null>(null);
   const [error, setError] = useState("");
   const [gen, setGen] = useState<{ stage: string } | null>(null);   // in-progress generation
-  const [genDone, setGenDone] = useState<string | null>(null);       // new run id when done
+  const [tracked, setTracked] = useState<TrackerEntry | null>(null); // authoritative ATS title/company
 
   const load = useCallback(() => {
     setError("");
     getReport(runId).then(setR).catch((e) => setError(String(e)));
   }, [runId]);
   useEffect(() => { load(); }, [load]);
+  // The tracker keeps the real ATS posting title/company (report.json holds the JD-extracted one,
+  // which can differ) - prefer it in the header so the report matches the Tracker card.
+  useEffect(() => { getTrackerByRun(runId).then(setTracked).catch(() => {}); }, [runId]);
+
+  const title = tracked?.title || r?.job.title || "…";
+  const company = tracked?.company || r?.job.company || "";
 
   async function generate() {
     if (!r) return;
-    setGen({ stage: "starting" }); setGenDone(null); setError("");
+    setGen({ stage: "starting" }); setError("");
     try {
-      const { run_id } = await startRun(r.url);
+      // Reuse THIS report's run_id so the resume is written into the same folder; on success we
+      // just reload the report (it now carries the resume + cover), so a refresh keeps showing it.
+      const { run_id } = await startRun(r.url, runId);
       // Poll progress (no SSE): status.json gives the live stage; `done` ends the loop, then
       // one getRun tells us success vs error. status.json may not exist for the first tick.
       const poll = setInterval(async () => {
@@ -57,10 +65,10 @@ export default function ReportPage() {
           if (p.current) setGen({ stage: p.current });
           if (p.done) {
             clearInterval(poll);
-            const rec = await getRun(run_id);
+            const rec = await getRun(run_id).catch(() => null);
             setGen(null);
-            if (rec.status === "error") setError("generation failed - see the run log");
-            else setGenDone(run_id);
+            if (rec && rec.status === "error") setError("generation failed - see the run log");
+            else load();   // re-fetch the report; resume + cover now present -> chips render
           }
         } catch { /* status.json not written yet - keep polling */ }
       }, 2000);
@@ -71,11 +79,10 @@ export default function ReportPage() {
     <>
       <header className="topbar">
         <div>
+          <Link className="btn btn-sm" href="/tracker" style={{ marginBottom: 12 }}>‹ back to tracker</Link>
           <div className="kicker">Match report</div>
-          <h1 style={{ marginTop: 6 }}>{r ? r.job.title : "…"}</h1>
+          <h1 style={{ marginTop: 6 }}>{title}</h1>
         </div>
-        <div className="topbar-spacer" />
-        <Link className="btn btn-sm" href="/tracker">‹ back to tracker</Link>
       </header>
 
       <div className="page">
@@ -92,9 +99,9 @@ export default function ReportPage() {
             {/* -------- left: analysis -------- */}
             <div className="report-main">
               <div className="report-head">
-                <CompanyLogo name={r.job.company} size={52} />
+                <CompanyLogo name={company} size={52} />
                 <div>
-                  <div className="rh-co">{r.job.company}</div>
+                  <div className="rh-co">{company}</div>
                   <div className="rh-meta">
                     {r.job.source_type && <span className="tag">{r.job.source_type}</span>}
                     <a className="mono" href={r.url} target="_blank" rel="noreferrer">open posting ↗</a>
@@ -257,8 +264,6 @@ export default function ReportPage() {
                       <button className="btn btn-sm" disabled>
                         <span className="matching mono">generating… {gen.stage}</span>
                       </button>
-                    ) : genDone ? (
-                      <a className="btn btn-sm btn-primary" href={`/report/${encodeURIComponent(genDone)}`}>view generated documents ↗</a>
                     ) : (
                       <button className="btn btn-sm btn-primary" onClick={generate}>Generate résumé &amp; cover letter</button>
                     )}

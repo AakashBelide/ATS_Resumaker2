@@ -17,10 +17,12 @@ const PAGE_SIZES = [24, 48, 96];
 const STORE_KEY = "discovery.q";
 const DEFAULT_Q: DiscoveryQuery = { on_target: true, order: "recent", limit: 24, offset: 0, since_days: 1 };
 
-function daysAgo(iso: string | null): string {
+// Exact local date-time we first fetched the posting (replaces the vague "today / Nd ago").
+function fmtSeen(iso: string | null): string {
   if (!iso) return "";
-  const d = Math.floor((Date.now() - new Date(iso).getTime()) / 86400000);
-  return d <= 0 ? "today" : d === 1 ? "1d ago" : `${d}d ago`;
+  return new Date(iso).toLocaleString(undefined, {
+    month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit",
+  });
 }
 
 function JobCard({ job, onTrack, tracked, busy }: {
@@ -46,7 +48,7 @@ function JobCard({ job, onTrack, tracked, busy }: {
         <span className={`lvl ${level}`}>{level}</span>
         {wm && <span className={`wm ${wm}`}>{wm}</span>}
         <span className="tag">{job.source}</span>
-        {job.first_seen && <span className="seen">seen {daysAgo(job.first_seen)}</span>}
+        {job.first_seen && <span className="seen" title="when we first fetched this posting">seen {fmtSeen(job.first_seen)}</span>}
       </div>
       <div className="jc-foot">
         <a className="btn btn-sm" href={job.url} target="_blank" rel="noreferrer">View JD ↗</a>

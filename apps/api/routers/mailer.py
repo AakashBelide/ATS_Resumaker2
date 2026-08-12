@@ -18,6 +18,7 @@ class MailerPrefs(BaseModel):
     exclude: list[str] = []          # ...and NONE of these
     levels: list[str] = []           # seniority levels to keep (empty = all)
     states: list[str] = []           # US state codes / "OTHER" (empty = all)
+    quiet_enabled: bool = True       # False = never quiet (email 24/7), window ignored
     quiet_start: str = ""            # "HH:MM" local; empty pair = no quiet window
     quiet_end: str = ""
     timezone: str = "America/New_York"

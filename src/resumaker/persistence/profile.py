@@ -60,10 +60,14 @@ def save_preferences(data: dict) -> None:
 
 # The full email-digest control set (the Mailer page). One doc, so the old mailer_filter
 # (title include/exclude) is just a subset of this.
+# No email overnight by default: the digest defers 12am-8am local and sends the backlog at 8am.
+_QUIET_DEFAULT = ("00:00", "08:00")
+
 MAILER_DEFAULTS: dict = {
     "include": [], "exclude": [],        # title has-ANY / has-NONE
     "levels": [], "states": [],          # seniority + US-state filters (empty = all)
-    "quiet_start": "", "quiet_end": "",  # "HH:MM" local; empty pair = no quiet window
+    "quiet_enabled": True,               # master switch; False = never quiet (email 24/7)
+    "quiet_start": _QUIET_DEFAULT[0], "quiet_end": _QUIET_DEFAULT[1],  # "HH:MM" local quiet window
     "timezone": "America/New_York",      # tz the quiet window is interpreted in
     "max_postings": 0,                   # cap per digest (0 = no cap); rest shown as "X of N"
     "frequency": "hourly",               # digest cadence -> Cloud Scheduler (Mailer page)
@@ -79,7 +83,15 @@ def load_mailer_prefs() -> dict:
         legacy = db.get_document("mailer_filter") or {}
         return {**MAILER_DEFAULTS, "include": legacy.get("include") or [],
                 "exclude": legacy.get("exclude") or []}
-    return {**MAILER_DEFAULTS, **doc}
+    merged = {**MAILER_DEFAULTS, **doc}
+    # When quiet hours are enabled but the window is unconfigured (an older doc, or the previous
+    # empty default), fall back to the overnight window so it applies without a manual re-save. A
+    # custom window is preserved. To turn quiet hours OFF entirely, set quiet_enabled=False (the
+    # window is then ignored) - that's how the owner keeps a "never quiet, email 24/7" option.
+    if merged.get("quiet_enabled") and not (
+            str(merged.get("quiet_start") or "").strip() and str(merged.get("quiet_end") or "").strip()):
+        merged["quiet_start"], merged["quiet_end"] = _QUIET_DEFAULT
+    return merged
 
 
 def save_mailer_prefs(data: dict) -> None:
