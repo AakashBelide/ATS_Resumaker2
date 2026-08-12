@@ -278,6 +278,13 @@ def list_runs(limit: int = 50) -> list[RunRecord]:
     return [_run_from_row(r) for r in rows]
 
 
+def delete_run(run_id: str) -> int:
+    """Delete a run's index row (the on-disk / GCS artifacts are removed separately via the
+    artifact store's delete_run). Returns rows deleted; a no-op if the run was never indexed."""
+    with connect() as conn:
+        return conn.execute("DELETE FROM runs WHERE id=?", (run_id,)).rowcount
+
+
 # ------------------------------------------------------------------ jobs
 def upsert_job(job: JobRecord) -> tuple[int, bool]:
     """Insert a new posting or refresh `last_seen`. Returns (job_id, is_new_or_changed).

@@ -241,6 +241,40 @@ def test_tracker_add_runs_match_and_lifecycle(tmp_db, monkeypatch):
     assert len(tracker.list_tracked(stage="interested")) == 0
 
 
+def test_tracker_remove_cascades_run_and_artifacts(tmp_db, monkeypatch):
+    """Deleting a tracked job cascades: its run folder (via the artifact store) AND the run's DB
+    index row are removed, so nothing is left orphaned."""
+    from types import SimpleNamespace
+
+    from resumaker.domain import JobRecord, RunRecord
+    from resumaker.ingestion import tracker
+    from resumaker.persistence import db
+
+    jid, _ = db.upsert_job(JobRecord(source="greenhouse", external_id="9", title="AI Engineer",
+                                     company="Acme", url="https://x/jobs/9", content_hash="9"))
+    res = SimpleNamespace(error="", job=SimpleNamespace(company="Acme", title="AI Engineer"),
+                          fit=SimpleNamespace(final_0_100=70.0),
+                          decision=SimpleNamespace(recommend_apply=True),
+                          sponsorship={"verdict": "none"}, out_dir="/tmp/o/acme-ai")
+    monkeypatch.setattr("resumaker.pipeline.run_pipeline", lambda **kw: res)
+
+    deleted: list[str] = []
+    monkeypatch.setattr("resumaker.persistence.artifacts.get_artifact_store",
+                        lambda: SimpleNamespace(publish=lambda rid: None,
+                                                delete_run=lambda rid: deleted.append(rid)))
+
+    e = tracker.add(job_id=jid)
+    rid = e.run_id
+    db.record_run(RunRecord(id=rid, url="https://x/jobs/9", out_dir="/tmp/o/acme-ai",
+                            status="matched"))
+    assert db.get_run(rid) is not None
+
+    assert tracker.remove(e.id) == 1
+    assert deleted == [rid]                 # artifacts cascade-deleted
+    assert db.get_run(rid) is None          # run index row cascade-deleted
+    assert db.get_tracker(e.id) is None     # tracker row gone
+
+
 def test_tracker_raw_url_add_fills_title_from_jd(tmp_db, monkeypatch):
     # A raw-URL add has no watchlist title/company, so the JD-extracted fields fill them in.
     from types import SimpleNamespace

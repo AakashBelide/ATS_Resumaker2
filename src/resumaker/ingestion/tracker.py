@@ -157,4 +157,15 @@ def list_tracked(stage: str | None = None) -> list[TrackerEntry]:
 
 
 def remove(entry_id: int) -> int:
+    """Delete a tracked job and cascade-clean everything derived from it: the run folder (match
+    report + any generated resume/cover, local + GCS) and the run's DB index row, so a delete
+    leaves nothing orphaned in storage or the runs table."""
+    entry = db.get_tracker(entry_id)
+    if entry and entry.run_id:
+        import contextlib
+
+        from resumaker.persistence.artifacts import get_artifact_store
+        with contextlib.suppress(Exception):
+            get_artifact_store().delete_run(entry.run_id)
+        db.delete_run(entry.run_id)
     return db.remove_tracker(entry_id)
