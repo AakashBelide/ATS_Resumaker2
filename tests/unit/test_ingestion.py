@@ -316,6 +316,29 @@ def test_mailer_filter_narrows_pending(tmp_db):
     assert {j.title for j in notify.pending(jobs)} == {"AI Engineer"}   # filtered
 
 
+def test_mailer_preview_counts(tmp_db):
+    """The Mailer page's live 'X of N' reflects the same predicate as the digest, over the whole
+    jobs table, and applies the max-postings cap to `would_send`."""
+    from resumaker.domain import JobRecord
+    from resumaker.ingestion import notify
+    from resumaker.persistence import db
+
+    for i, t in enumerate(["AI Engineer", "ML Engineer", "Java Engineer", "Recruiter"]):
+        db.upsert_job(JobRecord(source="greenhouse", external_id=str(i), title=t,
+                                company="Acme", content_hash=str(i)))
+
+    # no filter: on_target = the 3 tech titles (Recruiter isn't on-target); all match; no cap
+    base = notify.preview_counts({})
+    assert base["on_target"] == 3 and base["matching"] == 3
+    assert base["cap"] == 0 and base["would_send"] == 3
+
+    # narrow to "ai"/"ml", cap at 1 -> matches 2, would send 1 of 2
+    p = {"include": ["ai", "ml"], "exclude": ["java"], "max_postings": 1}
+    got = notify.preview_counts(p)
+    assert got["matching"] == 2 and got["cap"] == 1 and got["would_send"] == 1
+    assert got["on_target"] == 3                         # denominator unaffected by the filter
+
+
 def test_actions_agent_runner_dispatch_poll_artifact(monkeypatch):
     """ActionsAgentRunner: dispatch the workflow, find the run by run-name, then download the
     contract artifact - all mocked (no GitHub calls). Fits the synchronous resolve() seam."""

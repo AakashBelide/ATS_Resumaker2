@@ -154,6 +154,18 @@ button, input, select, textarea { font-family: inherit; }
 .row-actions { display: inline-flex; gap: 8px; align-items: center; justify-content: flex-end; }
 .notice { color: var(--good, #7fe0a8); font-size: 13px; }
 
+/* ---- mailer live "X of N" banner ---- */
+.mailer-preview {
+    padding: 16px 20px; margin-bottom: 20px; border-radius: var(--radius);
+    background: linear-gradient(180deg, var(--surface-2), var(--surface)); border: 1px solid var(--line-2);
+}
+.mp-nums { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.mp-big { font-size: 30px; font-weight: 700; line-height: 1;
+    background: var(--primary-gradient); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.mp-of { font-size: 14px; color: var(--muted); }
+.mp-lead { font-size: 14px; color: var(--text); margin-left: 4px; }
+.mp-sub { margin-top: 8px; font-size: 12.5px; color: var(--muted); }
+
 /* ---- stat cards (mission-panel derived) ---- */
 .stat-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 26px; }
 .stat {

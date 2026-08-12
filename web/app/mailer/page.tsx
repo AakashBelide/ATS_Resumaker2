@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 
 import Select from "@/components/Select";
 import Spinner from "@/components/Spinner";
-import { getMailerPrefs, saveMailerPrefs, type MailerPrefs } from "@/lib/api";
+import { getMailerPrefs, previewMailer, saveMailerPrefs, type MailerPreview, type MailerPrefs } from "@/lib/api";
 
 const LEVELS = ["intern", "junior", "mid", "senior", "staff", "manager"];
 const FREQ = [
@@ -23,6 +23,7 @@ export default function MailerPage() {
   const [states, setStates] = useState("");
   const [error, setError] = useState("");
   const [saved, setSaved] = useState<"" | "saving" | "saved">("");
+  const [preview, setPreview] = useState<MailerPreview | null>(null);
 
   useEffect(() => {
     getMailerPrefs().then((mp) => {
@@ -30,19 +31,32 @@ export default function MailerPage() {
     }).catch((e) => setError(String(e)));
   }, []);
 
+  const csv = (s: string) => s.split(",").map((x) => x.trim()).filter(Boolean);
+  // the current (possibly unsaved) filter, as the API expects it
+  const currentPrefs = (): MailerPrefs | null => (p
+    ? { ...p, include: csv(inc), exclude: csv(exc), states: csv(states).map((s) => s.toUpperCase()) }
+    : null);
+
+  // live "X of N": debounce so tuning filters doesn't spam the endpoint
+  useEffect(() => {
+    const body = currentPrefs();
+    if (!body) return;
+    const t = setTimeout(() => { previewMailer(body).then(setPreview).catch(() => {}); }, 400);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [p, inc, exc, states]);
+
   const patch = (x: Partial<MailerPrefs>) => setP((prev) => (prev ? { ...prev, ...x } : prev));
   const toggleLevel = (l: string) => setP((prev) => (prev
     ? { ...prev, levels: prev.levels.includes(l) ? prev.levels.filter((x) => x !== l) : [...prev.levels, l] }
     : prev));
 
   async function save() {
-    if (!p) return;
-    const csv = (s: string) => s.split(",").map((x) => x.trim()).filter(Boolean);
+    const body = currentPrefs();
+    if (!body) return;
     setSaved("saving");
     try {
-      const out = await saveMailerPrefs({
-        ...p, include: csv(inc), exclude: csv(exc), states: csv(states).map((s) => s.toUpperCase()),
-      });
+      const out = await saveMailerPrefs(body);
       setP(out); setInc(out.include.join(", ")); setExc(out.exclude.join(", ")); setStates(out.states.join(", "));
       setSaved("saved"); setTimeout(() => setSaved(""), 2000);
     } catch (e) { setError(String(e)); setSaved(""); }
@@ -60,6 +74,22 @@ export default function MailerPage() {
         {error && <p className="error">{error}</p>}
         {!p ? <Spinner /> : (
           <>
+            <div className="mailer-preview" aria-live="polite">
+              {preview ? (
+                <>
+                  <div className="mp-nums">
+                    <span className="mp-big">{preview.would_send}</span>
+                    <span className="mp-of">of</span>
+                    <span className="mp-big">{preview.matching}</span>
+                    <span className="mp-lead">matching postings would be emailed{preview.cap ? ` · capped at ${preview.cap}/email` : ""}</span>
+                  </div>
+                  <div className="mp-sub">
+                    {preview.matching} of {preview.on_target} on-target postings match your title / level / state filter
+                  </div>
+                </>
+              ) : <span className="mono muted">counting…</span>}
+            </div>
+
             <div className="block">
               <div className="block-head"><h2>What gets emailed</h2><span className="count">on top of the on-target gate</span></div>
               <div className="panel">

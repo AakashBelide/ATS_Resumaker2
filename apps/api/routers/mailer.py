@@ -48,3 +48,18 @@ def set_prefs(body: MailerPrefs) -> MailerPrefs:
     # The frequency->Cloud Scheduler push is applied by the scheduler seam (see mailer schedule
     # sync); here we just persist the source of truth.
     return MailerPrefs(**data)
+
+
+class MailerPreview(BaseModel):
+    on_target: int      # stored postings in the owner's target roles (the denominator)
+    matching: int       # ...that also pass the current title/level/state filter
+    cap: int            # max_postings (0 = no cap)
+    would_send: int     # how many a digest would include now: min(cap, matching) or matching
+
+
+@router.post("/preview", response_model=MailerPreview)
+def preview(body: MailerPrefs) -> MailerPreview:
+    """Live 'X of N' for the Mailer page: count how many stored on-target postings the given
+    (possibly unsaved) filter matches, so the owner can tune filters and see the effect."""
+    from resumaker.ingestion.notify import preview_counts
+    return MailerPreview(**preview_counts(body.model_dump()))

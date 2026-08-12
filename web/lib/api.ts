@@ -161,6 +161,15 @@ export async function saveMailerPrefs(p: MailerPrefs): Promise<MailerPrefs> {
   return r.json();
 }
 
+export type MailerPreview = { on_target: number; matching: number; cap: number; would_send: number };
+export async function previewMailer(p: MailerPrefs): Promise<MailerPreview> {
+  const r = await fetch(`${BASE}/v1/mailer/preview`, {
+    method: "POST", headers: headers(), body: JSON.stringify(p),
+  });
+  if (!r.ok) throw new Error(`previewMailer → ${r.status}`);
+  return r.json();
+}
+
 export type MailerFilter = { include: string[]; exclude: string[] };
 export const getMailerFilter = () => get<MailerFilter>("/v1/profile/mailer-filter");
 export async function saveMailerFilter(mf: MailerFilter): Promise<MailerFilter> {

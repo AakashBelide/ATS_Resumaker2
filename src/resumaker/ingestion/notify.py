@@ -75,18 +75,17 @@ def _write_digest_and_webhook(jobs: list[JobRecord]) -> None:
             _log.warning("webhook notify failed", extra={"error": str(e)})
 
 
-def pending(jobs: list[JobRecord]) -> list[JobRecord]:
-    """The subset worth emailing: on-target, passing the owner's Mailer filters (title has/hasn't,
-    seniority level, US state — all editable on the Mailer page), AND not already emailed. Empty
-    filters = no extra narrowing."""
+def _mailer_predicate(mp: dict):
+    """Build the 'is this posting worth emailing?' test from a Mailer-prefs dict: on-target
+    (owner's target roles) AND title has/hasn't AND seniority level AND US state. Empty filters
+    = no extra narrowing. Shared by `pending` (what to send) and `preview_counts` (the live
+    'X of N' the Mailer page shows), so the page's preview can never drift from the real filter."""
     from resumaker.ingestion.service import (
         matches_preferences,
         title_level,
         title_matches,
         us_states_of,
     )
-    from resumaker.persistence.profile import load_mailer_prefs
-    mp = load_mailer_prefs()
     inc, exc = mp.get("include") or [], mp.get("exclude") or []
     levels = {x.lower() for x in (mp.get("levels") or [])}
     states = mp.get("states") or []
@@ -102,7 +101,31 @@ def pending(jobs: list[JobRecord]) -> list[JobRecord]:
                 return False
         return True
 
+    return keep
+
+
+def pending(jobs: list[JobRecord]) -> list[JobRecord]:
+    """The subset worth emailing: on-target, passing the owner's Mailer filters (title has/hasn't,
+    seniority level, US state — all editable on the Mailer page), AND not already emailed. Empty
+    filters = no extra narrowing."""
+    from resumaker.persistence.profile import load_mailer_prefs
+    keep = _mailer_predicate(load_mailer_prefs())
     return db.unnotified([j for j in jobs if keep(j)])
+
+
+def preview_counts(mp: dict) -> dict[str, int]:
+    """Live tuning aid for the Mailer page: given a (possibly unsaved) filter, how many stored
+    on-target postings match, and how many a digest would actually send under the cap. Counts
+    the whole `jobs` table (already tech+US-gated at ingest), independent of what's been emailed
+    already, so the page can show 'this filter matches X of N on-target postings'."""
+    from resumaker.ingestion.service import matches_preferences
+    keep = _mailer_predicate(mp)
+    jobs = db.list_jobs(limit=100_000)
+    on_target = sum(1 for j in jobs if matches_preferences(j.title))
+    matching = sum(1 for j in jobs if keep(j))
+    cap = int(mp.get("max_postings") or 0)
+    return {"on_target": on_target, "matching": matching,
+            "cap": cap, "would_send": min(cap, matching) if cap else matching}
 
 
 def _in_quiet_hours(mp: dict) -> bool:
