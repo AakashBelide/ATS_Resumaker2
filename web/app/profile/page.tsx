@@ -2,6 +2,7 @@
 // Profile (RA.3): the profile signals + preferences the match uses, plus enrichment
 // proposals mined from tracked jobs (view-only here; accept via CLI `profile set`).
 import { useEffect, useState } from "react";
+import Spinner from "@/components/Spinner";
 
 import { getMailerFilter, profileProposals, profileSummary, saveMailerFilter, type ProfileSummary, type Proposal } from "@/lib/api";
 import { groupSkills } from "@/lib/skills";
@@ -45,7 +46,7 @@ export default function ProfilePage() {
 
       <div className="page">
         {error && <p className="error">{error}</p>}
-        {!p ? <p className="loading">loading…</p> : (
+        {!p ? <Spinner /> : (
           <>
             <div className="stat-row">
               <div className="stat"><div className="num">{p.years_experience}</div><div className="cap">Years experience</div></div>

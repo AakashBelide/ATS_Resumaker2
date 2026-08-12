@@ -5,6 +5,7 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
+import Spinner from "@/components/Spinner";
 
 import CompanyLogo from "@/components/CompanyLogo";
 import { artifactUrl, getProgress, getReport, getRun, startRun, type Report } from "@/lib/api";
@@ -85,7 +86,7 @@ export default function ReportPage() {
             <button className="btn btn-sm btn-primary" onClick={load}>retry</button>
           </div>
         )}
-        {!r && !error && <p className="loading">loading…</p>}
+        {!r && !error && <Spinner />}
         {r && (
           <div className="report-grid">
             {/* -------- left: analysis -------- */}

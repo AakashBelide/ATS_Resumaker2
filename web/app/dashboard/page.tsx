@@ -1,6 +1,7 @@
 "use client";
 // Dashboard (RA.4): feed + application-funnel + on-target composition over the watchlist.
 import { useEffect, useState } from "react";
+import Spinner from "@/components/Spinner";
 
 import CompanyLogo from "@/components/CompanyLogo";
 import Donut from "@/components/Donut";
@@ -57,7 +58,7 @@ export default function DashboardPage() {
       </header>
       <div className="page">
         {error && <p className="error">{error}</p>}
-        {!d ? <p className="loading">loading…</p> : (
+        {!d ? <Spinner /> : (
           <>
             <div className="stat-row">
               <div className="stat"><div className="num">{d.watchlist.companies}</div><div className="cap">Companies watched</div></div>
