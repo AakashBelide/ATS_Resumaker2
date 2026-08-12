@@ -134,6 +134,16 @@ export const profileSummary = () => get<ProfileSummary>("/v1/profile/summary");
 export const profileProposals = () =>
   get<{ have_but_unlisted: Proposal[]; recurring_gaps: Proposal[] }>("/v1/profile/proposals");
 
+export type Preferences = { target_roles: string[]; avoid_roles: string[] };
+export const getPreferences = () => get<Preferences>("/v1/profile/preferences");
+export async function savePreferences(p: Preferences): Promise<Preferences> {
+  const r = await fetch(`${BASE}/v1/profile/preferences`, {
+    method: "PUT", headers: headers(), body: JSON.stringify(p),
+  });
+  if (!r.ok) throw new Error(`savePreferences → ${r.status}`);
+  return r.json();
+}
+
 export type MailerFilter = { include: string[]; exclude: string[] };
 export const getMailerFilter = () => get<MailerFilter>("/v1/profile/mailer-filter");
 export async function saveMailerFilter(mf: MailerFilter): Promise<MailerFilter> {

@@ -4,7 +4,7 @@
 import { useEffect, useState } from "react";
 import Spinner from "@/components/Spinner";
 
-import { getMailerFilter, profileProposals, profileSummary, saveMailerFilter, type ProfileSummary, type Proposal } from "@/lib/api";
+import { getMailerFilter, profileProposals, profileSummary, saveMailerFilter, savePreferences, type ProfileSummary, type Proposal } from "@/lib/api";
 import { groupSkills } from "@/lib/skills";
 
 export default function ProfilePage() {
@@ -14,12 +14,34 @@ export default function ProfilePage() {
   const [mailInc, setMailInc] = useState("");
   const [mailExc, setMailExc] = useState("");
   const [mailSaved, setMailSaved] = useState<"" | "saving" | "saved">("");
+  const [prefEdit, setPrefEdit] = useState(false);
+  const [prefTarget, setPrefTarget] = useState("");
+  const [prefAvoid, setPrefAvoid] = useState("");
+  const [prefSaved, setPrefSaved] = useState<"" | "saving" | "saved">("");
 
   useEffect(() => {
     profileSummary().then(setP).catch((e) => setError(String(e)));
     profileProposals().then(setProp).catch(() => {});
     getMailerFilter().then((mf) => { setMailInc(mf.include.join(", ")); setMailExc(mf.exclude.join(", ")); }).catch(() => {});
   }, []);
+
+  useEffect(() => {   // seed the preference editor from the loaded summary
+    if (!p) return;
+    const pr = (p.preferences ?? {}) as Record<string, unknown>;
+    const a = (k: string) => (Array.isArray(pr[k]) ? (pr[k] as string[]) : []);
+    setPrefTarget(a("target_roles").join(", "));
+    setPrefAvoid(a("avoid_roles").join(", "));
+  }, [p]);
+
+  async function savePrefs() {
+    const csv = (s: string) => s.split(",").map((x) => x.trim()).filter(Boolean);
+    setPrefSaved("saving");
+    try {
+      const saved = await savePreferences({ target_roles: csv(prefTarget), avoid_roles: csv(prefAvoid) });
+      setP((prev) => (prev ? { ...prev, preferences: { ...(prev.preferences ?? {}), ...saved } } : prev));
+      setPrefSaved("saved"); setTimeout(() => setPrefSaved(""), 2000); setPrefEdit(false);
+    } catch (e) { setError(String(e)); setPrefSaved(""); }
+  }
 
   async function saveMailer() {
     const csv = (s: string) => s.split(",").map((x) => x.trim()).filter(Boolean);
@@ -56,13 +78,34 @@ export default function ProfilePage() {
             </div>
 
             <div className="block">
-              <div className="block-head"><h2>Preferences</h2></div>
-              <div className="panel kv">
-                <span className="k">Target roles</span>
-                <span className="chips">{arr("target_roles").map((r) => <span key={r} className="chip">{r}</span>)}</span>
-                <span className="k">Avoid roles</span>
-                <span className="chips">{arr("avoid_roles").map((r) => <span key={r} className="chip">{r}</span>)}</span>
+              <div className="block-head"><h2>Preferences</h2>
+                <button className="btn btn-sm" style={{ marginLeft: "auto" }} onClick={() => setPrefEdit((v) => !v)}>
+                  {prefEdit ? "cancel" : "edit"}
+                </button>
               </div>
+              {prefEdit ? (
+                <div className="panel">
+                  <p className="muted" style={{ fontSize: 13, marginBottom: 12 }}>
+                    These drive the <b>on-target</b> filter in Discovery and matching. Comma-separated.
+                  </p>
+                  <div className="filters" style={{ marginBottom: 12 }}>
+                    <div className="field"><label>target roles</label>
+                      <input value={prefTarget} onChange={(e) => setPrefTarget(e.target.value)} placeholder="ai, ml, software engineer" /></div>
+                    <div className="field"><label>avoid roles</label>
+                      <input value={prefAvoid} onChange={(e) => setPrefAvoid(e.target.value)} placeholder="sales, manager" /></div>
+                  </div>
+                  <button className="btn btn-sm btn-primary" onClick={savePrefs} disabled={prefSaved === "saving"}>
+                    {prefSaved === "saving" ? "saving…" : prefSaved === "saved" ? "saved ✓" : "save"}
+                  </button>
+                </div>
+              ) : (
+                <div className="panel kv">
+                  <span className="k">Target roles</span>
+                  <span className="chips">{arr("target_roles").length ? arr("target_roles").map((r) => <span key={r} className="chip">{r}</span>) : <span className="muted" style={{ fontSize: 13 }}>none set</span>}</span>
+                  <span className="k">Avoid roles</span>
+                  <span className="chips">{arr("avoid_roles").length ? arr("avoid_roles").map((r) => <span key={r} className="chip">{r}</span>) : <span className="muted" style={{ fontSize: 13 }}>none set</span>}</span>
+                </div>
+              )}
             </div>
 
             <div className="block">

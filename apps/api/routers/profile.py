@@ -26,6 +26,11 @@ class MailerFilterIn(BaseModel):
     exclude: list[str] = []    # ...and NONE of these (empty = no extra filtering)
 
 
+class PreferencesIn(BaseModel):
+    target_roles: list[str] = []   # on-target match keeps titles matching these
+    avoid_roles: list[str] = []    # ...and drops titles matching these
+
+
 @router.get("/summary")
 def summary() -> dict:
     return {
@@ -60,6 +65,24 @@ def get_mailer_filter() -> MailerFilterIn:
 def set_mailer_filter(body: MailerFilterIn) -> MailerFilterIn:
     profile.save_mailer_filter({"include": body.include, "exclude": body.exclude})
     return body
+
+
+@router.get("/preferences", response_model=PreferencesIn)
+def get_preferences() -> PreferencesIn:
+    p = preferences()
+    return PreferencesIn(target_roles=list(p.get("target_roles") or []),
+                         avoid_roles=list(p.get("avoid_roles") or []))
+
+
+@router.put("/preferences", response_model=PreferencesIn)
+def set_preferences(body: PreferencesIn) -> PreferencesIn:
+    """Edit the on-target role filter that drives Discovery + matching. Merges into the existing
+    preferences doc so other keys (comp/location/work-model) are preserved."""
+    prefs = dict(profile.load_preferences() or {})
+    prefs["target_roles"] = [r.strip() for r in body.target_roles if r.strip()]
+    prefs["avoid_roles"] = [r.strip() for r in body.avoid_roles if r.strip()]
+    profile.save_preferences(prefs)
+    return PreferencesIn(target_roles=prefs["target_roles"], avoid_roles=prefs["avoid_roles"])
 
 
 @router.get("/proposals")
