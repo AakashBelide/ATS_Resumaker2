@@ -93,6 +93,28 @@ def test_service_dedupes_on_reingest(tmp_db, monkeypatch):
     assert r3.new == 1 and r3.unchanged == 1
 
 
+def test_ingest_all_skips_companies_off_the_selected_sources(tmp_db, monkeypatch):
+    # A narrowed sweep (per-cadence polling) must not even touch companies whose boards are
+    # all on other ATSs - otherwise the fast tick's wall-time scales with the whole watchlist
+    # and blows past the Cloud Scheduler attempt deadline.
+    from resumaker.persistence import db
+    db.add_company(Company(name="FastCo", boards=[BoardRef(source="greenhouse", token="fastco")]))
+    db.add_company(Company(name="SlowCo", boards=[BoardRef(source="workday", token="slowco")]))
+
+    polled: list[str] = []
+
+    class Fake:
+        def list_postings(self, token, **kw):
+            polled.append(token)
+            return []
+
+    monkeypatch.setattr(service, "get_source", lambda name: Fake())
+    monkeypatch.setattr(service.time, "sleep", lambda *_: None)
+
+    service.ingest_all(sources={"greenhouse"})
+    assert polled == ["fastco"]                             # SlowCo skipped entirely
+
+
 def test_discovery_filters_and_facets(tmp_db, monkeypatch):
     from resumaker.domain import JobRecord
     from resumaker.ingestion import DiscoveryFilters, discover

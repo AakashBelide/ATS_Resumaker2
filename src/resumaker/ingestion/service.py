@@ -88,8 +88,15 @@ def ingest_company(company: Company, *, preferred_only: bool = False,
 def ingest_all(*, preferred_only: bool = False, us_only: bool = True,
                tech_only: bool = True, sources: set[str] | None = None) -> list[IngestResult]:
     """Ingest every active company, spacing requests with jitter so a full sweep across
-    the watchlist doesn't burst against any one ATS."""
+    the watchlist doesn't burst against any one ATS.
+
+    When `sources` narrows the sweep (per-cadence polling), companies with no board on a
+    selected ATS are skipped entirely - including the polite inter-company sleep. Otherwise
+    the fast tick's wall-time scales with the *total* watchlist size (and can blow past the
+    Cloud Scheduler attempt deadline), not just the boards it actually polls."""
     companies = db.list_companies(active_only=True)
+    if sources is not None:
+        companies = [c for c in companies if any(b.source in sources for b in c.boards)]
     results: list[IngestResult] = []
     for i, c in enumerate(companies):
         if i:

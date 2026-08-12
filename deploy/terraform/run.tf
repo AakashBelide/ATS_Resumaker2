@@ -40,6 +40,9 @@ resource "google_cloud_run_v2_service" "api" {
 
   template {
     service_account = google_service_account.run.email
+    // The Cloud Scheduler ingest-tick sweeps the watchlist inline; give it headroom over the
+    // 300s default so a full poll isn't guillotined (paired with the scheduler attempt_deadline).
+    timeout = "600s"
     scaling {
       min_instance_count = 0
       max_instance_count = 3

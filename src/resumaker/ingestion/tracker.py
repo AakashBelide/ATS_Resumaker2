@@ -50,6 +50,15 @@ def _apply_match(entry: TrackerEntry) -> None:
     entry.recommend_apply = res.decision.recommend_apply if res.decision else None
     entry.sponsorship = (res.sponsorship or {}).get("verdict", "") if res.sponsorship else ""
     entry.run_id = Path(res.out_dir).name if res.out_dir else ""
+    # The match runs inline here (not via the worker's run-pipeline), so publish its artifacts
+    # ourselves - otherwise report.json never reaches durable storage and "open report" 404s
+    # once this ephemeral instance is gone. No-op on the local backend; GCS upload in cloud.
+    if entry.run_id:
+        import contextlib
+
+        from resumaker.persistence.artifacts import get_artifact_store
+        with contextlib.suppress(Exception):
+            get_artifact_store().publish(entry.run_id)
 
 
 def add(*, job_id: int | None = None, url: str | None = None,

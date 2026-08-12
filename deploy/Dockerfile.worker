@@ -31,14 +31,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /app
 
-# Deps first (cached layer) from the lockfile - core + api extras, no dev.
+# Deps first (cached layer) from the lockfile - core + api + cloud extras, no dev. The worker
+# publishes run artifacts to GCS, so it needs the `cloud` extra (GCS + Cloud Tasks clients) too.
 COPY pyproject.toml uv.lock ./
-RUN uv sync --frozen --no-dev --extra api --no-install-project
+RUN uv sync --frozen --no-dev --extra api --extra cloud --no-install-project
 
 COPY README.md ./
 COPY src ./src
 COPY apps ./apps
-RUN uv sync --frozen --no-dev --extra api
+RUN uv sync --frozen --no-dev --extra api --extra cloud
 
 RUN mkdir -p /data /outputs
 EXPOSE 8000
