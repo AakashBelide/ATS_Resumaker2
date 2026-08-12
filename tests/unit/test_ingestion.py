@@ -115,6 +115,33 @@ def test_ingest_all_skips_companies_off_the_selected_sources(tmp_db, monkeypatch
     assert polled == ["fastco"]                             # SlowCo skipped entirely
 
 
+def test_ingest_all_concurrent_across_sources_is_correct(tmp_db, monkeypatch):
+    # Boards on different sources fetch concurrently (grouped by host); the serial DB-write
+    # phase must still record every posting exactly once, with no cross-thread write races.
+    from resumaker.persistence import db
+    db.add_company(Company(name="Acme", boards=[BoardRef(source="greenhouse", token="acme")]))
+    db.add_company(Company(name="Globex", boards=[BoardRef(source="lever", token="globex")]))
+
+    def stubs_for(src):
+        return [PostingStub(source=src, external_id=f"{src}-{i}", title="ML Engineer",
+                            location="Boston", updated_at="2026-01-0" + str(i)) for i in (1, 2)]
+
+    class Fake:
+        def __init__(self, src): self.src = src
+        def list_postings(self, token, **kw): return stubs_for(self.src)
+
+    monkeypatch.setattr(service, "get_source", lambda name: Fake(name))
+    monkeypatch.setattr(service.time, "sleep", lambda *_: None)
+
+    results = service.ingest_all()
+    by_co = {r.company: r for r in results}
+    assert by_co["Acme"].new == 2 and by_co["Globex"].new == 2
+    assert len(db.list_jobs()) == 4                         # every posting persisted once
+
+    r2 = {r.company: r for r in service.ingest_all()}       # idempotent re-ingest
+    assert r2["Acme"].new == 0 and r2["Acme"].unchanged == 2
+
+
 def test_discovery_filters_and_facets(tmp_db, monkeypatch):
     from resumaker.domain import JobRecord
     from resumaker.ingestion import DiscoveryFilters, discover
