@@ -2,6 +2,7 @@
 // Discovery (RA.1): a filterable, deterministic feed of ingested postings. No fit-scoring
 // here (that happens on add-to-Tracker); Discovery is pure filtering over the watchlist.
 import { useCallback, useEffect, useState } from "react";
+import Spinner from "@/components/Spinner";
 
 import CompanyLogo from "@/components/CompanyLogo";
 import MultiSelect from "@/components/MultiSelect";
@@ -213,7 +214,7 @@ export default function DiscoveryPage() {
           <span className="muted"> Recency = when we first fetched it. Level &amp; state are derived from the title/location.</span>
         </p>
 
-        {loading && <p className="loading">loading…</p>}
+        {loading && <Spinner />}
         {error && <p className="error">{error}</p>}
         {!loading && data && data.jobs.length === 0 && (
           <div className="empty">No postings match these filters.</div>

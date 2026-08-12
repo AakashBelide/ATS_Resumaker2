@@ -5,6 +5,7 @@
 // full match report. Resume/cover stay a manual trigger (not wired here yet).
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import Spinner from "@/components/Spinner";
 
 import CompanyLogo from "@/components/CompanyLogo";
 import { listTracker, rematchTracker, setTrackerStage, type TrackerEntry } from "@/lib/api";
@@ -101,7 +102,7 @@ export default function TrackerPage() {
                  onChange={(e) => setSearch(e.target.value)} />
         </div>
 
-        {loading && <p className="loading">loading…</p>}
+        {loading && <Spinner />}
         {error && <p className="error">{error}</p>}
         {!loading && rows.length === 0 && (
           <div className="empty">Nothing tracked yet. Add jobs from Discovery with “+ Track”.</div>

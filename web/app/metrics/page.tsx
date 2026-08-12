@@ -3,6 +3,7 @@
 // (subscription, not billed); the Gemini API is hard-capped.
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import Spinner from "@/components/Spinner";
 
 import { listRuns, metrics, type RunRecord } from "@/lib/api";
 
@@ -44,7 +45,7 @@ export default function MetricsPage() {
       </header>
       <div className="page">
         {error && <p className="error">{error}</p>}
-        {!m ? <p className="loading">loading…</p> : (
+        {!m ? <Spinner /> : (
           <>
             <div className="stat-row">
               <div className="stat"><div className="num accent">${totCost.toFixed(2)}</div><div className="cap">Total spend</div></div>
