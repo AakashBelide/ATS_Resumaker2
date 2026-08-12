@@ -73,6 +73,11 @@ class Settings(BaseSettings):
     # and let libSQL auto-sync in the background every N seconds (reads then hit the local replica
     # in ~ms). Lower = fresher cross-instance reads; higher = fewer background syncs.
     turso_sync_interval_s: int = 60
+    # Remote-only mode: skip the local embedded replica entirely and send every query straight to
+    # the Turso primary over HTTP. On scale-to-zero Cloud Run this is the better fit - no full
+    # re-sync on every cold start (so no cold-start lag) and Embedded Syncs stays ~0 - at the cost
+    # of ~30-50ms network latency per query (fine for this low-QPS app). Always reads the latest.
+    turso_remote_only: bool = False
 
     # -- API service ---------------------------------------------------------
     api_token: str | None = None          # required to call the API when set (single-user auth)
