@@ -1,0 +1,69 @@
+# Agentic onboarding on GitHub Actions (TASKS D.7).
+#
+# Cloud Run can't nest Docker, so the cloud api's ActionsAgentRunner dispatches this workflow to
+# resolve a company -> ATS board inside the same locked Docker sandbox used locally. The result is
+# uploaded as `contract-<run_id>` (the runner downloads it); if the agent drafted a new adapter,
+# a PR is opened for human review. `run-name` carries the run id so the dispatcher can find the run.
+name: onboard
+run-name: onboard-${{ inputs.run_id }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: Onboarding run id (correlates the result artifact)
+        required: true
+      name:
+        description: Company name to resolve
+        required: true
+      careers_url:
+        description: Careers URL (optional hint)
+        required: false
+        default: ""
+
+permissions:
+  contents: write        # commit a drafted adapter to a branch
+  pull-requests: write   # open the review PR
+
+jobs:
+  resolve:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up uv + Python
+        uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.13"
+
+      - run: uv sync --frozen --extra api
+
+      - name: Resolve (sandboxed Claude agent)
+        env:
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+        run: >
+          uv run python deploy/actions/onboard_entry.py
+          --run-id "${{ inputs.run_id }}"
+          --name "${{ inputs.name }}"
+          --careers-url "${{ inputs.careers_url }}"
+
+      - name: Upload result contract
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: contract-${{ inputs.run_id }}
+          path: contract.json
+          if-no-files-found: warn
+
+      - name: Open PR for a drafted adapter (if any)
+        uses: peter-evans/create-pull-request@v6
+        with:
+          add-paths: src/resumaker/providers/sources/**
+          branch: onboard/adapter-${{ inputs.run_id }}
+          title: "Onboarding: ATS adapter draft for ${{ inputs.name }}"
+          commit-message: "Draft ATS adapter for ${{ inputs.name }} (onboarding ${{ inputs.run_id }})"
+          body: |
+            Auto-drafted by the onboarding agent for **${{ inputs.name }}** (run `${{ inputs.run_id }}`).
+            The adapter passed the sandboxed gate (AST allow-list + offline fixture + egress-locked live check).
+            Review before merge.

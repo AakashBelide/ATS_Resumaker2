@@ -204,6 +204,66 @@ def test_tracker_match_failure_sets_error_then_retry_clears(tmp_db, monkeypatch)
     assert got.match_error is None and got.fit_0_100 == 44.1 and got.run_id == "jpmc-de"
 
 
+def test_actions_agent_runner_dispatch_poll_artifact(monkeypatch):
+    """ActionsAgentRunner: dispatch the workflow, find the run by run-name, then download the
+    contract artifact - all mocked (no GitHub calls). Fits the synchronous resolve() seam."""
+    import io
+    import json
+    import zipfile
+
+    from resumaker.config import get_settings
+    from resumaker.onboarding import agent_runner as ar
+
+    for k, v in {"RESUMAKER_ONBOARD_AGENT_ENABLED": "true", "RESUMAKER_ONBOARD_RUNNER": "actions",
+                 "RESUMAKER_GITHUB_REPO": "me/repo", "RESUMAKER_GITHUB_TOKEN": "ghp_x"}.items():
+        monkeypatch.setenv(k, v)
+    get_settings.cache_clear()
+    monkeypatch.setattr("time.sleep", lambda *_: None)
+
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w") as z:
+        z.writestr("contract.json", json.dumps(
+            {"status": "resolved", "board": {"source": "greenhouse", "token": "acme"},
+             "cost_usd": 0.1, "turns": 3}))
+    zip_bytes = buf.getvalue()
+
+    class Resp:
+        def __init__(self, js=None, content=b""): self._js, self.content = js, content
+        def raise_for_status(self): pass
+        def json(self): return self._js
+
+    class FakeHTTP:
+        def post(self, url, json=None): return Resp()  # dispatch -> 204
+        def get(self, url, params=None, follow_redirects=False):
+            if url.endswith("/actions/runs"):
+                return Resp({"workflow_runs": [
+                    {"name": "onboard-r1", "id": 99, "status": "completed", "conclusion": "success"}]})
+            if url.endswith("/artifacts"):
+                return Resp({"artifacts": [{"name": "contract-r1", "archive_download_url": "dl"}]})
+            return Resp(content=zip_bytes)  # the artifact zip download
+
+    runner = ar.get_agent_runner()
+    assert isinstance(runner, ar.ActionsAgentRunner)   # config selected the Actions runner
+    runner._http = FakeHTTP()
+    runner._poll_s = 0
+    got = runner.resolve("Acme", None, run_id="r1", on_event=lambda *a: None)
+    assert got["status"] == "resolved" and got["board"]["source"] == "greenhouse"
+    assert got["turns"] == 3
+    get_settings.cache_clear()
+
+
+def test_agent_runner_actions_requires_repo_and_token(monkeypatch):
+    """Without github creds, actions mode falls back to Null (never crashes onboarding)."""
+    from resumaker.config import get_settings
+    from resumaker.onboarding import agent_runner as ar
+
+    monkeypatch.setenv("RESUMAKER_ONBOARD_AGENT_ENABLED", "true")
+    monkeypatch.setenv("RESUMAKER_ONBOARD_RUNNER", "actions")  # but no repo/token set
+    get_settings.cache_clear()
+    assert isinstance(ar.get_agent_runner(), ar.NullAgentRunner)
+    get_settings.cache_clear()
+
+
 def test_oracle_cloud_scraper(monkeypatch):
     """The oracle_cloud handler recognizes CE careers URLs and pulls the JD from the public
     requisition-detail JSON API (the JS page's own source), not the empty HTML shell."""
