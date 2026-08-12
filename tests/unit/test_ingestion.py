@@ -9,16 +9,21 @@ import pytest
 from resumaker.config import Settings
 from resumaker.domain import BoardRef, Company
 from resumaker.ingestion import onboard, service
-from resumaker.providers.sources import available_sources
+from resumaker.providers.sources import available_sources, get_source
 from resumaker.providers.sources.base import PostingStub
 
 
 def test_sources_registered():
-    assert set(available_sources()) == {
-        "greenhouse", "lever", "ashby", "workday", "eightfold", "amazon", "oracle_cloud",
-        "smartrecruiters", "mckinsey", "goldman", "phenom", "jibe", "radancy", "apple",
-        "bytedance", "dassault", "microsoft", "google", "meta", "tesla", "pcsx", "paradox",
-        "ibm", "icims", "wayfair", "algolia", "recruitee", "breezy"}
+    # Do NOT pin the exact adapter set: new adapters get added over time — including ones the
+    # onboarding agent auto-drafts and PRs — so a hardcoded list would break on every addition.
+    # Instead assert a stable core is present and that every registered adapter is well-formed
+    # (its registry key matches `.source` and it exposes `list_postings`).
+    sources = set(available_sources())
+    assert {"greenhouse", "lever", "ashby", "workday"} <= sources
+    for name in sources:
+        adapter = get_source(name)
+        assert adapter.source == name, f"{name}: registry key != adapter.source ({adapter.source})"
+        assert callable(getattr(adapter, "list_postings", None)), f"{name}: no list_postings"
 
 
 def test_slug_candidates():
