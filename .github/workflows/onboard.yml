@@ -67,7 +67,11 @@ jobs:
           path: contract.json
           if-no-files-found: warn
 
+      # Non-fatal: the resolve/gate already succeeded and the contract is uploaded above. A PR-open
+      # hiccup (e.g. the repo's "Allow GitHub Actions to create PRs" setting) must NOT fail the run
+      # and discard a good `drafted` result — the adapter branch is still pushed either way.
       - name: Open PR for a drafted adapter (if any)
+        continue-on-error: true
         uses: peter-evans/create-pull-request@v6
         with:
           add-paths: src/resumaker/providers/sources/**
