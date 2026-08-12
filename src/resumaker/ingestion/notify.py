@@ -76,36 +76,77 @@ def _write_digest_and_webhook(jobs: list[JobRecord]) -> None:
 
 
 def pending(jobs: list[JobRecord]) -> list[JobRecord]:
-    """The subset worth emailing: on-target (target-role match), passing the owner's mailer title
-    filter (include/exclude words, editable in Profile), AND not already emailed. The mailer
-    filter defaults to empty -> no extra narrowing."""
-    from resumaker.ingestion.service import matches_preferences, title_matches
-    from resumaker.persistence.profile import load_mailer_filter
-    mf = load_mailer_filter()
-    inc, exc = mf.get("include") or [], mf.get("exclude") or []
-    keep = [j for j in jobs if matches_preferences(j.title) and title_matches(j.title, inc, exc)]
-    return db.unnotified(keep)
+    """The subset worth emailing: on-target, passing the owner's Mailer filters (title has/hasn't,
+    seniority level, US state — all editable on the Mailer page), AND not already emailed. Empty
+    filters = no extra narrowing."""
+    from resumaker.ingestion.service import (
+        matches_preferences,
+        title_level,
+        title_matches,
+        us_states_of,
+    )
+    from resumaker.persistence.profile import load_mailer_prefs
+    mp = load_mailer_prefs()
+    inc, exc = mp.get("include") or [], mp.get("exclude") or []
+    levels = {x.lower() for x in (mp.get("levels") or [])}
+    states = mp.get("states") or []
+
+    def keep(j: JobRecord) -> bool:
+        if not (matches_preferences(j.title) and title_matches(j.title, inc, exc)):
+            return False
+        if levels and title_level(j.title).lower() not in levels:
+            return False
+        if states:
+            js = us_states_of(j.location)
+            if not any((not js) if s == "OTHER" else s in js for s in states):
+                return False
+        return True
+
+    return db.unnotified([j for j in jobs if keep(j)])
+
+
+def _in_quiet_hours(mp: dict) -> bool:
+    """True if 'now' (in the mailer timezone) falls in the quiet window; supports a window that
+    wraps midnight (e.g. 22:00 -> 07:00). Empty start/end = never quiet."""
+    qs, qe = (mp.get("quiet_start") or "").strip(), (mp.get("quiet_end") or "").strip()
+    if not (qs and qe):
+        return False
+    try:
+        from zoneinfo import ZoneInfo
+        now = datetime.now(ZoneInfo(mp.get("timezone") or "UTC")).strftime("%H:%M")
+    except Exception:  # noqa: BLE001 - bad tz -> don't block sending
+        return False
+    return qs <= now < qe if qs <= qe else (now >= qs or now < qe)
 
 
 def email_new(jobs: list[JobRecord], *, dry_run: bool = False) -> int:
     """Email a digest of new on-target postings not yet sent. Returns how many were included.
     No candidates, or no recipient/sender configured -> no-op. `dry_run` builds but doesn't
-    send or mark."""
+    send or mark. Honors the Mailer page's quiet hours (defer) + max-postings cap (send the
+    top N, show 'X of total', and mark the rest seen so they surface in Discovery not email)."""
+    from resumaker.persistence.profile import load_mailer_prefs
     s = get_settings()
+    mp = load_mailer_prefs()
     candidates = pending(jobs)
-    if not candidates:
+    total = len(candidates)
+    if total == 0:
         return 0
-    if dry_run:                              # preview count works without any email config
-        return len(candidates)
+    if not dry_run and _in_quiet_hours(mp):   # defer WITHOUT marking, so they send after the window
+        _log.info("email digest deferred (quiet hours)", extra={"pending": total})
+        return 0
+    cap = int(mp.get("max_postings") or 0)
+    to_send = candidates[:cap] if cap > 0 else candidates
+    if dry_run:                               # preview count works without any email config
+        return total
     if not s.notify_to or not (s.resend_api_key or s.smtp_host):
         _log.info("email digest skipped: set RESUMAKER_NOTIFY_TO + a sender (Resend/SMTP) in .env",
-                  extra={"pending": len(candidates)})
+                  extra={"pending": total})
         return 0
-    subject, html_body, text_body = build_digest(candidates)
+    subject, html_body, text_body = build_digest(to_send, total=total)
     _send(s, subject, html_body, text_body)
-    db.mark_notified(candidates)
-    _log.info("emailed digest", extra={"count": len(candidates), "to": s.notify_to})
-    return len(candidates)
+    db.mark_notified(candidates)              # mark ALL seen; the capped-out ones live in Discovery
+    _log.info("emailed digest", extra={"count": len(to_send), "of": total, "to": s.notify_to})
+    return len(to_send)
 
 
 def _posting_date(j: JobRecord) -> str:
@@ -131,11 +172,16 @@ def _pill(text: str, color: str, bg: str, border: str) -> str:
             f"display:inline-block;line-height:1.4\">{html_lib.escape(text)}</span>")
 
 
-def _brand_header(n: int) -> str:
+def _brand_header(n: int, total: int | None = None) -> str:
     """Hex-badge + wordmark lockup, accent divider, and the headline — the site's rail brand
     rendered email-safe (a gradient tile with the ⬢ glyph stands in for the stroked SVG hex,
-    which Gmail would strip)."""
+    which Gmail would strip). When capped, the headline reads 'n of total'."""
+    total = n if total is None else total
+    capped = total > n
     plural = "" if n == 1 else "s"
+    headline = f"{n} of {total} new on-target postings" if capped else f"{n} new on-target posting{plural}"
+    subline = (f"showing the top {n} of {total} — see the rest in Discovery" if capped
+               else "from your ATS Resumaker watchlist")
     return (
         "<tr><td style=\"padding:0 0 18px\">"
         "<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\"><tr>"
@@ -155,9 +201,9 @@ def _brand_header(n: int) -> str:
         f"<div style=\"font-family:{_F_MONO};font-size:11px;letter-spacing:2px;"
         f"text-transform:uppercase;color:{_SKY};margin:0 0 8px\">&mdash; new on-target</div>"
         f"<div style=\"font-family:{_F_DISPLAY};font-size:24px;font-weight:700;color:{_TEXT};"
-        f"letter-spacing:-0.4px;line-height:1.2\">{n} new on-target posting{plural}</div>"
+        f"letter-spacing:-0.4px;line-height:1.2\">{html_lib.escape(headline)}</div>"
         f"<div style=\"color:{_MUTED};font-size:13px;margin-top:6px\">"
-        "from your ATS Resumaker watchlist</div></td></tr>")
+        f"{html_lib.escape(subline)}</div></td></tr>")
 
 
 def _card_html(j: JobRecord) -> str:
@@ -197,11 +243,14 @@ def _card_html(j: JobRecord) -> str:
         "</div></div></td></tr>")
 
 
-def build_digest(jobs: list[JobRecord]) -> tuple[str, str, str]:
-    """Return (subject, html, text) for a grouped, readable digest of the given postings."""
+def build_digest(jobs: list[JobRecord], *, total: int | None = None) -> tuple[str, str, str]:
+    """Return (subject, html, text) for a grouped, readable digest. `total` (>= len(jobs)) is the
+    full pending count when the max-postings cap trimmed the list — shown as 'n of total'."""
     from resumaker.ingestion.service import title_level
     n = len(jobs)
-    subject = f"ATS Resumaker — {n} new on-target posting{'' if n == 1 else 's'}"
+    total = n if total is None else total
+    subject = (f"ATS Resumaker — {n} of {total} new on-target postings" if total > n
+               else f"ATS Resumaker — {n} new on-target posting{'' if n == 1 else 's'}")
     ordered = sorted(jobs, key=lambda j: (j.company.lower(), j.title.lower()))
 
     cards_html, rows_text = [], []
@@ -222,14 +271,15 @@ def build_digest(jobs: list[JobRecord]) -> tuple[str, str, str]:
         f"style=\"background:{_BG}\"><tr><td align=\"center\" style=\"padding:32px 16px\">"
         "<table role=\"presentation\" width=\"600\" cellpadding=\"0\" cellspacing=\"0\" "
         "style=\"max-width:600px;width:100%\">"
-        + _brand_header(n)
+        + _brand_header(n, total)
         + "".join(cards_html)
         + f"<tr><td style=\"padding:20px 2px 0\"><div style=\"font-family:{_F_MONO};font-size:10px;"
         f"letter-spacing:1px;color:{_MUTED};border-top:1px solid {_LINE};padding-top:14px\">"
         "ATS RESUMAKER &middot; v0.1 &middot; SELF-HOSTED</div></td></tr>"
         "</table></td></tr></table></body></html>")
-    text_body = (f"{n} new on-target posting{'' if n == 1 else 's'} from your ATS Resumaker watchlist:\n\n"
-                 + "\n\n".join(rows_text))
+    text_head = (f"{n} of {total} new on-target postings (see the rest in Discovery)" if total > n
+                 else f"{n} new on-target posting{'' if n == 1 else 's'} from your ATS Resumaker watchlist")
+    text_body = f"{text_head}:\n\n" + "\n\n".join(rows_text)
     return subject, html_body, text_body
 
 

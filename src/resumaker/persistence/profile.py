@@ -58,19 +58,46 @@ def save_preferences(data: dict) -> None:
     invalidate()
 
 
-def load_mailer_filter() -> dict:
-    """Title include/exclude for the EMAIL DIGEST ('preferences, but for the mailer'): only new
-    on-target postings whose title passes this filter get emailed. Default empty = no extra
-    filtering. Editable in Profile; applied by `notify.pending()` before sending."""
+# The full email-digest control set (the Mailer page). One doc, so the old mailer_filter
+# (title include/exclude) is just a subset of this.
+MAILER_DEFAULTS: dict = {
+    "include": [], "exclude": [],        # title has-ANY / has-NONE
+    "levels": [], "states": [],          # seniority + US-state filters (empty = all)
+    "quiet_start": "", "quiet_end": "",  # "HH:MM" local; empty pair = no quiet window
+    "timezone": "America/New_York",      # tz the quiet window is interpreted in
+    "max_postings": 0,                   # cap per digest (0 = no cap); rest shown as "X of N"
+    "frequency": "hourly",               # digest cadence -> Cloud Scheduler (Mailer page)
+}
+
+
+def load_mailer_prefs() -> dict:
+    """All email-digest controls, with defaults filled in. Migrates a legacy `mailer_filter`
+    doc's include/exclude on first read."""
     from resumaker.persistence import db
-    doc = db.get_document("mailer_filter")
-    return doc if doc is not None else {"include": [], "exclude": []}
+    doc = db.get_document("mailer_prefs")
+    if doc is None:
+        legacy = db.get_document("mailer_filter") or {}
+        return {**MAILER_DEFAULTS, "include": legacy.get("include") or [],
+                "exclude": legacy.get("exclude") or []}
+    return {**MAILER_DEFAULTS, **doc}
+
+
+def save_mailer_prefs(data: dict) -> None:
+    """Persist the mailer controls (merges onto current, only known keys)."""
+    from resumaker.persistence import db
+    merged = {**load_mailer_prefs(), **{k: v for k, v in data.items() if k in MAILER_DEFAULTS}}
+    db.put_document("mailer_prefs", merged)
+
+
+def load_mailer_filter() -> dict:
+    """Title include/exclude subset (kept for the Profile mailer editor + notify)."""
+    p = load_mailer_prefs()
+    return {"include": p["include"], "exclude": p["exclude"]}
 
 
 def save_mailer_filter(data: dict) -> None:
-    from resumaker.persistence import db
-    db.put_document("mailer_filter", {"include": list(data.get("include") or []),
-                                      "exclude": list(data.get("exclude") or [])})
+    save_mailer_prefs({"include": list(data.get("include") or []),
+                       "exclude": list(data.get("exclude") or [])})
 
 
 def invalidate() -> None:
