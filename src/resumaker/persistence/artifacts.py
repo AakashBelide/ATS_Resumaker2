@@ -31,6 +31,7 @@ class ArtifactStore(Protocol):
     def open(self, run_id: str, name: str) -> bytes | None: ...
     def url(self, run_id: str, name: str) -> str | None: ...
     def delete_run(self, run_id: str) -> None: ...
+    def find(self, run_id: str, suffix: str) -> str | None: ...
 
 
 class LocalArtifactStore:
@@ -55,6 +56,11 @@ class LocalArtifactStore:
         import shutil
         d = get_settings().output_root / run_id
         shutil.rmtree(d, ignore_errors=True)
+
+    def find(self, run_id: str, suffix: str) -> str | None:
+        d = get_settings().output_root / run_id
+        m = next((f for f in d.glob(f"*{suffix}")), None)
+        return m.name if m else None
 
 
 class GCSArtifactStore:
@@ -93,6 +99,16 @@ class GCSArtifactStore:
             with suppress(Exception):
                 blob.delete()
         self._local.delete_run(run_id)
+
+    def find(self, run_id: str, suffix: str) -> str | None:
+        # Resolve a role-slug artifact (e.g. the resume PDF/DOCX) by suffix from the BUCKET, not
+        # the local temp dir - on a scale-to-zero instance that local dir is empty (the files live
+        # in GCS after publish), which is why serving resume.pdf/docx used to 404.
+        for blob in self._bucket().list_blobs(prefix=f"{run_id}/"):
+            name = blob.name.rsplit("/", 1)[-1]
+            if name.endswith(suffix):
+                return name
+        return None
 
     def url(self, run_id: str, name: str) -> str | None:
         from datetime import timedelta

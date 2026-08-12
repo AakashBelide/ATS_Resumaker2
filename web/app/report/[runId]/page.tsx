@@ -8,7 +8,7 @@ import { useCallback, useEffect, useState } from "react";
 import Spinner from "@/components/Spinner";
 
 import CompanyLogo from "@/components/CompanyLogo";
-import { artifactUrl, getProgress, getReport, getRun, getTrackerByRun, startRun, type Report, type TrackerEntry } from "@/lib/api";
+import { artifactUrl, fetchArtifactText, getProgress, getReport, getRun, getTrackerByRun, startRun, type Report, type TrackerEntry } from "@/lib/api";
 
 function scoreColor(v: number) { return v >= 65 ? "hi" : v >= 45 ? "mid" : "lo"; }
 function pct(v: number) { return Math.round(v <= 1 ? v * 100 : v); }
@@ -37,6 +37,8 @@ export default function ReportPage() {
   const [error, setError] = useState("");
   const [gen, setGen] = useState<{ stage: string } | null>(null);   // in-progress generation
   const [tracked, setTracked] = useState<TrackerEntry | null>(null); // authoritative ATS title/company
+  const [docTab, setDocTab] = useState<"resume" | "cover">("resume"); // which document is previewed
+  const [coverText, setCoverText] = useState<string | null>(null);    // cover letter body, fetched inline
 
   const load = useCallback(() => {
     setError("");
@@ -46,6 +48,12 @@ export default function ReportPage() {
   // The tracker keeps the real ATS posting title/company (report.json holds the JD-extracted one,
   // which can differ) - prefer it in the header so the report matches the Tracker card.
   useEffect(() => { getTrackerByRun(runId).then(setTracked).catch(() => {}); }, [runId]);
+
+  // Pull the cover-letter text once it exists, to render it inline (not just a download link).
+  useEffect(() => {
+    if (r?.cover_letter != null) fetchArtifactText(runId, "cover_letter.txt").then(setCoverText).catch(() => {});
+    else setCoverText(null);
+  }, [runId, r?.cover_letter]);
 
   const title = tracked?.title || r?.job.title || "…";
   const company = tracked?.company || r?.job.company || "";
@@ -66,9 +74,16 @@ export default function ReportPage() {
           if (p.done) {
             clearInterval(poll);
             const rec = await getRun(run_id).catch(() => null);
+            if (rec && rec.status === "error") { setGen(null); setError("generation failed - see the run log"); return; }
+            // The worker marks the run done a beat before it finishes publishing to GCS, so poll the
+            // report until the resume actually appears, then reveal the documents.
+            setGen({ stage: "finishing" });
+            for (let i = 0; i < 8; i++) {
+              const rep = await getReport(runId).catch(() => null);
+              if (rep && (rep.resume || rep.cover_letter)) { setR(rep); break; }
+              await new Promise((res) => setTimeout(res, 1500));
+            }
             setGen(null);
-            if (rec && rec.status === "error") setError("generation failed - see the run log");
-            else load();   // re-fetch the report; resume + cover now present -> chips render
           }
         } catch { /* status.json not written yet - keep polling */ }
       }, 2000);
@@ -242,10 +257,32 @@ export default function ReportPage() {
               <div className="block-head"><h2>Documents</h2></div>
               <div className="panel">
                 {r.resume || r.cover_letter ? (
-                  <div className="chips">
-                    {r.resume != null && <a className="btn btn-sm" href={artifactUrl(runId, "resume.pdf")} target="_blank" rel="noreferrer">résumé PDF ↗</a>}
-                    {r.resume != null && <a className="btn btn-sm" href={artifactUrl(runId, "resume.docx")} target="_blank" rel="noreferrer">résumé DOCX ↗</a>}
-                    {r.cover_letter != null && <a className="btn btn-sm" href={artifactUrl(runId, "cover_letter.txt")} target="_blank" rel="noreferrer">cover letter ↗</a>}
+                  <div className="docs">
+                    <div className="doc-tabs">
+                      {r.resume != null && (
+                        <button className={`doc-tab ${docTab === "resume" ? "on" : ""}`} onClick={() => setDocTab("resume")}>résumé</button>
+                      )}
+                      {r.cover_letter != null && (
+                        <button className={`doc-tab ${docTab === "cover" ? "on" : ""}`} onClick={() => setDocTab("cover")}>cover letter</button>
+                      )}
+                      <span className="doc-actions">
+                        {r.resume != null && docTab === "resume" && (
+                          <>
+                            <a className="btn btn-sm" href={artifactUrl(runId, "resume.pdf")} target="_blank" rel="noreferrer">PDF ↗</a>
+                            <a className="btn btn-sm" href={artifactUrl(runId, "resume.docx")} target="_blank" rel="noreferrer">DOCX ↗</a>
+                          </>
+                        )}
+                        {r.cover_letter != null && docTab === "cover" && (
+                          <a className="btn btn-sm" href={artifactUrl(runId, "cover_letter.txt")} target="_blank" rel="noreferrer">open ↗</a>
+                        )}
+                      </span>
+                    </div>
+                    {r.resume != null && docTab === "resume" && (
+                      <iframe className="doc-frame" src={artifactUrl(runId, "resume.pdf")} title="résumé PDF" />
+                    )}
+                    {r.cover_letter != null && docTab === "cover" && (
+                      <pre className="doc-cover">{coverText ?? "loading…"}</pre>
+                    )}
                   </div>
                 ) : (
                   <div className="doc-empty">
