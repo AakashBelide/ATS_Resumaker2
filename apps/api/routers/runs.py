@@ -55,6 +55,10 @@ def start_run(req: RunRequest) -> RunStarted:
     from apps.api.jobs.queue import get_job_queue
 
     run_id = req.run_id or uuid.uuid4().hex[:12]
+    # Flip the run to 'running' up front. A generation reuses the tracked job's run_id, whose row
+    # still says 'matched' - without this reset the progress poll sees that terminal status and
+    # reports done on the first tick, snapping the UI back to 'Generate' before the run starts.
+    db.set_run_status(run_id, "running", req.url)
     get_job_queue().submit_pipeline(run_id, req.url, {
         "gate": req.gate, "make_cover_letter": req.make_cover_letter,
         "target_pages": req.target_pages, "semantic_method": req.semantic_method,
@@ -125,10 +129,12 @@ def get_artifact(run_id: str, name: str):
     resolved = name
     if name in ("resume.pdf", "resume.docx"):  # role-slug filename; resolve by suffix
         suffix = "." + name.split(".")[1]
-        match = next((f for f in run_dir.glob(f"*{suffix}")), None)
-        if match is None:
+        # Resolve from the store (bucket in cloud), not the local dir - on a scale-to-zero instance
+        # the local run dir is empty (artifacts live in GCS after publish), which 404'd resume.pdf/docx.
+        resolved_name = store.find(run_id, suffix)
+        if resolved_name is None:
             raise HTTPException(404, f"no {suffix} artifact")
-        resolved = match.name
+        resolved = resolved_name
     elif name not in _ARTIFACTS:
         raise HTTPException(400, "unknown artifact")
     signed = store.url(run_id, resolved)         # non-None only for the GCS backend

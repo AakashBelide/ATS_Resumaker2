@@ -285,6 +285,18 @@ def delete_run(run_id: str) -> int:
         return conn.execute("DELETE FROM runs WHERE id=?", (run_id,)).rowcount
 
 
+def set_run_status(run_id: str, status: str, url: str = "") -> None:
+    """Set a run's status in place (preserving out_dir/scores), inserting a minimal row if none
+    exists yet. Used when a generation reuses a tracked job's run_id: without this the row still
+    carries the prior terminal 'matched' status, so the progress poll reports done immediately and
+    the UI snaps back to 'Generate' before the run even starts."""
+    with connect() as conn:
+        cur = conn.execute("UPDATE runs SET status=? WHERE id=?", (status, run_id))
+        if cur.rowcount == 0:
+            conn.execute("INSERT INTO runs (id, url, status, created_at) VALUES (?,?,?,?)",
+                         (run_id, url, status, _now()))
+
+
 # ------------------------------------------------------------------ jobs
 def upsert_job(job: JobRecord) -> tuple[int, bool]:
     """Insert a new posting or refresh `last_seen`. Returns (job_id, is_new_or_changed).

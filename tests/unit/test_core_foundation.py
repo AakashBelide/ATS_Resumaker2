@@ -98,6 +98,34 @@ def test_db_run_record_serializes_datetimes(tmp_settings):
     assert got is not None and got.created_at == ts and got.finished_at == ts
 
 
+def test_set_run_status_updates_in_place_and_inserts(tmp_settings):
+    """set_run_status flips status without clobbering the row (a reused run_id keeps its out_dir),
+    and inserts a minimal row when the run isn't indexed yet."""
+    db.init_db()
+    db.record_run(RunRecord(id="s1", url="http://x", out_dir="/o/s1", status="matched"))
+    db.set_run_status("s1", "running")
+    got = db.get_run("s1")
+    assert got is not None and got.status == "running" and got.out_dir == "/o/s1"
+
+    db.set_run_status("s2", "running", "http://y")   # insert-if-missing path
+    got2 = db.get_run("s2")
+    assert got2 is not None and got2.status == "running" and got2.url == "http://y"
+
+
+def test_local_artifact_find_by_suffix(tmp_settings, monkeypatch):
+    """find() resolves a role-slug artifact (resume PDF/DOCX) by suffix - the path used to serve
+    resume.pdf/docx (which have company-role filenames, not a fixed name)."""
+    from resumaker.persistence import artifacts
+    monkeypatch.setattr("resumaker.persistence.artifacts.get_settings", lambda: tmp_settings)
+    store = artifacts.LocalArtifactStore()
+    d = store.local_run_dir("r9")
+    (d / "morgan-stanley-ai-engineer-resume.pdf").write_text("x")
+    (d / "morgan-stanley-ai-engineer-resume.docx").write_text("y")
+    assert store.find("r9", ".pdf") == "morgan-stanley-ai-engineer-resume.pdf"
+    assert store.find("r9", ".docx") == "morgan-stanley-ai-engineer-resume.docx"
+    assert store.find("r9", ".txt") is None
+
+
 def test_ensure_column_tolerates_stale_duplicate(tmp_settings):
     """_ensure_column swallows a 'duplicate column' ALTER error (libSQL/Turso stale-view case)
     but re-raises anything else. Reproduces the real-Turso first-run failure."""

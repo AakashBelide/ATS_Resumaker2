@@ -55,6 +55,13 @@ export async function getProgress(runId: string): Promise<RunProgress> {
 export function artifactUrl(runId: string, name: string): string {
   return `${BASE}/v1/runs/${runId}/artifacts/${name}`;
 }
+// Fetch a text artifact's contents (e.g. cover_letter.txt) to render inline. Goes through the
+// same-origin proxy, which attaches the token, so no auth header is needed here.
+export async function fetchArtifactText(runId: string, name: string): Promise<string> {
+  const r = await fetch(artifactUrl(runId, name));
+  if (!r.ok) throw new Error(`artifact ${name} → ${r.status}`);
+  return r.text();
+}
 
 export async function costs(): Promise<Record<string, unknown>> {
   const r = await fetch(`${BASE}/v1/costs`, { headers: headers() });
