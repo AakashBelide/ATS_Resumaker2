@@ -6,6 +6,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import CompanyLogo from "@/components/CompanyLogo";
+import { careersUrl } from "@/lib/careers";
 import Donut from "@/components/Donut";
 import { discovery, getOnboardRun, listCompanies, provideOnboardInput, setCompanyActive, startOnboard, stopOnboard, type Company, type OnboardingRun } from "@/lib/api";
 
@@ -15,6 +16,7 @@ export default function OnboardPage() {
   const [busy, setBusy] = useState(false);
   const [run, setRun] = useState<OnboardingRun | null>(null);
   const [answer, setAnswer] = useState("");
+  const [showLog, setShowLog] = useState(false);
   const pollRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [error, setError] = useState("");
   const [companies, setCompanies] = useState<Company[]>([]);
@@ -129,33 +131,38 @@ export default function OnboardPage() {
               </button>
             </div>
             {error && <p className="error" style={{ marginTop: 14 }}>{error}</p>}
-            {run && (
-              <div className={`result ${run.state === "resolved" ? "ok" : ["running", "needs_input"].includes(run.state) ? "" : "no"}`}>
-                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
-                  <span className="tag">{run.state}</span>
+            {run && (() => {
+              const st = run.state;
+              const label = st === "resolved" ? "✓ Resolved" : st === "running" ? "Resolving…"
+                : st === "needs_input" ? "Needs your input" : st === "unresolved" ? "Couldn’t resolve"
+                : st === "error" ? "Error" : st;
+              const cur = run.events[run.events.length - 1];
+              const cUrl = run.board
+                ? careersUrl({ source: run.board.source, token: run.board.token, extra: run.board.extra || {} }) : "";
+              return (
+              <div className={`result ${st === "resolved" ? "ok" : ["running", "needs_input"].includes(st) ? "" : "no"}`}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <span className={`onb-status ${st}`}>{label}</span>
                   <b>{run.name}</b>
                   {run.method && <span className="mono muted" style={{ fontSize: 11.5 }}>via {run.method}</span>}
-                  {running && <button className="btn" style={{ marginLeft: "auto" }} onClick={stopRun}>Stop</button>}
+                  {running && <button className="btn btn-sm" style={{ marginLeft: "auto" }} onClick={stopRun}>Stop</button>}
                 </div>
 
-                {/* live progress timeline */}
-                <div className="mono" style={{ fontSize: 11.5, lineHeight: 1.75 }}>
-                  {run.events.map((e, i) => (
-                    <div key={i} className="muted">
-                      <span className="tag" style={{ marginRight: 6 }}>{e.status}</span>
-                      {e.stage}{e.detail ? ` — ${e.detail}` : ""}
-                    </div>
-                  ))}
-                </div>
+                {st === "running" && (
+                  <p className="matching mono" style={{ marginTop: 10 }}>
+                    {cur ? `${cur.stage}${cur.detail ? " — " + cur.detail : ""}` : "starting…"}
+                  </p>
+                )}
 
-                {run.state === "resolved" && run.board && (
-                  <div style={{ marginTop: 8 }}>
-                    <b>Resolved</b> → <span className="tag">{run.board.source}/{run.board.token}</span>
-                    <div className="muted" style={{ marginTop: 6, fontSize: 12.5 }}>Added to the watchlist and queued for the next ingest.</div>
+                {st === "resolved" && run.board && (
+                  <div style={{ marginTop: 10 }}>
+                    <span className="tag">{run.board.source} / {run.board.token}</span>
+                    {cUrl && <a href={cUrl} target="_blank" rel="noreferrer" className="cc-link" style={{ marginLeft: 10, fontSize: 12.5 }}>careers ↗</a>}
+                    <div className="muted" style={{ marginTop: 6, fontSize: 12.5 }}>Added to the watchlist — included in the next ingest.</div>
                   </div>
                 )}
 
-                {run.state === "needs_input" && (
+                {st === "needs_input" && (
                   <div className="panel" style={{ marginTop: 10, padding: 12 }}>
                     <p style={{ margin: "0 0 6px" }}><b>The agent needs your input</b></p>
                     <p className="muted" style={{ margin: "0 0 10px", fontSize: 13 }}>{run.question}</p>
@@ -168,16 +175,32 @@ export default function OnboardPage() {
                   </div>
                 )}
 
-                {["unresolved", "killed", "stopped", "error"].includes(run.state) && (
+                {["unresolved", "killed", "stopped", "error"].includes(st) && (
                   <div className="muted" style={{ marginTop: 8, fontSize: 12.5 }}>
-                    {run.error || run.events[run.events.length - 1]?.detail || run.state}
-                    {run.state === "unresolved" && (
-                      <div style={{ marginTop: 6 }}>Try adding the careers URL above{run.turns ? ` · ${run.turns} turns · $${run.cost_usd.toFixed(3)}` : ""}.</div>
+                    {run.error || cur?.detail || st}
+                    {st === "unresolved" && (
+                      <div style={{ marginTop: 6 }}>Try again with the careers URL above{run.turns ? ` · ${run.turns} turns · $${run.cost_usd.toFixed(3)}` : ""}.</div>
                     )}
                   </div>
                 )}
+
+                {run.events.length > 0 && (
+                  <>
+                    <button className="btn btn-sm" style={{ marginTop: 12, fontSize: 11 }} onClick={() => setShowLog((v) => !v)}>
+                      {showLog ? "hide log" : "show log"}
+                    </button>
+                    {showLog && (
+                      <div className="mono" style={{ fontSize: 11, lineHeight: 1.7, marginTop: 8, opacity: 0.7 }}>
+                        {run.events.map((e, i) => (
+                          <div key={i} className="muted"><span className="tag" style={{ marginRight: 6 }}>{e.status}</span>{e.stage}{e.detail ? ` — ${e.detail}` : ""}</div>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                )}
               </div>
-            )}
+              );
+            })()}
           </div>
         </div>
 
@@ -233,7 +256,12 @@ export default function OnboardPage() {
                    title={c.boards.map((b) => `${b.source}/${b.token}`).join(", ")}>
                 <CompanyLogo name={c.name} size={30} />
                 <div className="cc-body">
-                  <div className="cc-name">{c.name}</div>
+                  <div className="cc-name">
+                    {careersUrl(c.boards[0])
+                      ? <a href={careersUrl(c.boards[0])} target="_blank" rel="noreferrer" className="cc-link"
+                           title="Open careers page">{c.name} <span className="ext">↗</span></a>
+                      : c.name}
+                  </div>
                   <div className="cc-src mono">{srcOf(c)}{c.boards.length > 1 ? ` +${c.boards.length - 1}` : ""}</div>
                 </div>
                 <button className={`dot-btn${c.active ? " on" : ""}`} onClick={() => toggleActive(c)}
