@@ -45,3 +45,11 @@ data/
 # OpenCATS validation: candidate PDFs (our resume carries PII) + local DB
 validation/opencats/candidates/
 .playwright-mcp/
+
+# Terraform (state can contain secrets; tfvars carries real project/creds)
+deploy/terraform/.terraform/
+deploy/terraform/.terraform.lock.hcl
+*.tfstate
+*.tfstate.*
+deploy/terraform/terraform.tfvars
+crash.log

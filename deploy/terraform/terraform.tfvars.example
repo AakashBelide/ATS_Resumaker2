@@ -1,0 +1,16 @@
+// Copy to terraform.tfvars (gitignored) and fill in. NON-SECRET values only.
+// Secrets are passed via environment, never written here:
+//   export TF_VAR_api_token=...            TF_VAR_turso_database_url=...
+//   export TF_VAR_turso_auth_token=...     TF_VAR_claude_code_oauth_token=...
+//   export TF_VAR_anthropic_api_key=...    TF_VAR_gemini_api_key=...   (optional)
+
+project_id = "your-gcp-project-id"
+region     = "us-central1"
+gcs_bucket = "resumaker-bucket"
+
+// Image refs - set after the first push (see README). Placeholder until then:
+api_image    = "us-central1-docker.pkg.dev/your-gcp-project-id/resumaker/api:latest"
+worker_image = "us-central1-docker.pkg.dev/your-gcp-project-id/resumaker/worker:latest"
+
+// LLM failover engine when the Claude CLI fails (optional): "" | anthropic | gemini
+fallback_provider = "gemini"
