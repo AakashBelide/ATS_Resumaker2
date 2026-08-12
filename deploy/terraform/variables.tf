@@ -82,6 +82,26 @@ variable "fallback_provider" {
   default     = ""
 }
 
+// -- agentic onboarding (GitHub Actions runner) ------------------------------------------------
+variable "onboard_agent_enabled" {
+  type        = bool
+  description = "Enable the sandboxed agentic-onboarding fallback (deterministic-first always runs)."
+  default     = false
+}
+
+variable "github_repo" {
+  type        = string
+  description = "owner/name the api dispatches the onboard workflow to (agent runner = actions)."
+  default     = ""
+}
+
+variable "github_token" {
+  type        = string
+  description = "GitHub PAT (Actions: read/write) so the api can dispatch/poll the onboard workflow."
+  sensitive   = true
+  default     = ""
+}
+
 variable "anthropic_api_key" {
   type      = string
   sensitive = true
