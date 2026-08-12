@@ -13,7 +13,7 @@ import json
 import sqlite3
 import threading
 from collections.abc import Iterator
-from contextlib import contextmanager
+from contextlib import contextmanager, suppress
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
@@ -150,14 +150,19 @@ def _shared_turso_conn() -> Any:
 
 
 @contextmanager
-def connect() -> Iterator[sqlite3.Connection]:
+def connect(durable: bool = False) -> Iterator[sqlite3.Connection]:
     """A DB connection with sane pragmas. Commits on clean exit, rolls back on error.
 
     Dual-mode: stdlib `sqlite3` on a local file by default; libSQL (Turso) when configured. Both
     expose the same surface (execute/executemany/executescript + `row["col"]` cursors), so the
     rest of this module is backend-agnostic. The hosted-Turso path REUSES one long-lived,
     background-syncing connection (opening + syncing per call is a ~3s round-trip); the local
-    paths open a cheap per-call connection."""
+    paths open a cheap per-call connection.
+
+    `durable=True` pushes the write to the remote Turso replica immediately after commit (a ~0.1s
+    round-trip) instead of waiting for the next background auto-sync (up to turso_sync_interval_s).
+    Use it for one-shot user writes (add-to-tracker, onboard, profile save) where losing the last
+    write to a cold-start eviction would be surprising; do NOT use it in bulk loops (ingest)."""
     s = get_settings()
     path = s.db_path
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -169,6 +174,9 @@ def connect() -> Iterator[sqlite3.Connection]:
             try:
                 yield conn
                 conn.commit()
+                if durable:
+                    with suppress(Exception):   # best-effort push; background sync still catches it
+                        conn.sync()
             except Exception:
                 conn.rollback()
                 raise
@@ -406,7 +414,7 @@ def job_facets(*, company: str | None = None, source: str | None = None,
 
 # ------------------------------------------------------------------ companies
 def add_company(company: Company) -> int:
-    with connect() as conn:
+    with connect(durable=True) as conn:
         cur = conn.execute(
             "INSERT INTO companies (name, active, created_at) VALUES (?,?,?) "
             "ON CONFLICT(name) DO UPDATE SET active=excluded.active RETURNING id",
@@ -434,7 +442,7 @@ def set_company_active(name: str, active: bool) -> bool:
     are skipped by `ingest_all` (list_companies(active_only=True)); on resume, the next sweep
     simply ingests whatever is live on the board then (no gap backfill). Returns True if a
     row was updated."""
-    with connect() as conn:
+    with connect(durable=True) as conn:
         cur = conn.execute("UPDATE companies SET active=? WHERE name=?", (int(active), name))
         return cur.rowcount > 0
 
@@ -528,7 +536,7 @@ def upsert_tracker(entry: TrackerEntry) -> int:
     """Insert a tracked job or refresh its match fields (keyed on url). Preserves `stage`
     and `notes` on re-add (a re-match shouldn't reset the owner's lifecycle/notes)."""
     now = _now()
-    with connect() as conn:
+    with connect(durable=True) as conn:
         cur = conn.execute(
             """INSERT INTO tracker (job_id, url, company, title, stage, run_id, fit_0_100,
                    recommend_apply, sponsorship, match_error, notes, created_at, updated_at)
@@ -566,7 +574,7 @@ def get_tracker(entry_id: int) -> TrackerEntry | None:
 
 
 def set_tracker_stage(entry_id: int, stage: str) -> bool:
-    with connect() as conn:
+    with connect(durable=True) as conn:
         cur = conn.execute("UPDATE tracker SET stage=?, updated_at=? WHERE id=?",
                            (stage, _now(), entry_id))
         return cur.rowcount > 0
@@ -631,7 +639,7 @@ def get_document(name: str) -> dict | None:
 
 def put_document(name: str, data: dict) -> None:
     """Insert or replace a config document (dual-mode: local SQLite or Turso)."""
-    with connect() as conn:
+    with connect(durable=True) as conn:
         conn.execute(
             """INSERT INTO documents (name, json, updated_at) VALUES (?,?,?)
                ON CONFLICT(name) DO UPDATE SET json=excluded.json, updated_at=excluded.updated_at""",
