@@ -86,7 +86,7 @@ jobs:
         run: |
           docker build -f deploy/Dockerfile.api -t "$REPO/api:latest" .
           docker push "$REPO/api:latest"
-          gcloud run deploy resumaker-api --image "$REPO/api:latest" --region "$REGION" --quiet
+          gcloud run deploy resumaker-api --image "$REPO/api:latest" --region "$REGION" --timeout 600 --quiet
 
   worker:
     needs: [changes, test]

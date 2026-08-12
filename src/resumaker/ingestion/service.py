@@ -8,12 +8,14 @@ are flagged. A preference filter (target vs avoid role keywords) narrows what we
 """
 from __future__ import annotations
 
+import concurrent.futures as cf
 import random
 import re
 import time
 from dataclasses import dataclass, field
 
-from resumaker.domain import Company, JobRecord
+from resumaker.config import get_settings
+from resumaker.domain import BoardRef, Company, JobRecord
 from resumaker.observability import metrics
 from resumaker.observability.logging import get_logger
 from resumaker.persistence import cache, db
@@ -35,6 +37,56 @@ def _content_hash(stub) -> str:
     return cache.make_key(stub.title, stub.location, stub.updated_at)
 
 
+def _record_stubs(res: IngestResult, company: Company, stubs, *, tech_only: bool,
+                  preferred_only: bool, us_only: bool) -> None:
+    """Filter a board's postings and upsert the survivors into `jobs`, updating `res` counts +
+    new rows. DB-only (no network): callers keep this on a single thread because the libSQL
+    connection is shared process-wide and SQLite serializes writers anyway."""
+    for stub in stubs:
+        if tech_only and not is_tech_role(stub.title):
+            continue
+        if preferred_only and not matches_preferences(stub.title):
+            continue
+        if us_only and not is_us_location(stub.location):
+            continue
+        rec = JobRecord(source=stub.source, external_id=stub.external_id, url=stub.url,
+                        title=stub.title, company=company.name, location=stub.location,
+                        content_hash=_content_hash(stub), posted_at=stub.updated_at,
+                        comp=stub.comp)
+        jid, changed = db.upsert_job(rec)
+        if changed:
+            res.new += 1
+            rec.id = jid
+            res.new_jobs.append(rec)
+        else:
+            res.unchanged += 1
+
+
+def _fetch_board(company: Company, board: BoardRef) -> tuple[Company, BoardRef, list, str]:
+    """Network-only: list one board's postings. Returns (company, board, stubs, error) so a
+    failed board is a value, not an exception - one bad board must not sink the sweep. Surfaces
+    a blocked/misconfigured board (e.g. Microsoft TLS, Tesla 403) loudly, distinct from empty."""
+    try:
+        stubs = get_source(board.source).list_postings(board.token, **board.extra)
+        return company, board, stubs, ""
+    except Exception as e:  # noqa: BLE001 - one bad board must not sink the rest
+        _log.error("board fetch failed", extra={"company": company.name,
+                   "source": board.source, "token": board.token, "error": str(e)[:200]})
+        return company, board, [], f"{board.source}/{board.token}: {e}"
+
+
+def _fetch_source_group(items: list[tuple[Company, BoardRef]]) -> list:
+    """Fetch every board in ONE source group serially, with polite jitter between calls. Boards
+    on the same ATS source share a host (Greenhouse/Lever/Ashby are single-host; per-tenant
+    sources like Workday still share the platform), so they must never fire concurrently."""
+    out = []
+    for i, (company, board) in enumerate(items):
+        if i:
+            time.sleep(random.uniform(0.5, 2.0))     # polite spacing within a host
+        out.append(_fetch_board(company, board))
+    return out
+
+
 def ingest_company(company: Company, *, preferred_only: bool = False,
                    us_only: bool = True, tech_only: bool = True,
                    sources: set[str] | None = None) -> IngestResult:
@@ -47,38 +99,17 @@ def ingest_company(company: Company, *, preferred_only: bool = False,
     for board in company.boards:
         if sources is not None and board.source not in sources:
             continue
-        try:
-            stubs = get_source(board.source).list_postings(board.token, **board.extra)
-        except Exception as e:  # noqa: BLE001 - one bad board must not sink the rest
-            res.errors.append(f"{board.source}/{board.token}: {e}")
-            # Surface a blocked/misconfigured board (e.g. Microsoft TLS, Tesla 403) loudly so
-            # it's visibly distinct from a genuinely empty one - not a silent 0.
-            _log.error("board fetch failed", extra={"company": company.name,
-                       "source": board.source, "token": board.token, "error": str(e)[:200]})
+        _, _, stubs, error = _fetch_board(company, board)
+        if error:
+            res.errors.append(error)
             continue
         if not stubs:
             # Fetch succeeded but yielded nothing: could be a real empty board, or a soft
             # failure (403/early-stop returning []). Flag it so it doesn't masquerade as 0.
             _log.warning("board returned no postings", extra={"company": company.name,
                          "source": board.source, "token": board.token})
-        for stub in stubs:
-            if tech_only and not is_tech_role(stub.title):
-                continue
-            if preferred_only and not matches_preferences(stub.title):
-                continue
-            if us_only and not is_us_location(stub.location):
-                continue
-            rec = JobRecord(source=stub.source, external_id=stub.external_id, url=stub.url,
-                            title=stub.title, company=company.name, location=stub.location,
-                            content_hash=_content_hash(stub), posted_at=stub.updated_at,
-                            comp=stub.comp)
-            jid, changed = db.upsert_job(rec)
-            if changed:
-                res.new += 1
-                rec.id = jid
-                res.new_jobs.append(rec)
-            else:
-                res.unchanged += 1
+        _record_stubs(res, company, stubs, tech_only=tech_only,
+                      preferred_only=preferred_only, us_only=us_only)
     metrics.inc("resumaker_ingest_new_total", company=company.name, value=res.new)
     _log.info("ingested", extra={"company": company.name, "new": res.new,
                                  "unchanged": res.unchanged, "errors": len(res.errors)})
@@ -87,18 +118,54 @@ def ingest_company(company: Company, *, preferred_only: bool = False,
 
 def ingest_all(*, preferred_only: bool = False, us_only: bool = True,
                tech_only: bool = True, sources: set[str] | None = None) -> list[IngestResult]:
-    """Ingest every active company, spacing requests with jitter so a full sweep across
-    the watchlist doesn't burst against any one ATS."""
+    """Ingest every active company's selected boards, then dedupe into `jobs`.
+
+    Fetch fan-out is grouped by ATS source (== host): up to `ingest_fetch_workers` groups run
+    *concurrently* (independent hosts, no shared rate limit), while boards *within* a group stay
+    serial + jittered (same host). Only the network fetch is parallel; DB writes are done back
+    on this single thread as each group completes - the libSQL connection is shared process-wide
+    (SQLite has one writer), and streaming the writes keeps a crashed tick's completed groups
+    persisted. Re-ingest is idempotent (content-hash dedupe), so a partial tick self-heals next
+    run. Net: a sweep costs ~the slowest host, not the sum of every board - without bursting one."""
     companies = db.list_companies(active_only=True)
-    results: list[IngestResult] = []
-    for i, c in enumerate(companies):
-        if i:
-            time.sleep(random.uniform(0.5, 2.0))     # polite spacing between companies
-        r = ingest_company(c, preferred_only=preferred_only, us_only=us_only,
-                           tech_only=tech_only, sources=sources)
-        if sources is None or r.new or r.unchanged or r.errors:
-            results.append(r)
-    return results
+    groups: dict[str, list[tuple[Company, BoardRef]]] = {}
+    for c in companies:
+        for b in c.boards:
+            if sources is None or b.source in sources:
+                groups.setdefault(b.source, []).append((c, b))
+
+    results: dict[str, IngestResult] = {}
+
+    def _write(fetched: list) -> None:                # single-threaded DB consumer
+        for company, board, stubs, error in fetched:
+            res = results.setdefault(company.name, IngestResult(company=company.name))
+            if error:
+                res.errors.append(error)
+                continue
+            if not stubs:
+                _log.warning("board returned no postings", extra={"company": company.name,
+                             "source": board.source, "token": board.token})
+            _record_stubs(res, company, stubs, tech_only=tech_only,
+                          preferred_only=preferred_only, us_only=us_only)
+
+    if groups:
+        workers = max(1, min(len(groups), get_settings().ingest_fetch_workers))
+        with cf.ThreadPoolExecutor(max_workers=workers) as ex:
+            futures = [ex.submit(_fetch_source_group, items) for items in groups.values()]
+            for fut in cf.as_completed(futures):      # write each group the moment it finishes
+                _write(fut.result())
+
+    out: list[IngestResult] = []
+    for c in companies:                               # keep watchlist order; emit metrics/logs
+        res = results.get(c.name)
+        if res is None:
+            continue
+        metrics.inc("resumaker_ingest_new_total", company=c.name, value=res.new)
+        _log.info("ingested", extra={"company": c.name, "new": res.new,
+                                     "unchanged": res.unchanged, "errors": len(res.errors)})
+        if sources is None or res.new or res.unchanged or res.errors:
+            out.append(res)
+    return out
 
 
 _US_STATES = {

@@ -36,9 +36,13 @@ def _apply_match(entry: TrackerEntry) -> None:
         entry.fit_0_100 = None
         entry.recommend_apply = None
         return
-    if res.job is not None:                       # prefer the structured JD's fields
-        entry.company = res.job.company or entry.company
-        entry.title = res.job.title or entry.title
+    if res.job is not None:
+        # Keep the ATS posting's own company/title (from the watchlist) - it's the accurate
+        # listing text. The JD-extracted fields only *fill in* a raw-URL add that had none;
+        # they must not clobber a good title (e.g. a JD body that says "Software Engineering
+        # III" would otherwise overwrite the real posting title "AI Engineer").
+        entry.company = entry.company or res.job.company or ""
+        entry.title = entry.title or res.job.title or ""
     if res.error:
         _log.warning("tracker match failed", extra={"url": entry.url, "error": res.error})
         entry.match_error = res.error
@@ -50,6 +54,15 @@ def _apply_match(entry: TrackerEntry) -> None:
     entry.recommend_apply = res.decision.recommend_apply if res.decision else None
     entry.sponsorship = (res.sponsorship or {}).get("verdict", "") if res.sponsorship else ""
     entry.run_id = Path(res.out_dir).name if res.out_dir else ""
+    # The match runs inline here (not via the worker's run-pipeline), so publish its artifacts
+    # ourselves - otherwise report.json never reaches durable storage and "open report" 404s
+    # once this ephemeral instance is gone. No-op on the local backend; GCS upload in cloud.
+    if entry.run_id:
+        import contextlib
+
+        from resumaker.persistence.artifacts import get_artifact_store
+        with contextlib.suppress(Exception):
+            get_artifact_store().publish(entry.run_id)
 
 
 def add(*, job_id: int | None = None, url: str | None = None,

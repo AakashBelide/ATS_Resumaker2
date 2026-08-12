@@ -18,15 +18,16 @@ ENV UV_COMPILE_BYTECODE=1 \
 
 WORKDIR /app
 
-# Deps first (cached layer) from the lockfile - core + api extras, no dev.
+# Deps first (cached layer) from the lockfile - core + api + cloud extras, no dev. The `cloud`
+# extra pulls the GCS + Cloud Tasks clients this service uses in the serverless deploy.
 COPY pyproject.toml uv.lock ./
-RUN uv sync --frozen --no-dev --extra api --no-install-project
+RUN uv sync --frozen --no-dev --extra api --extra cloud --no-install-project
 
 # Then the source (README is referenced by pyproject's `readme` field, needed to build).
 COPY README.md ./
 COPY src ./src
 COPY apps ./apps
-RUN uv sync --frozen --no-dev --extra api
+RUN uv sync --frozen --no-dev --extra api --extra cloud
 
 RUN mkdir -p /data /outputs
 EXPOSE 8000

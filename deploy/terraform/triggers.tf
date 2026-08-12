@@ -20,10 +20,11 @@ resource "google_cloud_tasks_queue" "pipeline" {
 
 // Two ingestion cadences: clean boards every 2h (8am-10pm ET), gently-polled boards once daily.
 resource "google_cloud_scheduler_job" "ingest_fast" {
-  name      = "resumaker-ingest-fast"
-  schedule  = var.ingest_cron_fast
-  time_zone = var.scheduler_timezone
-  region    = var.region
+  name             = "resumaker-ingest-fast"
+  schedule         = var.ingest_cron_fast
+  time_zone        = var.scheduler_timezone
+  region           = var.region
+  attempt_deadline = "600s" // default is 180s; a full watchlist sweep can exceed it
 
   http_target {
     http_method = "POST"
@@ -38,10 +39,11 @@ resource "google_cloud_scheduler_job" "ingest_fast" {
 }
 
 resource "google_cloud_scheduler_job" "ingest_slow" {
-  name      = "resumaker-ingest-slow"
-  schedule  = var.ingest_cron_slow
-  time_zone = var.scheduler_timezone
-  region    = var.region
+  name             = "resumaker-ingest-slow"
+  schedule         = var.ingest_cron_slow
+  time_zone        = var.scheduler_timezone
+  region           = var.region
+  attempt_deadline = "600s" // default is 180s; a full watchlist sweep can exceed it
 
   http_target {
     http_method = "POST"
