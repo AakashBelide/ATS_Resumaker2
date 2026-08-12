@@ -161,16 +161,28 @@ def init_db() -> None:
         _migrate(conn)
 
 
+def _ensure_column(conn: sqlite3.Connection, table: str, name: str, coldef: str) -> None:
+    """Add a column if the table lacks it (additive migration for DBs from an older schema).
+
+    Tolerates a 'duplicate column' error: on libSQL/Turso the embedded replica's local metadata
+    can lag the remote, so `PRAGMA table_info` may report the column absent while the ALTER hits
+    an up-to-date remote that already has it. The column existing is exactly the success state,
+    so we swallow that specific error (and only that one)."""
+    cols = {r["name"] for r in conn.execute(f"PRAGMA table_info({table})").fetchall()}
+    if name in cols:
+        return
+    try:
+        conn.execute(f"ALTER TABLE {table} ADD COLUMN {coldef}")
+    except Exception as e:  # noqa: BLE001 - narrow to duplicate-column below; re-raise anything else
+        if "duplicate column" not in str(e).lower():
+            raise
+
+
 def _migrate(conn: sqlite3.Connection) -> None:
     """Additive migrations for DBs created by an earlier schema (add-column only)."""
-    cols = {r["name"] for r in conn.execute("PRAGMA table_info(jobs)").fetchall()}
-    if "posted_at" not in cols:
-        conn.execute("ALTER TABLE jobs ADD COLUMN posted_at TEXT NOT NULL DEFAULT ''")
-    if "comp" not in cols:
-        conn.execute("ALTER TABLE jobs ADD COLUMN comp TEXT NOT NULL DEFAULT ''")
-    tcols = {r["name"] for r in conn.execute("PRAGMA table_info(tracker)").fetchall()}
-    if "match_error" not in tcols:
-        conn.execute("ALTER TABLE tracker ADD COLUMN match_error TEXT")
+    _ensure_column(conn, "jobs", "posted_at", "posted_at TEXT NOT NULL DEFAULT ''")
+    _ensure_column(conn, "jobs", "comp", "comp TEXT NOT NULL DEFAULT ''")
+    _ensure_column(conn, "tracker", "match_error", "match_error TEXT")
 
 
 # ------------------------------------------------------------------ runs

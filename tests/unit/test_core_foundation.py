@@ -76,6 +76,26 @@ def test_db_run_upsert(tmp_settings):
     assert len(db.list_runs()) == 1
 
 
+def test_ensure_column_tolerates_stale_duplicate(tmp_settings):
+    """_ensure_column swallows a 'duplicate column' ALTER error (libSQL/Turso stale-view case)
+    but re-raises anything else. Reproduces the real-Turso first-run failure."""
+    class _Rows(list):
+        def fetchall(self): return self
+    class _Conn:
+        def __init__(self, alter_error): self._err = alter_error
+        def execute(self, sql, *a):
+            if sql.startswith("PRAGMA"):        # report the column ABSENT to force the ALTER
+                return _Rows([{"name": "id"}])
+            raise RuntimeError(self._err)       # ALTER fails
+    # duplicate-column -> swallowed (column already exists remotely = success)
+    db._ensure_column(_Conn("SQLite error: duplicate column name: posted_at"),  # type: ignore[arg-type]
+                      "jobs", "posted_at", "posted_at TEXT")
+    # any other error -> propagated
+    with pytest.raises(RuntimeError):
+        db._ensure_column(_Conn("disk I/O error"),  # type: ignore[arg-type]
+                          "jobs", "posted_at", "posted_at TEXT")
+
+
 def test_db_job_dedupe(tmp_settings):
     db.init_db()
     job = JobRecord(source="greenhouse", external_id="123", title="MLE", content_hash="h1")
