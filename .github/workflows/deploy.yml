@@ -1,0 +1,107 @@
+# CI/CD for the Cloud Run backend (api + worker). Frontend (web/**) is deployed by Vercel's own
+# Git integration, so it's intentionally NOT handled here — this workflow only fires on backend
+# paths, and Vercel's "Ignored Build Step" skips frontend builds for backend-only commits. Net:
+# each component redeploys only when its own files change (and a merged adapter PR, being a
+# src/** change, auto-redeploys both services — no manual redeploy).
+#
+# Auth is keyless via Workload Identity Federation (no long-lived key in the repo).
+name: deploy
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'apps/**'
+      - 'pyproject.toml'
+      - 'uv.lock'
+      - 'deploy/Dockerfile.api'
+      - 'deploy/Dockerfile.worker'
+      - '.github/workflows/deploy.yml'
+  workflow_dispatch: {}   # manual "deploy latest" button
+
+permissions:
+  contents: read
+  id-token: write         # required for WIF
+
+env:
+  PROJECT: your-gcp-project-id
+  REGION: us-central1
+  REPO: us-central1-docker.pkg.dev/your-gcp-project-id/resumaker
+  WIF_PROVIDER: projects/your-gcp-project-number/locations/global/workloadIdentityPools/github-pool/providers/github-provider
+  DEPLOY_SA: github-deployer@your-gcp-project-id.iam.gserviceaccount.com
+
+jobs:
+  # Which image(s) does this push actually affect? (src/apps/deps hit both; a single Dockerfile
+  # hits only its own service.) workflow_dispatch forces both.
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      api: ${{ steps.f.outputs.api }}
+      worker: ${{ steps.f.outputs.worker }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: f
+        with:
+          filters: |
+            api:
+              - 'src/**'
+              - 'apps/**'
+              - 'pyproject.toml'
+              - 'uv.lock'
+              - 'deploy/Dockerfile.api'
+            worker:
+              - 'src/**'
+              - 'apps/**'
+              - 'pyproject.toml'
+              - 'uv.lock'
+              - 'deploy/Dockerfile.worker'
+
+  # Gate: a broken commit must not deploy.
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.13"
+      - run: uv sync --frozen --extra api --extra dev
+      - run: uv run ruff check src apps tests
+      - run: uv run pytest tests -q
+
+  api:
+    needs: [changes, test]
+    if: needs.changes.outputs.api == 'true' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ env.WIF_PROVIDER }}
+          service_account: ${{ env.DEPLOY_SA }}
+      - uses: google-github-actions/setup-gcloud@v2
+      - run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
+      - name: Build, push, deploy api
+        run: |
+          docker build -f deploy/Dockerfile.api -t "$REPO/api:latest" .
+          docker push "$REPO/api:latest"
+          gcloud run deploy resumaker-api --image "$REPO/api:latest" --region "$REGION" --quiet
+
+  worker:
+    needs: [changes, test]
+    if: needs.changes.outputs.worker == 'true' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ env.WIF_PROVIDER }}
+          service_account: ${{ env.DEPLOY_SA }}
+      - uses: google-github-actions/setup-gcloud@v2
+      - run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
+      - name: Build, push, deploy worker
+        run: |
+          docker build -f deploy/Dockerfile.worker -t "$REPO/worker:latest" .
+          docker push "$REPO/worker:latest"
+          gcloud run deploy resumaker-worker --image "$REPO/worker:latest" --region "$REGION" --quiet
