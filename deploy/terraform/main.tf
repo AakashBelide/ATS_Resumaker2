@@ -21,13 +21,31 @@ resource "google_project_service" "enabled" {
   disable_on_destroy         = false
 }
 
-// Docker repo the api/worker images are pushed to.
+// Docker repo the api/worker images are pushed to. Cleanup policies keep storage near $0: retain
+// the few most-recent versions per image and delete anything older, so old tags don't accumulate
+// past the 0.5 GB free tier.
 resource "google_artifact_registry_repository" "repo" {
   location      = var.region
   repository_id = var.artifact_repo
   format        = "DOCKER"
   description   = "resumaker container images (api + worker)"
-  depends_on    = [google_project_service.enabled]
+
+  cleanup_policies {
+    id     = "keep-recent"
+    action = "KEEP"
+    most_recent_versions {
+      keep_count = 3
+    }
+  }
+  cleanup_policies {
+    id     = "delete-old"
+    action = "DELETE"
+    condition {
+      older_than = "2592000s" // 30 days
+    }
+  }
+
+  depends_on = [google_project_service.enabled]
 }
 
 // --- service account --------------------------------------------------------------------------
