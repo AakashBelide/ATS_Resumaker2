@@ -214,7 +214,7 @@ button, input, select, textarea { font-family: inherit; }
 .jc-meta { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 13px; color: var(--muted); margin: 0 0 10px; }
 .jc-meta span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
 .jc-tags { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; margin-bottom: 14px; }
-.jc-tags .seen { font-family: var(--font-mono); font-size: 10.5px; color: var(--muted); margin-left: auto; }
+.jc-tags .seen { font-family: var(--font-mono); font-size: 10.5px; color: var(--muted); margin-left: auto; white-space: nowrap; }
 .jc-foot { display: flex; align-items: center; gap: 8px; margin-top: auto; }
 .jc-foot .btn { flex: 1; }
 

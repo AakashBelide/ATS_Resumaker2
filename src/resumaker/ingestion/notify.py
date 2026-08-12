@@ -174,16 +174,34 @@ def email_new(jobs: list[JobRecord], *, dry_run: bool = False) -> int:
         _log.info("email digest skipped: set RESUMAKER_NOTIFY_TO + a sender (Resend/SMTP) in .env",
                   extra={"pending": total})
         return 0
-    subject, html_body, text_body = build_digest(to_send, total=total)
+    subject, html_body, text_body = build_digest(to_send, total=total, tz=mp.get("timezone"))
     _send(s, subject, html_body, text_body)
     db.mark_notified(candidates)              # mark ALL seen; the capped-out ones live in Discovery
     _log.info("emailed digest", extra={"count": len(to_send), "of": total, "to": s.notify_to})
     return len(to_send)
 
 
-def _posting_date(j: JobRecord) -> str:
+_DEFAULT_TZ = "America/New_York"
+
+
+def _fmt_local_dt(dt: datetime, tz: str) -> str:
+    """A posting datetime as a clean local 'Aug 12, 2026, 3:30 PM' in the mailer timezone.
+    first_seen is stored UTC; render it where the owner reads email (matches the Discovery card)."""
+    from zoneinfo import ZoneInfo
+    try:
+        aware = dt if dt.tzinfo else dt.replace(tzinfo=UTC)
+        dt = aware.astimezone(ZoneInfo(tz))
+    except Exception:  # noqa: BLE001 - bad tz -> render as-is
+        pass
+    date = dt.strftime("%b %d, %Y").replace(" 0", " ")
+    time = dt.strftime("%I:%M %p").lstrip("0")   # 03:30 PM -> 3:30 PM
+    return f"{date}, {time}"
+
+
+def _posting_date(j: JobRecord, tz: str = _DEFAULT_TZ) -> str:
     """Best per-posting date for the digest: the source's posting date when parseable, else
-    when we first fetched it. Workday-style relative text ('Posted 3 Days Ago') is shown as-is."""
+    when we first fetched it (shown with the exact local time). Workday-style relative text
+    ('Posted 3 Days Ago') is shown as-is."""
     raw = (j.posted_at or "").strip()
     if raw:
         try:
@@ -192,7 +210,7 @@ def _posting_date(j: JobRecord) -> str:
         except ValueError:
             return raw                       # e.g. Workday "Posted 3 Days Ago"
     if j.first_seen:
-        return "added " + j.first_seen.strftime("%b %d, %Y").replace(" 0", " ")
+        return "added " + _fmt_local_dt(j.first_seen, tz)
     return ""
 
 
@@ -238,7 +256,7 @@ def _brand_header(n: int, total: int | None = None) -> str:
         f"{html_lib.escape(subline)}</div></td></tr>")
 
 
-def _card_html(j: JobRecord) -> str:
+def _card_html(j: JobRecord, tz: str = _DEFAULT_TZ) -> str:
     """A single posting as a themed .jobcard: accent top-strip, display-font title link,
     sky company, and a mono meta row (seniority pill + source + comp + date)."""
     from resumaker.ingestion.service import title_level
@@ -248,7 +266,7 @@ def _card_html(j: JobRecord) -> str:
     pills = [_pill(lvl, color, bg, border)]
     if j.source:
         pills.append(_pill(j.source, _MUTED, "rgba(255,255,255,0.03)", _LINE2))
-    date = _posting_date(j)
+    date = _posting_date(j, tz)
     if date:
         pills.append(f"<span style=\"font-family:{_F_MONO};font-size:11px;color:{_MUTED}\">"
                      f"{html_lib.escape(date)}</span>")
@@ -275,10 +293,13 @@ def _card_html(j: JobRecord) -> str:
         "</div></div></td></tr>")
 
 
-def build_digest(jobs: list[JobRecord], *, total: int | None = None) -> tuple[str, str, str]:
+def build_digest(jobs: list[JobRecord], *, total: int | None = None,
+                 tz: str | None = None) -> tuple[str, str, str]:
     """Return (subject, html, text) for a grouped, readable digest. `total` (>= len(jobs)) is the
-    full pending count when the max-postings cap trimmed the list — shown as 'n of total'."""
+    full pending count when the max-postings cap trimmed the list — shown as 'n of total'. `tz` is
+    the mailer timezone the per-posting 'added' time is rendered in (defaults to America/New_York)."""
     from resumaker.ingestion.service import title_level
+    tz = tz or _DEFAULT_TZ
     n = len(jobs)
     total = n if total is None else total
     subject = (f"ATS Resumaker — {n} of {total} new on-target postings" if total > n
@@ -288,8 +309,8 @@ def build_digest(jobs: list[JobRecord], *, total: int | None = None) -> tuple[st
     cards_html, rows_text = [], []
     for j in ordered:
         meta = " · ".join(x for x in [j.location, (j.comp or ""), title_level(j.title),
-                                      j.source, _posting_date(j)] if x)
-        cards_html.append(_card_html(j))
+                                      j.source, _posting_date(j, tz)] if x)
+        cards_html.append(_card_html(j, tz))
         rows_text.append(f"- {j.title} — {j.company} ({meta})\n  {j.url}")
 
     html_body = (

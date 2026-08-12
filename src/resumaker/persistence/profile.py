@@ -60,10 +60,13 @@ def save_preferences(data: dict) -> None:
 
 # The full email-digest control set (the Mailer page). One doc, so the old mailer_filter
 # (title include/exclude) is just a subset of this.
+# No email overnight by default: the digest defers 12am-8am local and sends the backlog at 8am.
+_QUIET_DEFAULT = ("00:00", "08:00")
+
 MAILER_DEFAULTS: dict = {
     "include": [], "exclude": [],        # title has-ANY / has-NONE
     "levels": [], "states": [],          # seniority + US-state filters (empty = all)
-    "quiet_start": "", "quiet_end": "",  # "HH:MM" local; empty pair = no quiet window
+    "quiet_start": _QUIET_DEFAULT[0], "quiet_end": _QUIET_DEFAULT[1],  # "HH:MM" local quiet window
     "timezone": "America/New_York",      # tz the quiet window is interpreted in
     "max_postings": 0,                   # cap per digest (0 = no cap); rest shown as "X of N"
     "frequency": "hourly",               # digest cadence -> Cloud Scheduler (Mailer page)
@@ -79,7 +82,13 @@ def load_mailer_prefs() -> dict:
         legacy = db.get_document("mailer_filter") or {}
         return {**MAILER_DEFAULTS, "include": legacy.get("include") or [],
                 "exclude": legacy.get("exclude") or []}
-    return {**MAILER_DEFAULTS, **doc}
+    merged = {**MAILER_DEFAULTS, **doc}
+    # An older saved doc may carry an empty quiet window (the previous default). Treat an
+    # unconfigured window as the overnight default so quiet hours apply without a manual re-save;
+    # a custom window the owner set is preserved. (Clearing both reverts to the default window.)
+    if not (str(merged.get("quiet_start") or "").strip() and str(merged.get("quiet_end") or "").strip()):
+        merged["quiet_start"], merged["quiet_end"] = _QUIET_DEFAULT
+    return merged
 
 
 def save_mailer_prefs(data: dict) -> None:
