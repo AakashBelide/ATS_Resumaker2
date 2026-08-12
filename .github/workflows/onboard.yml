@@ -39,6 +39,12 @@ jobs:
 
       - run: uv sync --frozen --extra api
 
+      # Headless browser for the runner-side deterministic discovery (JS-only / Algolia careers
+      # pages whose board creds exist only at runtime). The lean cloud API has no browser, so this
+      # JS-heavy fingerprinting lives here on the runner.
+      - name: Install headless browser
+        run: uv run playwright install --with-deps chromium
+
       # Build the sandbox images (proxy -> agent base -> resolver) BEFORE the resolve step.
       # The resolver is FROM onboard-sandbox:poc (a local-only tag), so without this the runtime
       # `docker compose run resolver` fails at the base image and the agent never actually runs.
