@@ -109,9 +109,11 @@ export default function OnboardPage() {
   // instead of silently dropping the progress/answer box.
   useEffect(() => {
     const recent = (iso: string | null) => !!iso && Date.now() - new Date(iso).getTime() < 20 * 60_000;
+    let dismissed = "";
+    try { dismissed = sessionStorage.getItem("onboard.dismissed") ?? ""; } catch { /* ignore */ }
     listOnboardRuns(1).then((runs) => {
       const r = runs[0];
-      if (!r || startedRef.current) return;   // user already kicked off a fresh run — don't clobber
+      if (!r || startedRef.current || r.id === dismissed) return;  // fresh run in flight, or user dismissed it
       if (r.state === "running") { setRun(r); poll(r.id); }
       else if (r.state === "needs_input" || recent(r.updated_at)) { setRun(r); }
     }).catch(() => {});
@@ -225,7 +227,8 @@ export default function OnboardPage() {
                   {run.method && <span className="mono muted" style={{ fontSize: 11.5 }}>via {run.method}</span>}
                   {running
                     ? <button className="btn btn-sm" style={{ marginLeft: "auto" }} onClick={stopRun}>Stop</button>
-                    : <button className="btn btn-sm" style={{ marginLeft: "auto" }} onClick={() => setRun(null)} title="dismiss">✕</button>}
+                    : <button className="btn btn-sm" style={{ marginLeft: "auto" }} title="dismiss"
+                              onClick={() => { try { sessionStorage.setItem("onboard.dismissed", run.id); } catch { /* ignore */ } setRun(null); }}>✕</button>}
                 </div>
 
                 {(() => {
@@ -321,9 +324,13 @@ export default function OnboardPage() {
                       {showLog ? "hide log" : "show log"}
                     </button>
                     {showLog && (
-                      <div className="mono" style={{ fontSize: 11, lineHeight: 1.7, marginTop: 8, opacity: 0.7 }}>
+                      <div className="onb-log">
                         {run.events.map((e, i) => (
-                          <div key={i} className="muted"><span className="tag" style={{ marginRight: 6 }}>{e.status}</span>{e.stage}{e.detail ? ` — ${e.detail}` : ""}</div>
+                          <div key={i} className={`olog-row olog-${e.status}`}>
+                            <span className="olog-status">{e.status}</span>
+                            <span className="olog-stage">{e.stage}</span>
+                            <span className="olog-detail">{e.detail}</span>
+                          </div>
                         ))}
                       </div>
                     )}
