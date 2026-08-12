@@ -223,6 +223,7 @@ export async function startOnboard(name: string, careers_url?: string): Promise<
   return r.json();
 }
 export const getOnboardRun = (id: string) => get<OnboardingRun>(`/v1/onboard/${encodeURIComponent(id)}`);
+export const listOnboardRuns = (limit = 10) => get<OnboardingRun[]>(`/v1/onboard?limit=${limit}`);
 export async function provideOnboardInput(id: string, answer: string): Promise<OnboardingRun> {
   const r = await fetch(`${BASE}/v1/onboard/${encodeURIComponent(id)}/input`, {
     method: "POST", headers: headers(), body: JSON.stringify({ answer }),
