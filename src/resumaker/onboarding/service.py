@@ -103,6 +103,16 @@ def _apply_agent_contract(run: OnboardingRun, contract: dict) -> None:
         else:
             _finish(run, "unresolved",
                     note=f"agent board failed re-validation: {v.get('error', 'no postings')}")
+    elif status == "drafted":
+        # The runner drafted + gated a NEW adapter and opened a PR; the adapter isn't in THIS
+        # (deployed) image, so we can't validate/add the company yet — surface it as its own
+        # terminal state. Merging the PR + redeploying makes a re-onboard resolve normally.
+        run.method = "agent-draft"
+        run.board = BoardRef(**contract["board"]) if contract.get("board") else None
+        run.evidence = contract.get("evidence") or {}
+        run.state = "drafted"
+        _emit(run, "draft", "done",
+              contract.get("note", "new adapter drafted + validated; PR opened for your review"))
     elif status == "needs_input":
         run.question = contract.get("question") or "Provide the careers URL or an ATS board token."
         run.state = "needs_input"

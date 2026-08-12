@@ -23,7 +23,7 @@ TRACKER_STAGES: tuple[str, ...] = (
 # Agentic onboarding run lifecycle (Phase C). deterministic-first -> agent fallback;
 # `needs_input` pauses for a human answer; `killed`=time/budget guard, `stopped`=manual.
 OnboardState = Literal[
-    "running", "needs_input", "resolved", "unresolved", "killed", "stopped", "error"]
+    "running", "needs_input", "resolved", "drafted", "unresolved", "killed", "stopped", "error"]
 
 
 class BoardRef(BaseModel):

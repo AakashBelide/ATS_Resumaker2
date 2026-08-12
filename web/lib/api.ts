@@ -207,7 +207,7 @@ export async function setCompanyActive(name: string, active: boolean): Promise<{
 }
 
 // Agentic onboarding (Phase C) — async, human-in-the-loop.
-export type OnboardState = "running" | "needs_input" | "resolved" | "unresolved" | "killed" | "stopped" | "error";
+export type OnboardState = "running" | "needs_input" | "resolved" | "drafted" | "unresolved" | "killed" | "stopped" | "error";
 export type OnboardEvent = { stage: string; status: string; detail: string; ts: number };
 export type OnboardingRun = {
   id: string; name: string; careers_url: string; method: string; state: OnboardState;

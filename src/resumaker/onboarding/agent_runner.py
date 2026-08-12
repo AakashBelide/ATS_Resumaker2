@@ -24,7 +24,7 @@ OnEvent = Callable[[str, str, str], None]
 
 class AgentRunner(Protocol):
     def resolve(self, name: str, careers_url: str | None, *, run_id: str,
-                on_event: OnEvent) -> dict: ...
+                on_event: OnEvent, fingerprint: dict | None = None) -> dict: ...
 
     def stop(self, run_id: str) -> None: ...
 
@@ -53,12 +53,14 @@ class DockerAgentRunner:
         self._resolve_via_agent = agent_resolve.resolve_via_agent
         self._runner = sandbox_runner
 
-    def resolve(self, name: str, careers_url: str | None, *, run_id: str, on_event: OnEvent) -> dict:
+    def resolve(self, name: str, careers_url: str | None, *, run_id: str, on_event: OnEvent,
+                fingerprint: dict | None = None) -> dict:
         s = get_settings()
         on_event("agent", "start", "sandboxed Claude resolver")
         c = self._resolve_via_agent(
             name, careers_url, project=f"onboard-{run_id}",
-            max_turns=s.onboard_max_turns, time_limit=s.onboard_time_limit_s)
+            max_turns=s.onboard_max_turns, time_limit=s.onboard_time_limit_s,
+            fingerprint=fingerprint)
         meta = c.get("_meta", {}) or {}
         # Surface the sandbox diagnostics when the agent didn't cleanly resolve — otherwise the
         # returncode/stderr/raw output are lost (only the top-level contract is uploaded), leaving
@@ -76,6 +78,8 @@ class DockerAgentRunner:
             "question": c.get("question", ""),
             "note": c.get("note", "") or c.get("reason", ""),
             "tried": c.get("tried", []),
+            "adapter_code": c.get("adapter_code"),      # present when the agent drafted an adapter
+            "adapter_name": c.get("adapter_name", ""),
             "cost_usd": float(meta.get("cost_usd") or 0.0),
             "turns": int(meta.get("turns") or 0),
         }
@@ -113,7 +117,10 @@ class ActionsAgentRunner:
                      "Accept": "application/vnd.github+json",
                      "X-GitHub-Api-Version": "2022-11-28"})
 
-    def resolve(self, name: str, careers_url: str | None, *, run_id: str, on_event: OnEvent) -> dict:
+    def resolve(self, name: str, careers_url: str | None, *, run_id: str, on_event: OnEvent,
+                fingerprint: dict | None = None) -> dict:
+        # `fingerprint` is ignored here: the Actions runner does its own headless fingerprint (it
+        # has a browser; the lean cloud API that dispatches this does not), inside onboard_entry.
         import time  # noqa: PLC0415
         on_event("agent", "start", "dispatching GitHub Actions resolve")
         dispatched_at = time.time()

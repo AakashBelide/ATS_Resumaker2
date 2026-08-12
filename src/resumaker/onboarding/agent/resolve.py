@@ -108,22 +108,34 @@ def _extract_contract(text: str) -> dict:
 
 def resolve_via_agent(name: str, careers_url: str | None = None, *,
                       model: str = "sonnet", project: str = "onboard-sandbox",
-                      max_turns: int = 20, time_limit: int = 600) -> dict:
-    """Run the sandboxed agent to resolve `name` -> board ref. Caps: `max_turns` bounds the
-    agent's tool-call loop (usage cap); `time_limit` is the wall-clock auto-kill. Returns the
-    parsed contract plus `_meta` (returncode, cost/turns, proxy decisions)."""
+                      max_turns: int = 20, time_limit: int = 600,
+                      fingerprint: dict | None = None) -> dict:
+    """Run the sandboxed agent to resolve `name` -> board ref (map to a supported platform, or
+    DRAFT a new adapter). `fingerprint` is the headless-browser report of the careers page's real
+    API calls + creds — injected as context so the agent can author an adapter without a browser.
+    Caps: `max_turns` bounds the tool-call loop; `time_limit` is the wall-clock auto-kill."""
     token = _token()
-    extra_allow = ""
+    # Egress: open the company's whole domain (careers/API infra) PLUS the exact API hosts the
+    # fingerprint saw the page call (a novel board may live on a different domain than the careers
+    # page, e.g. rippling.com -> *.algolia.net). Still deny-by-default everywhere else.
+    hosts: set[str] = set()
     if careers_url:
-        host = urlsplit(careers_url if "://" in careers_url else "https://" + careers_url).hostname
-        # Open egress to the company's WHOLE domain (not just the exact host) so the agent can
-        # get its hands dirty on the company's own careers/API infra. Still deny-by-default
-        # everywhere else, so exfiltration to an attacker host stays blocked.
-        extra_allow = ("." + _registrable(host)) if host else ""
+        h = urlsplit(careers_url if "://" in careers_url else "https://" + careers_url).hostname
+        if h:
+            hosts.add("." + _registrable(h))
+    for call in (fingerprint or {}).get("api_calls", []):
+        if (hn := urlsplit(call.get("url", "")).hostname):
+            hosts.add(hn)
+    if (ah := (fingerprint or {}).get("algolia", {}).get("host")):
+        hosts.add(ah)
+    extra_allow = ",".join(sorted(hosts))
 
     system = SYSTEM_PROMPT + "\n\n# Supported platforms (return exactly one as `source`)\n" + \
         _supported_platforms()
     task = f"Company name: {name}\nCareers URL: {careers_url or '(none provided)'}"
+    if fingerprint and fingerprint.get("ok"):
+        task += "\n\n# Fingerprint (headless-browser capture of the careers page)\n" + \
+            json.dumps(fingerprint, indent=2)[:8000]
     argv = [
         "claude", "-p", task,
         "--output-format", "json",

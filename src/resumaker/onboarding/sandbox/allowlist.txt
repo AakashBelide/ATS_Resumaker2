@@ -2,6 +2,8 @@
 # = the egress hosts of every supported source + the Anthropic API. The per-run
 #   company careers host is added separately via EXTRA_ALLOW (human-approved).
 
+.algolia.net
+.algolianet.com
 .eightfold.ai
 .icims.com
 .myworkdayjobs.com
