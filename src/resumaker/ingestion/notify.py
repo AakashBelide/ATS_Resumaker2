@@ -76,10 +76,15 @@ def _write_digest_and_webhook(jobs: list[JobRecord]) -> None:
 
 
 def pending(jobs: list[JobRecord]) -> list[JobRecord]:
-    """The subset worth emailing: on-target (target-role match) AND not already emailed."""
-    from resumaker.ingestion.service import matches_preferences
-    on_target = [j for j in jobs if matches_preferences(j.title)]
-    return db.unnotified(on_target)
+    """The subset worth emailing: on-target (target-role match), passing the owner's mailer title
+    filter (include/exclude words, editable in Profile), AND not already emailed. The mailer
+    filter defaults to empty -> no extra narrowing."""
+    from resumaker.ingestion.service import matches_preferences, title_matches
+    from resumaker.persistence.profile import load_mailer_filter
+    mf = load_mailer_filter()
+    inc, exc = mf.get("include") or [], mf.get("exclude") or []
+    keep = [j for j in jobs if matches_preferences(j.title) and title_matches(j.title, inc, exc)]
+    return db.unnotified(keep)
 
 
 def email_new(jobs: list[JobRecord], *, dry_run: bool = False) -> int:

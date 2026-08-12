@@ -204,6 +204,48 @@ def test_tracker_match_failure_sets_error_then_retry_clears(tmp_db, monkeypatch)
     assert got.match_error is None and got.fit_0_100 == 44.1 and got.run_id == "jpmc-de"
 
 
+def test_title_matches_include_exclude():
+    """Shared title gate: contains ANY include word AND NONE of the exclude words."""
+    from resumaker.ingestion.service import title_matches
+    # want AI, drop Java/Manager
+    assert title_matches("AI Engineer", include=["ai"], exclude=["java", "manager"])
+    assert not title_matches("Java AI Engineer", include=["ai"], exclude=["java"])   # excluded
+    assert not title_matches("Engineering Manager", include=["ai"], exclude=["manager"])
+    assert not title_matches("Backend Engineer", include=["ai"], exclude=[])         # missing include
+    assert title_matches("Backend Engineer", include=[], exclude=["java"])           # no include req
+    assert title_matches("ML Engineer", include=["ai", "ml"], exclude=[])            # ANY include
+
+
+def test_discovery_title_filter(tmp_db, monkeypatch):
+    from resumaker.domain import JobRecord
+    from resumaker.ingestion import DiscoveryFilters, discover
+    from resumaker.persistence import db
+
+    for i, title in enumerate(["AI Engineer", "Java AI Engineer", "ML Engineer", "Data Analyst"]):
+        db.upsert_job(JobRecord(source="greenhouse", external_id=str(i), title=title,
+                                company="Acme", location="Boston, MA", content_hash=str(i)))
+    res = discover(DiscoveryFilters(title_include=["engineer"], title_exclude=["java"], limit=50))
+    titles = {j.title for j in res.jobs}
+    assert titles == {"AI Engineer", "ML Engineer"}          # engineer, not java, not analyst
+
+
+def test_mailer_filter_narrows_pending(tmp_db):
+    """The email digest applies the owner's mailer title filter (include/exclude) on top of the
+    on-target gate; default empty = no change."""
+    from resumaker.domain import JobRecord
+    from resumaker.ingestion import notify
+    from resumaker.persistence import db, profile
+
+    for i, t in enumerate(["AI Engineer", "Java Engineer"]):
+        db.upsert_job(JobRecord(source="greenhouse", external_id=str(i), title=t,
+                                company="Acme", content_hash=str(i)))
+    jobs = db.list_jobs()
+    assert {j.title for j in notify.pending(jobs)} == {"AI Engineer", "Java Engineer"}  # no filter
+
+    profile.save_mailer_filter({"include": ["ai"], "exclude": ["java"]})
+    assert {j.title for j in notify.pending(jobs)} == {"AI Engineer"}   # filtered
+
+
 def test_actions_agent_runner_dispatch_poll_artifact(monkeypatch):
     """ActionsAgentRunner: dispatch the workflow, find the run by run-name, then download the
     contract artifact - all mocked (no GitHub calls). Fits the synchronous resolve() seam."""

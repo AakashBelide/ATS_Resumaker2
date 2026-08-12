@@ -34,6 +34,8 @@ def discovery(
     source: str | None = None,
     location: str | None = None,
     keyword: str | None = None,     # matches title or company
+    title_include: str | None = None,  # comma-separated: title must contain ANY of these
+    title_exclude: str | None = None,  # comma-separated: title must contain NONE of these
     since_days: int | None = None,
     on_target: bool = False,
     state: str | None = None,       # comma-separated (state codes / OTHER)
@@ -44,6 +46,7 @@ def discovery(
 ) -> DiscoveryOut:
     res = discover(DiscoveryFilters(
         company=_csv(company), source=source, location=location, keyword=keyword,
+        title_include=_csv(title_include), title_exclude=_csv(title_exclude),
         since_days=since_days, on_target=on_target, state=_csv(state), level=_csv(level),
         order=order, limit=limit, offset=offset))
     return DiscoveryOut(total=res.total, jobs=res.jobs, facets=res.facets)

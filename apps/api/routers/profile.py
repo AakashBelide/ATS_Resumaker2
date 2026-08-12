@@ -21,6 +21,11 @@ class FactIn(BaseModel):
     reason: str
 
 
+class MailerFilterIn(BaseModel):
+    include: list[str] = []    # email a new posting only if its title has ANY of these
+    exclude: list[str] = []    # ...and NONE of these (empty = no extra filtering)
+
+
 @router.get("/summary")
 def summary() -> dict:
     return {
@@ -41,6 +46,20 @@ def set_fact(body: FactIn) -> dict:
     Only for REAL facts the owner supplies - never fabrication."""
     old = update_profile_fact(list(body.path), body.value, body.reason)
     return {"path": body.path, "old": old, "new": body.value, "reason": body.reason}
+
+
+@router.get("/mailer-filter", response_model=MailerFilterIn)
+def get_mailer_filter() -> MailerFilterIn:
+    """The email-digest title filter (editable). Only new on-target postings whose title passes
+    this are emailed."""
+    mf = profile.load_mailer_filter()
+    return MailerFilterIn(include=mf.get("include") or [], exclude=mf.get("exclude") or [])
+
+
+@router.put("/mailer-filter", response_model=MailerFilterIn)
+def set_mailer_filter(body: MailerFilterIn) -> MailerFilterIn:
+    profile.save_mailer_filter({"include": body.include, "exclude": body.exclude})
+    return body
 
 
 @router.get("/proposals")

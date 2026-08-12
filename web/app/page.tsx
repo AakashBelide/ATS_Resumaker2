@@ -66,12 +66,19 @@ export default function DiscoveryPage() {
   const [tracking, setTracking] = useState<number | null>(null);
   const [tracked, setTracked] = useState<Set<string>>(new Set());  // tracked job URLs
   const [kw, setKw] = useState("");
+  const [titleInc, setTitleInc] = useState("");   // title has any of (comma-separated)
+  const [titleExc, setTitleExc] = useState("");   // title has none of (comma-separated)
 
   // restore persisted filters once on mount (survives nav to/from other pages)
   useEffect(() => {
     try {
       const s = sessionStorage.getItem(STORE_KEY);
-      if (s) { const parsed = JSON.parse(s) as DiscoveryQuery; setQ(parsed); setKw(parsed.keyword ?? ""); }
+      if (s) {
+        const parsed = JSON.parse(s) as DiscoveryQuery;
+        setQ(parsed); setKw(parsed.keyword ?? "");
+        setTitleInc((parsed.title_include ?? []).join(", "));
+        setTitleExc((parsed.title_exclude ?? []).join(", "));
+      }
     } catch { /* ignore */ }
     setRestored(true);
     listTracker().then((rows) => setTracked(new Set(rows.map((r) => r.url)))).catch(() => {});
@@ -97,10 +104,18 @@ export default function DiscoveryPage() {
     return () => clearTimeout(t);
   }, [kw]);  // eslint-disable-line react-hooks/exhaustive-deps
 
+  // debounce the title has/no boxes -> query (comma-separated -> array)
+  useEffect(() => {
+    if (!restored) return;
+    const csv = (s: string) => { const a = s.split(",").map((x) => x.trim()).filter(Boolean); return a.length ? a : undefined; };
+    const t = setTimeout(() => patch({ title_include: csv(titleInc), title_exclude: csv(titleExc) }), 400);
+    return () => clearTimeout(t);
+  }, [titleInc, titleExc]);  // eslint-disable-line react-hooks/exhaustive-deps
+
   function patch(p: Partial<DiscoveryQuery>) { setQ((prev) => ({ ...prev, ...p, offset: 0 })); }
   function goPage(n: number) { setQ((prev) => ({ ...prev, offset: n * (prev.limit ?? 24) })); }
   function clearFilters() {
-    setKw("");
+    setKw(""); setTitleInc(""); setTitleExc("");
     setQ((prev) => ({ order: prev.order, limit: prev.limit, on_target: prev.on_target, offset: 0 }));
   }
 
@@ -134,7 +149,8 @@ export default function DiscoveryPage() {
 
   const activeFilters =
     (q.company?.length ?? 0) + (q.state?.length ?? 0) + (q.level?.length ?? 0) +
-    (q.keyword ? 1 : 0) + (q.location ? 1 : 0) + (q.since_days ? 1 : 0);
+    (q.keyword ? 1 : 0) + (q.location ? 1 : 0) + (q.since_days ? 1 : 0) +
+    (q.title_include?.length ? 1 : 0) + (q.title_exclude?.length ? 1 : 0);
 
   return (
     <>
@@ -164,6 +180,14 @@ export default function DiscoveryPage() {
             <label>loc</label>
             <input placeholder="e.g. boston" defaultValue={q.location ?? ""}
                    onKeyDown={(e) => { if (e.key === "Enter") patch({ location: (e.target as HTMLInputElement).value || undefined }); }} />
+          </div>
+          <div className="field">
+            <label>title has</label>
+            <input placeholder="ai, ml (any)" value={titleInc} onChange={(e) => setTitleInc(e.target.value)} />
+          </div>
+          <div className="field">
+            <label>title no</label>
+            <input placeholder="java, manager" value={titleExc} onChange={(e) => setTitleExc(e.target.value)} />
           </div>
           <MultiSelect label="company" options={companyOpts} selected={q.company ?? []} onChange={(v) => patch({ company: v })} />
           <MultiSelect label="state" options={stateOpts} selected={q.state ?? []} onChange={(v) => patch({ state: v })}

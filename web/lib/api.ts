@@ -88,6 +88,7 @@ export type DiscoveryFacets = {
 export type Discovery = { total: number; jobs: JobRecord[]; facets: DiscoveryFacets };
 export type DiscoveryQuery = {
   company?: string[]; source?: string; location?: string; keyword?: string;
+  title_include?: string[]; title_exclude?: string[];
   since_days?: number; on_target?: boolean; state?: string[]; level?: string[];
   order?: string; limit?: number; offset?: number;
 };
@@ -132,6 +133,16 @@ export type Proposal = { requirement: string; count: number; companies: string[]
 export const profileSummary = () => get<ProfileSummary>("/v1/profile/summary");
 export const profileProposals = () =>
   get<{ have_but_unlisted: Proposal[]; recurring_gaps: Proposal[] }>("/v1/profile/proposals");
+
+export type MailerFilter = { include: string[]; exclude: string[] };
+export const getMailerFilter = () => get<MailerFilter>("/v1/profile/mailer-filter");
+export async function saveMailerFilter(mf: MailerFilter): Promise<MailerFilter> {
+  const r = await fetch(`${BASE}/v1/profile/mailer-filter`, {
+    method: "PUT", headers: headers(), body: JSON.stringify(mf),
+  });
+  if (!r.ok) throw new Error(`saveMailerFilter → ${r.status}`);
+  return r.json();
+}
 
 // ---- Dashboard (RA.4) + Metrics (RA.5) --------------------------------------
 export type Dashboard = {
