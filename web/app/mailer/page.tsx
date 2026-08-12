@@ -124,12 +124,18 @@ export default function MailerPage() {
                     <input type="number" min={0} placeholder="0 = no cap" value={p.max_postings || ""}
                            onChange={(e) => patch({ max_postings: Number(e.target.value) || 0 })} /></div>
                 </div>
-                <label className="kicker" style={{ display: "block", marginBottom: 8 }}>quiet hours · no email sent in this window</label>
+                <label className="kicker" style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                  <input type="checkbox" checked={p.quiet_enabled}
+                         onChange={(e) => patch({ quiet_enabled: e.target.checked })} />
+                  quiet hours · {p.quiet_enabled ? "no email sent in this window" : "off — email sent 24/7"}
+                </label>
                 <div className="filters">
                   <div className="field"><label>from</label>
-                    <input type="time" value={p.quiet_start} onChange={(e) => patch({ quiet_start: e.target.value })} /></div>
+                    <input type="time" value={p.quiet_start} disabled={!p.quiet_enabled}
+                           onChange={(e) => patch({ quiet_start: e.target.value })} /></div>
                   <div className="field"><label>to</label>
-                    <input type="time" value={p.quiet_end} onChange={(e) => patch({ quiet_end: e.target.value })} /></div>
+                    <input type="time" value={p.quiet_end} disabled={!p.quiet_enabled}
+                           onChange={(e) => patch({ quiet_end: e.target.value })} /></div>
                   <div className="field"><label>timezone</label>
                     <input placeholder="America/New_York" value={p.timezone} onChange={(e) => patch({ timezone: e.target.value })} /></div>
                 </div>

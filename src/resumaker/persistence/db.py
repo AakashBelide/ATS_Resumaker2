@@ -635,6 +635,17 @@ def get_tracker(entry_id: int) -> TrackerEntry | None:
     return _tracker_from_row(row) if row else None
 
 
+def get_tracker_by_run(run_id: str) -> TrackerEntry | None:
+    """The tracked entry whose match run is `run_id`, if any. Lets the report page show the
+    authoritative ATS posting title/company (which the tracker keeps) instead of the JD-extracted
+    one stored in report.json - they can differ (e.g. a JD body titled 'Software Engineering III')."""
+    if not run_id:
+        return None
+    with connect() as conn:
+        row = conn.execute("SELECT * FROM tracker WHERE run_id=? LIMIT 1", (run_id,)).fetchone()
+    return _tracker_from_row(row) if row else None
+
+
 def set_tracker_stage(entry_id: int, stage: str) -> bool:
     with connect(durable=True) as conn:
         cur = conn.execute("UPDATE tracker SET stage=?, updated_at=? WHERE id=?",

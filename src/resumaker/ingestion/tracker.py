@@ -156,6 +156,11 @@ def list_tracked(stage: str | None = None) -> list[TrackerEntry]:
     return db.list_tracker(stage=stage)
 
 
+def get_by_run(run_id: str) -> TrackerEntry | None:
+    """The tracked entry whose match run is `run_id` (the authoritative ATS title/company), or None."""
+    return db.get_tracker_by_run(run_id)
+
+
 def remove(entry_id: int) -> int:
     """Delete a tracked job and cascade-clean everything derived from it: the run folder (match
     report + any generated resume/cover, local + GCS) and the run's DB index row, so a delete

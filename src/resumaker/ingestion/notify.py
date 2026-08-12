@@ -139,7 +139,9 @@ def preview_counts(mp: dict) -> dict[str, int]:
 
 def _in_quiet_hours(mp: dict) -> bool:
     """True if 'now' (in the mailer timezone) falls in the quiet window; supports a window that
-    wraps midnight (e.g. 22:00 -> 07:00). Empty start/end = never quiet."""
+    wraps midnight (e.g. 22:00 -> 07:00). quiet_enabled=False or an empty start/end = never quiet."""
+    if not mp.get("quiet_enabled", True):
+        return False
     qs, qe = (mp.get("quiet_start") or "").strip(), (mp.get("quiet_end") or "").strip()
     if not (qs and qe):
         return False

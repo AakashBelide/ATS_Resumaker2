@@ -110,6 +110,11 @@ export type TrackerEntry = {
 export function listTracker(stage?: string): Promise<TrackerEntry[]> {
   return get<TrackerEntry[]>(`/v1/tracker${qs({ stage })}`);
 }
+// The tracked entry for a match run (authoritative ATS title/company), or null for an ad-hoc run.
+export async function getTrackerByRun(runId: string): Promise<TrackerEntry | null> {
+  const r = await fetch(`${BASE}/v1/tracker/by-run/${encodeURIComponent(runId)}`, { headers: headers() });
+  return r.ok ? r.json() : null;
+}
 export async function rematchTracker(id: number): Promise<TrackerEntry> {
   const r = await fetch(`${BASE}/v1/tracker/${id}/rematch`, { method: "POST", headers: headers() });
   if (!r.ok) throw new Error(`rematchTracker → ${r.status}`);
@@ -154,7 +159,8 @@ export async function savePreferences(p: Preferences): Promise<Preferences> {
 
 export type MailerPrefs = {
   include: string[]; exclude: string[]; levels: string[]; states: string[];
-  quiet_start: string; quiet_end: string; timezone: string; max_postings: number; frequency: string;
+  quiet_enabled: boolean; quiet_start: string; quiet_end: string;
+  timezone: string; max_postings: number; frequency: string;
 };
 export const getMailerPrefs = () => get<MailerPrefs>("/v1/mailer/prefs");
 export async function saveMailerPrefs(p: MailerPrefs): Promise<MailerPrefs> {
