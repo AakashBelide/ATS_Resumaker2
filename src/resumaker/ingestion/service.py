@@ -75,15 +75,38 @@ def _fetch_board(company: Company, board: BoardRef) -> tuple[Company, BoardRef, 
         return company, board, [], f"{board.source}/{board.token}: {e}"
 
 
-def _fetch_source_group(items: list[tuple[Company, BoardRef]]) -> list:
-    """Fetch every board in ONE source group serially, with polite jitter between calls. Boards
-    on the same ATS source share a host (Greenhouse/Lever/Ashby are single-host; per-tenant
-    sources like Workday still share the platform), so they must never fire concurrently."""
-    out = []
-    for i, (company, board) in enumerate(items):
-        if i:
-            time.sleep(random.uniform(0.5, 2.0))     # polite spacing within a host
-        out.append(_fetch_board(company, board))
+# Sources where each company is its OWN host (a distinct subdomain/tenant), so different companies
+# can be fetched concurrently without hammering a single host. Single-host sources (Greenhouse/
+# Lever/Ashby share one API host) must stay serial. Workday tenants are companyX.myworkdayjobs.com.
+_PER_TENANT_SOURCES = {"workday"}
+
+
+def _fetch_source_group(items: list[tuple[Company, BoardRef]], *,
+                        deadline: float | None = None, workers: int = 1) -> list:
+    """Fetch one source group. Single-host sources fetch serially (workers=1) with polite jitter;
+    per-tenant sources fetch up to `workers` distinct-host tenants concurrently. Boards are shuffled
+    and no NEW fetch starts once `deadline` (a time.monotonic() stamp) passes - so a throttling host
+    can't overrun the tick's budget, and idempotent re-ingest picks up any skipped boards next run."""
+    items = list(items)
+    random.shuffle(items)               # rotate coverage so a deadline cut never starves the same boards
+    out: list = []
+    if workers <= 1:
+        for i, (company, board) in enumerate(items):
+            if deadline is not None and time.monotonic() > deadline:
+                break
+            if i:
+                time.sleep(random.uniform(0.5, 2.0))   # polite spacing within a host
+            out.append(_fetch_board(company, board))
+        return out
+    with cf.ThreadPoolExecutor(max_workers=workers) as ex:
+        futures = []
+        for company, board in items:
+            if deadline is not None and time.monotonic() > deadline:
+                break
+            futures.append(ex.submit(_fetch_board, company, board))
+            time.sleep(random.uniform(0.2, 0.6))       # slight stagger, not a burst
+        for fut in cf.as_completed(futures):
+            out.append(fut.result())
     return out
 
 
@@ -137,9 +160,17 @@ def ingest_all(*, preferred_only: bool = False, us_only: bool = True,
     results: dict[str, IngestResult] = {}
     fetched: list = []
     if groups:
-        workers = max(1, min(len(groups), get_settings().ingest_fetch_workers))
+        s = get_settings()
+        deadline = time.monotonic() + max(60, s.ingest_time_budget_s)  # shared across all groups
+
+        def _fetch_group(source: str, items: list[tuple[Company, BoardRef]]) -> list:
+            # Per-tenant sources fan out across their distinct-host tenants; single-host stays serial.
+            gw = s.ingest_per_tenant_workers if (source in _PER_TENANT_SOURCES and len(items) > 1) else 1
+            return _fetch_source_group(items, deadline=deadline, workers=gw)
+
+        workers = max(1, min(len(groups), s.ingest_fetch_workers))
         with cf.ThreadPoolExecutor(max_workers=workers) as ex:
-            futures = [ex.submit(_fetch_source_group, items) for items in groups.values()]
+            futures = [ex.submit(_fetch_group, src, items) for src, items in groups.items()]
             for fut in cf.as_completed(futures):
                 fetched.extend(fut.result())
 

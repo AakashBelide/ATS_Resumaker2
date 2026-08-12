@@ -85,7 +85,9 @@ class WorkdaySource:
                    "searchText": search_text}
         for attempt in range(4):
             try:
-                r = cffi.post(cxs, impersonate="chrome", timeout=30, json=payload)
+                # 15s (not 30): Workday normally answers in 1-3s, so a longer ceiling only lets a
+                # hung/throttled page stall the sweep. Fail fast; the 429/403 backoff below still retries.
+                r = cffi.post(cxs, impersonate="chrome", timeout=15, json=payload)
             except Exception as e:  # noqa: BLE001 - network blip
                 _log.warning("workday post error", extra={"cxs": cxs, "error": str(e)[:120]})
                 return None
