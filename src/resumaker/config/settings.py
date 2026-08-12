@@ -99,6 +99,13 @@ class Settings(BaseSettings):
     onboard_max_turns: int = 60           # usage cap: agent tool-call loop
     onboard_time_limit_s: int = 2400      # time-based auto-kill (40 min)
     onboard_budget_usd: float = 5.0       # usage cap: max cumulative $ per onboarding
+    # Where the sandboxed resolve runs: "docker" (local Docker sandbox - default) or "actions"
+    # (dispatch a GitHub Actions run; Cloud Run can't nest Docker, so cloud uses this). Actions
+    # mode needs a repo + PAT with `actions:write` + `contents:write` (for adapter-draft PRs).
+    onboard_runner: str = "docker"        # docker | actions
+    github_repo: str | None = None        # "owner/name" for the Actions dispatch
+    github_token: str | None = Field(default=None, validation_alias="RESUMAKER_GITHUB_TOKEN")
+    github_workflow: str = "onboard.yml"  # workflow file to dispatch
 
     # -- watchlist ingestion + scheduler (RI) --------------------------------
     scheduler_enabled: bool = False       # if True, the API polls the watchlist on a cadence
