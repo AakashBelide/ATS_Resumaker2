@@ -21,6 +21,7 @@ _log = get_logger("resumaker.ingestion.schedule_sync")
 FREQUENCIES: dict[str, str] = {
     "off": "",
     "hourly": "15 * * * *",
+    "every_2h": "15 */2 * * *",
     "every_4h": "15 */4 * * *",
     "every_12h": "15 */12 * * *",
     "daily": "15 8 * * *",

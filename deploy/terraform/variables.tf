@@ -37,20 +37,20 @@ variable "gcs_bucket" {
 // -- ingestion schedule (owner parameters) -----------------------------------------------------
 variable "ingest_cron_fast" {
   type        = string
-  description = "Cron for clean boards (Greenhouse/Lever/Ashby). Every 2h, 8am-10pm."
-  default     = "0 8-22/2 * * *"
+  description = "Cron for clean boards (Greenhouse/Lever/Ashby). Hourly, 8am-11pm."
+  default     = "0 8-23 * * *"
 }
 
 variable "ingest_cron_slow" {
   type        = string
-  description = "Cron for gently-polled boards (Workday etc.). Once daily."
-  default     = "0 9 * * *"
+  description = "Cron for gently-polled boards (Workday etc.). Once daily at 10am."
+  default     = "0 10 * * *"
 }
 
 variable "mailer_cron" {
   type        = string
   description = "Initial cron for the email digest (the Mailer 'frequency' rewrites it live)."
-  default     = "15 * * * *" // hourly at :15 - AFTER the top-of-hour ingest sweep; night defers
+  default     = "15 */2 * * *" // every 2h at :15 - AFTER the top-of-hour ingest sweep; night defers
 }
 
 variable "scheduler_timezone" {

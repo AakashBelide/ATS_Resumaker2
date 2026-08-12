@@ -39,6 +39,12 @@ export default function ReportPage() {
   const [tracked, setTracked] = useState<TrackerEntry | null>(null); // authoritative ATS title/company
   const [docTab, setDocTab] = useState<"resume" | "cover">("resume"); // which document is previewed
   const [coverText, setCoverText] = useState<string | null>(null);    // cover letter body, fetched inline
+  const [copied, setCopied] = useState(false);                        // cover-letter copy feedback
+
+  async function copyCover() {
+    if (!coverText) return;
+    try { await navigator.clipboard.writeText(coverText); setCopied(true); setTimeout(() => setCopied(false), 1500); } catch { /* clipboard blocked */ }
+  }
 
   const load = useCallback(() => {
     setError("");
@@ -273,7 +279,10 @@ export default function ReportPage() {
                           </>
                         )}
                         {r.cover_letter != null && docTab === "cover" && (
-                          <a className="btn btn-sm" href={artifactUrl(runId, "cover_letter.txt")} target="_blank" rel="noreferrer">open ↗</a>
+                          <>
+                            <button className="btn btn-sm" onClick={copyCover} disabled={!coverText}>{copied ? "copied ✓" : "copy"}</button>
+                            <a className="btn btn-sm" href={artifactUrl(runId, "cover_letter.txt")} target="_blank" rel="noreferrer">open ↗</a>
+                          </>
                         )}
                       </span>
                     </div>
