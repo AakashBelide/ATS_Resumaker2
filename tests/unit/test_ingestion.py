@@ -18,7 +18,7 @@ def test_sources_registered():
         "greenhouse", "lever", "ashby", "workday", "eightfold", "amazon", "oracle_cloud",
         "smartrecruiters", "mckinsey", "goldman", "phenom", "jibe", "radancy", "apple",
         "bytedance", "dassault", "microsoft", "google", "meta", "tesla", "pcsx", "paradox",
-        "ibm", "icims", "wayfair"}
+        "ibm", "icims", "wayfair", "algolia"}
 
 
 def test_slug_candidates():

@@ -1,4 +1,5 @@
 """Board-listing adapters (watchlist ingestion). `get_source(name)` returns an adapter."""
+from resumaker.providers.sources.algolia import AlgoliaSource
 from resumaker.providers.sources.amazon import AmazonJobsSource
 from resumaker.providers.sources.apple import AppleSource
 from resumaker.providers.sources.ashby import AshbySource
@@ -52,6 +53,7 @@ _SOURCES: dict[str, SourceAdapter] = {
     IBMSource.source: IBMSource(),
     ICIMSSource.source: ICIMSSource(),
     WayfairSource.source: WayfairSource(),
+    AlgoliaSource.source: AlgoliaSource(),
 }
 
 

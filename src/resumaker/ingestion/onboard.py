@@ -13,8 +13,10 @@ so a stealth backend (Scrapling/Firecrawl) can slot in behind `fetch_html` later
 """
 from __future__ import annotations
 
+import contextlib
 import re
 from dataclasses import dataclass, field
+from urllib.parse import parse_qs, urlsplit
 
 import httpx
 
@@ -144,11 +146,71 @@ def board_from_html(html: str) -> BoardRef | None:
     return None
 
 
+def discover_algolia(url: str) -> BoardRef | None:
+    """Recover an Algolia-backed careers board (app id + search-only key + index).
+
+    Sites like Rippling render jobs via Algolia InstantSearch; the credentials exist ONLY at
+    runtime (not in the HTML/JS we can curl), so we drive a headless browser, watch for the
+    page's own Algolia search request, and read the app id + key off it (they ride as query
+    params or headers). The index comes from the request body or the page's `algoliaIndexName`.
+    Returns a `BoardRef(source="algolia", ...)` the AlgoliaSource adapter can list."""
+    try:
+        from playwright.sync_api import sync_playwright  # noqa: PLC0415
+    except Exception:  # noqa: BLE001 - Playwright not installed
+        return None
+    found: dict[str, str] = {}
+
+    def _on_request(req) -> None:  # noqa: ANN001
+        u = req.url
+        if found or ("algolia.net" not in u and "algolianet.com" not in u):
+            return
+        q = parse_qs(urlsplit(u).query)
+        app = (q.get("x-algolia-application-id") or [""])[0] or req.headers.get("x-algolia-application-id", "")
+        key = (q.get("x-algolia-api-key") or [""])[0] or req.headers.get("x-algolia-api-key", "")
+        if not (app and key):
+            return
+        m = (re.search(r'"indexName"\s*:\s*"([^"]+)"', req.post_data or "") if req.post_data else None) \
+            or re.search(r"/1/indexes/([^/*]+)/query", u)
+        idx = m.group(1) if m else ""
+        found.update({"app": app, "key": key, "index": idx, "host": urlsplit(u).hostname or ""})
+
+    try:
+        with sync_playwright() as p:
+            b = p.chromium.launch(headless=True)
+            pg = b.new_page(user_agent=_UA)
+            pg.on("request", _on_request)
+            # `domcontentloaded` (not `networkidle`): analytics-heavy careers pages never go idle,
+            # and the InstantSearch query we need fires shortly after load — a fixed settle wait is
+            # enough. A goto timeout must NOT discard an already-captured request.
+            with contextlib.suppress(Exception):
+                pg.goto(url, wait_until="domcontentloaded", timeout=30000)
+            try:
+                pg.wait_for_timeout(5000)
+                if found and not found.get("index"):  # last-resort: static config on the page
+                    m = re.search(r'"algoliaIndexName"\s*:\s*"([^"]+)"', pg.content())
+                    if m:
+                        found["index"] = m.group(1)
+            except Exception:  # noqa: BLE001
+                pass
+            b.close()
+    except Exception:  # noqa: BLE001 - Playwright/Chromium launch failure
+        return None
+
+    if found.get("app") and found.get("key") and found.get("index"):
+        return BoardRef(source="algolia", token=found["app"],
+                        extra={"index": found["index"], "api_key": found["key"],
+                               "host": found["host"], "careers_url": url})
+    return None
+
+
 def discover_from_careers(name: str, careers_url: str) -> BoardRef | None:
     """Resolve a board from a careers URL. First parse the URL string itself (a direct
     `*.myworkdayjobs.com` / greenhouse / lever / ashby link resolves with no fetch - and
-    Workday sites are JS SPAs that fetch empty anyway); else fetch + parse the page."""
+    Workday sites are JS SPAs that fetch empty anyway); else fetch + parse the page; else, for
+    custom Algolia-search careers pages, capture the runtime Algolia credentials."""
     board = board_from_html(careers_url) or board_from_html(fetch_html(careers_url))
+    if board is None:
+        board = discover_algolia(careers_url)
     if board:
         _log.info("careers-page hit",
                   extra={"name": name, "url": careers_url, "source": board.source})
