@@ -1,5 +1,5 @@
 from resumaker.providers.sources.base import PostingStub
-from resumaker.providers.sources.http import polite_get, polite_post
+from resumaker.providers.sources.http import polite_get
 from resumaker.providers.sources.ua import UA
 
 
