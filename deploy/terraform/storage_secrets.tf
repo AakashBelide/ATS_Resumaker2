@@ -15,23 +15,25 @@ resource "google_storage_bucket" "artifacts" {
   depends_on = [google_project_service.enabled]
 }
 
-// Only non-empty secrets are created (optional ones stay out of Secret Manager entirely).
+// Secret name -> value. Only names with a non-empty value are created (optional keys may be
+// blank). The presence filter derives from sensitive vars, so the resulting NAME set is wrapped
+// in nonsensitive() - the names are plain literals (never the secret material), which is exactly
+// what may be exposed as for_each keys. This avoids "sensitive values cannot be used in for_each".
 locals {
-  secrets = merge(
-    {
-      "resumaker-api-token" = var.api_token
-      "turso-database-url"  = var.turso_database_url
-      "turso-auth-token"    = var.turso_auth_token
-    },
-    var.claude_code_oauth_token != "" ? { "claude-code-oauth-token" = var.claude_code_oauth_token } : {},
-    var.anthropic_api_key != "" ? { "anthropic-api-key" = var.anthropic_api_key } : {},
-    var.gemini_api_key != "" ? { "gemini-api-key" = var.gemini_api_key } : {},
-  )
+  secret_values = {
+    "resumaker-api-token"     = var.api_token
+    "turso-database-url"      = var.turso_database_url
+    "turso-auth-token"        = var.turso_auth_token
+    "claude-code-oauth-token" = var.claude_code_oauth_token
+    "anthropic-api-key"       = var.anthropic_api_key
+    "gemini-api-key"          = var.gemini_api_key
+  }
+  active_secrets = nonsensitive(toset([for k, v in local.secret_values : k if v != ""]))
 }
 
 resource "google_secret_manager_secret" "s" {
-  for_each  = local.secrets
-  secret_id = each.key
+  for_each  = local.active_secrets
+  secret_id = each.value
   replication {
     auto {}
   }
@@ -39,7 +41,7 @@ resource "google_secret_manager_secret" "s" {
 }
 
 resource "google_secret_manager_secret_version" "v" {
-  for_each    = local.secrets
+  for_each    = local.active_secrets
   secret      = google_secret_manager_secret.s[each.key].id
-  secret_data = each.value
+  secret_data = local.secret_values[each.key]
 }
