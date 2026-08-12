@@ -60,6 +60,15 @@ class DockerAgentRunner:
             name, careers_url, project=f"onboard-{run_id}",
             max_turns=s.onboard_max_turns, time_limit=s.onboard_time_limit_s)
         meta = c.get("_meta", {}) or {}
+        # Surface the sandbox diagnostics when the agent didn't cleanly resolve — otherwise the
+        # returncode/stderr/raw output are lost (only the top-level contract is uploaded), leaving
+        # failures like "did not return valid JSON" impossible to root-cause from the logs.
+        if c.get("status") not in ("resolved", "needs_input"):
+            tail = " ".join((meta.get("stderr_tail") or "").split())[-300:]
+            raw = " ".join((c.get("raw") or "").split())[:200]
+            on_event("agent", "progress",
+                     f"diag rc={meta.get('returncode')} timed_out={meta.get('timed_out')} "
+                     f"denied={meta.get('denied_hosts')} stderr={tail!r} raw={raw!r}")
         return {
             "status": c.get("status", "unresolved"),
             "board": c.get("board"),
