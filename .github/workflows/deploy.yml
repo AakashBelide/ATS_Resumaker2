@@ -82,11 +82,14 @@ jobs:
           service_account: ${{ env.DEPLOY_SA }}
       - uses: google-github-actions/setup-gcloud@v2
       - run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
-      - name: Build, push, deploy api
+      - name: Build, push, deploy api + ingestor
         run: |
           docker build -f deploy/Dockerfile.api -t "$REPO/api:latest" .
           docker push "$REPO/api:latest"
           gcloud run deploy resumaker-api --image "$REPO/api:latest" --region "$REGION" --timeout 600 --quiet
+          # the ingestor runs the SAME lean image (scrape + email only), just a separate service
+          gcloud run deploy resumaker-ingestor --image "$REPO/api:latest" --region "$REGION" \
+            --timeout 1800 --concurrency 1 --memory 512Mi --quiet
 
   worker:
     needs: [changes, test]
@@ -104,4 +107,6 @@ jobs:
         run: |
           docker build -f deploy/Dockerfile.worker -t "$REPO/worker:latest" .
           docker push "$REPO/worker:latest"
-          gcloud run deploy resumaker-worker --image "$REPO/worker:latest" --region "$REGION" --quiet
+          # concurrency 1: one CPU-bound match/render per instance (no contention)
+          gcloud run deploy resumaker-worker --image "$REPO/worker:latest" --region "$REGION" \
+            --timeout 1800 --concurrency 1 --quiet

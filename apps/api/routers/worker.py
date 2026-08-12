@@ -54,6 +54,10 @@ class RunPipelineIn(BaseModel):
     semantic_method: str = "lexical"
 
 
+class TrackerMatchIn(BaseModel):
+    entry_id: int
+
+
 def _sources_for(selector: str) -> set[str] | None:
     """Resolve a tick selector to a source set. `all` -> None (every registered source)."""
     from resumaker.ingestion.scheduler import _FAST_SOURCES, _slow_sources
@@ -69,9 +73,33 @@ def ingest_tick(body: IngestTickIn) -> IngestTickOut:
     """Run one watchlist poll over the selected source set (the Cloud Scheduler cron target).
     Idempotent - re-ingesting the same postings dedupes to zero new."""
     from resumaker.ingestion.scheduler import run_tick
+    # Ingest only - the email digest is now its own Cloud Scheduler job (mailer-tick), decoupled
+    # from ingestion cadence, so pausing/retiming email never affects discovery.
     results = run_tick(_sources_for(body.sources))
     new = sum(len(r.new_jobs) for r in results)
     return IngestTickOut(sources=body.sources, companies=len(results), new=new)
+
+
+class MailerTickOut(BaseModel):
+    emailed: int             # postings included in the digest this run (0 = none / quiet hours)
+
+
+@router.post("/mailer-tick", response_model=MailerTickOut)
+def mailer_tick() -> MailerTickOut:
+    """Cloud Scheduler target (its own cadence = the Mailer 'frequency'): email the pending
+    on-target backlog, honoring quiet hours + the max-postings cap. Backlog-wide, so anything
+    deferred (quiet hours, or a slower cadence) goes out the next time this fires."""
+    from resumaker.ingestion.notify import email_pending
+    return MailerTickOut(emailed=email_pending())
+
+
+@router.post("/tracker-match")
+def tracker_match(body: TrackerMatchIn) -> dict:
+    """Cloud Tasks target: run one tracked entry's match here on the worker (Claude CLI + real
+    CPU + GCS publish) and update the entry in place. Runs inline; Tasks retries on non-2xx."""
+    from resumaker.ingestion import tracker
+    tracker.run_match_for(body.entry_id)
+    return {"entry_id": body.entry_id, "ok": True}
 
 
 @router.post("/run-pipeline", response_model=RunRecord)

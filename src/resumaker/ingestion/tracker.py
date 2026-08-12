@@ -93,10 +93,19 @@ def add(*, job_id: int | None = None, url: str | None = None,
 
 def run_match_for(entry_id: int) -> None:
     """(Re)run the match for an existing tracked entry and persist the result. Safe to call in
-    a background task after an instant add; preserves stage/notes via upsert (keyed on url)."""
+    a background task after an instant add; preserves stage/notes via upsert (keyed on url).
+    Runs on the worker in cloud mode (Claude CLI + CPU + GCS publish)."""
     entry = db.get_tracker(entry_id)
     if entry is None:
         return
+    # Refresh the posting title/company from the watchlist first, so a re-match *corrects* a
+    # stale/wrong stored title (e.g. an old JD-derived "Software Engineering III") back to the
+    # real ATS listing title. _apply_match then keeps this over the JD-extracted value.
+    if entry.job_id is not None:
+        job = db.get_job(entry.job_id)
+        if job is not None:
+            entry.title = job.title or entry.title
+            entry.company = job.company or entry.company
     _apply_match(entry)
     db.upsert_tracker(entry)
 

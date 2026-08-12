@@ -46,6 +46,7 @@ scrape = [
 cloud = [
     "google-cloud-storage>=2.18.0",
     "google-cloud-tasks>=2.16.0",
+    "google-cloud-scheduler>=2.13.0",
 ]
 # NOTE: a headless/stealth tier (for Tesla/Meta/Qualcomm/Google - bot-protected custom
 # career sites) was evaluated with Scrapling and deliberately NOT included: it pins an

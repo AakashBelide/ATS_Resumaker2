@@ -75,3 +75,12 @@ resource "google_project_iam_member" "run_tasks_enqueuer" {
   role    = "roles/cloudtasks.enqueuer"
   member  = "serviceAccount:${google_service_account.run.email}"
 }
+
+// The Mailer "frequency" control rewrites the fast ingest job's cron (pause/resume + schedule),
+// so the runtime SA needs to manage Cloud Scheduler jobs. (admin is the narrowest predefined
+// role that includes update/pause/resume; a custom role could scope it to the one job.)
+resource "google_project_iam_member" "run_scheduler_admin" {
+  project = var.project_id
+  role    = "roles/cloudscheduler.admin"
+  member  = "serviceAccount:${google_service_account.run.email}"
+}

@@ -13,6 +13,8 @@ locals {
     RESUMAKER_GCP_REGION        = var.region
     RESUMAKER_FALLBACK_PROVIDER = var.fallback_provider
     RESUMAKER_SCHEDULER_ENABLED = "false" // cloud uses Cloud Scheduler, not the in-process loop
+    RESUMAKER_NOTIFY_TO         = var.notify_to   // digest recipient ("" -> email disabled)
+    RESUMAKER_NOTIFY_FROM       = var.notify_from
   }
 
   // env-var name -> Secret Manager secret_id, only for secrets that were actually created.
@@ -25,6 +27,7 @@ locals {
     contains(local.active_secrets, "anthropic-api-key") ? { ANTHROPIC_API_KEY = "anthropic-api-key" } : {},
     contains(local.active_secrets, "gemini-api-key") ? { GEMINI_API_KEY = "gemini-api-key" } : {},
     contains(local.active_secrets, "github-token") ? { RESUMAKER_GITHUB_TOKEN = "github-token" } : {},
+    contains(local.active_secrets, "resend-api-key") ? { RESUMAKER_RESEND_API_KEY = "resend-api-key" } : {},
   )
   // The worker also gets the Claude CLI subscription token (CLI-first LLM).
   worker_secret_env = merge(
@@ -94,9 +97,13 @@ resource "google_cloud_run_v2_service" "worker" {
     service_account = google_service_account.run.email
     scaling {
       min_instance_count = 0
-      max_instance_count = 2
+      max_instance_count = 4
     }
     timeout = "1800s" // a pipeline run is minutes; Cloud Tasks awaits the response
+    // One heavy job per instance: a match / resume render is CPU-bound, so sharing an instance
+    // would let two jobs starve each other (the contention that blew the ingest deadline). At
+    // concurrency 1 each job gets its own instance + full CPU; Cloud Run scales out then to zero.
+    max_instance_request_concurrency = 1
 
     containers {
       image = var.worker_image
@@ -126,6 +133,61 @@ resource "google_cloud_run_v2_service" "worker" {
     }
   }
   depends_on = [google_project_service.enabled, google_secret_manager_secret_version.v]
+}
+
+// Dedicated ingestion + email service. Reuses the LEAN api image (ingestion is just
+// scrape+dedupe+DB, email is httpx - none of the worker's Claude CLI / LibreOffice weight), so
+// it cold-starts fast. Cloud Scheduler (ingest-fast/slow + mailer) targets THIS, so long polls
+// never share a CPU with user traffic or LLM work. Small + fractional CPU = cheapest, and
+// concurrency 1 keeps a tick and a mailer run on separate instances.
+resource "google_cloud_run_v2_service" "ingestor" {
+  name     = "resumaker-ingestor"
+  location = var.region
+  ingress  = "INGRESS_TRAFFIC_ALL" // public but token-gated in-app; Scheduler calls it with the token
+
+  template {
+    service_account = google_service_account.run.email
+    scaling {
+      min_instance_count = 0
+      max_instance_count = 3
+    }
+    timeout                          = "1800s" // a full watchlist sweep can run minutes
+    max_instance_request_concurrency = 1
+
+    containers {
+      image = var.api_image // same lean image as the api
+      resources {
+        limits = { cpu = "1", memory = "512Mi" } // I/O-bound; small box is plenty
+      }
+      dynamic "env" {
+        for_each = local.common_env
+        content {
+          name  = env.key
+          value = env.value
+        }
+      }
+      dynamic "env" {
+        for_each = local.api_secret_env
+        content {
+          name = env.key
+          value_source {
+            secret_key_ref {
+              secret  = env.value
+              version = "latest"
+            }
+          }
+        }
+      }
+    }
+  }
+  depends_on = [google_project_service.enabled, google_secret_manager_secret_version.v]
+}
+
+resource "google_cloud_run_v2_service_iam_member" "ingestor_public" {
+  location = var.region
+  name     = google_cloud_run_v2_service.ingestor.name
+  role     = "roles/run.invoker"
+  member   = "allUsers"
 }
 
 // Both services are public but token-protected in-app: the frontend + Scheduler reach the api,

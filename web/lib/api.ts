@@ -148,6 +148,28 @@ export async function savePreferences(p: Preferences): Promise<Preferences> {
   return r.json();
 }
 
+export type MailerPrefs = {
+  include: string[]; exclude: string[]; levels: string[]; states: string[];
+  quiet_start: string; quiet_end: string; timezone: string; max_postings: number; frequency: string;
+};
+export const getMailerPrefs = () => get<MailerPrefs>("/v1/mailer/prefs");
+export async function saveMailerPrefs(p: MailerPrefs): Promise<MailerPrefs> {
+  const r = await fetch(`${BASE}/v1/mailer/prefs`, {
+    method: "PUT", headers: headers(), body: JSON.stringify(p),
+  });
+  if (!r.ok) throw new Error(`saveMailerPrefs → ${r.status}`);
+  return r.json();
+}
+
+export type MailerPreview = { on_target: number; matching: number; cap: number; would_send: number };
+export async function previewMailer(p: MailerPrefs): Promise<MailerPreview> {
+  const r = await fetch(`${BASE}/v1/mailer/preview`, {
+    method: "POST", headers: headers(), body: JSON.stringify(p),
+  });
+  if (!r.ok) throw new Error(`previewMailer → ${r.status}`);
+  return r.json();
+}
+
 export type MailerFilter = { include: string[]; exclude: string[] };
 export const getMailerFilter = () => get<MailerFilter>("/v1/profile/mailer-filter");
 export async function saveMailerFilter(mf: MailerFilter): Promise<MailerFilter> {

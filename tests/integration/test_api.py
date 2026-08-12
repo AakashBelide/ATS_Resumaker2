@@ -153,9 +153,29 @@ def test_worker_run_pipeline(client, monkeypatch):
     assert body["id"] == "wrk-1" and body["status"] == "done" and body["fit_0_100"] == 71.0
 
 
+def test_worker_tracker_match(client, monkeypatch):
+    """The Cloud Tasks target for a tracked entry's match: runs run_match_for on the worker."""
+    seen = {}
+    monkeypatch.setattr("resumaker.ingestion.tracker.run_match_for",
+                        lambda eid: seen.setdefault("id", eid))
+    r = client.post("/v1/worker/tracker-match", headers={"X-API-Key": "secret"},
+                    json={"entry_id": 7})
+    assert r.status_code == 200 and r.json() == {"entry_id": 7, "ok": True}
+    assert seen["id"] == 7
+
+
+def test_worker_mailer_tick(client, monkeypatch):
+    """The dedicated mailer Cloud Scheduler target: emails the pending backlog, returns the count."""
+    monkeypatch.setattr("resumaker.ingestion.notify.email_pending", lambda: 3)
+    r = client.post("/v1/worker/mailer-tick", headers={"X-API-Key": "secret"})
+    assert r.status_code == 200 and r.json() == {"emailed": 3}
+
+
 def test_worker_endpoints_require_token(client):
     assert client.post("/v1/worker/ingest-tick", json={}).status_code == 401
     assert client.post("/v1/worker/run-pipeline", json={"url": "x"}).status_code == 401
+    assert client.post("/v1/worker/mailer-tick").status_code == 401
+    assert client.post("/v1/worker/tracker-match", json={"entry_id": 1}).status_code == 401
 
 
 def test_artifact_store_seam_local_default(client):
