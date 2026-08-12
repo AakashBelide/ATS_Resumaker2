@@ -35,6 +35,7 @@ SOURCE_HOSTS: dict[str, list[str]] = {
     "icims": [".icims.com"],
     "smartrecruiters": ["api.smartrecruiters.com"],
     "eightfold": [".eightfold.ai"],
+    "algolia": [".algolia.net", ".algolianet.com"],
 }
 
 # Infra the sandboxed CLI itself needs (its only LLM endpoint).

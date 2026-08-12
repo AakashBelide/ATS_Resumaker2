@@ -14,6 +14,7 @@ export function careersUrl(b: Board | undefined): string {
     case "workday": return e.host ? `https://${e.host}/${e.site || ""}`.replace(/\/$/, "") : "";
     case "oracle_cloud": return e.host && e.site ? `https://${e.host}/hcmUI/CandidateExperience/en/sites/${e.site}` : "";
     case "icims": return e.host ? `https://${e.host}/jobs/search` : "";
+    case "algolia": return e.careers_url || "";   // the original careers page (Algolia host isn't browsable)
     case "amazon": return "https://www.amazon.jobs/en/search";
     case "apple": return "https://jobs.apple.com/en-us/search";
     case "google": return "https://www.google.com/about/careers/applications/jobs/results";
