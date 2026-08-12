@@ -270,6 +270,12 @@ The agent acts on **attacker-controlled scraped web content**, so it needs tools
 
 ---
 
+### Post-deploy follow-ups (backlog)
+
+- **Loading spinners / skeletons** on Discovery / Tracker / Onboarding / Profile — replace the bare `loading…` text with a spinner or skeleton cards (matters mainly for the one-time cold start now that warm loads are ~0.15s).
+- **Free CI/CD** (GitHub Actions → build+push images to Artifact Registry + `gcloud run deploy` on push to `main`) — deploys are currently manual from the local CLI. Actions free tier (2000 min/mo) covers it; mirrors the existing `onboard.yml` pattern.
+- **Write durability window**: with Turso background auto-sync (`turso_sync_interval_s=60`), a write is durable in Turso only after the next sync (≤60s). Low risk single-user; could force a `sync()` after important writes (add-to-tracker) for immediate durability (~0.14s each).
+
 ### Interim reliability fixes (2026-08-11, on `main`)
 
 - **Oracle Cloud JDs now scrape.** Added `_oracle_cloud` handler in `providers/scrape/scraper.py`: the CE careers page (`*.oraclecloud.com`, JS-rendered — a plain GET returns an empty shell) is fetched via the public `recruitingCEJobRequisitionDetails/{Id}` JSON API (the page's own source). Fixes match/resume for the whole Oracle family (JPMC, Amex, Citizens, Staples, Ford…). Test: `test_oracle_cloud_scraper`.
