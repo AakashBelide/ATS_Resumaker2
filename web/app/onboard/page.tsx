@@ -8,7 +8,63 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import CompanyLogo from "@/components/CompanyLogo";
 import { careersUrl } from "@/lib/careers";
 import Donut from "@/components/Donut";
-import { discovery, getOnboardRun, listCompanies, provideOnboardInput, setCompanyActive, startOnboard, stopOnboard, type Company, type OnboardingRun } from "@/lib/api";
+import { discovery, getOnboardRun, listCompanies, listOnboardRuns, provideOnboardInput, setCompanyActive, startOnboard, stopOnboard, type Company, type OnboardEvent, type OnboardingRun } from "@/lib/api";
+
+// ---- onboarding progress: derive a 3-stage stepper from the run's event timeline ----
+type StepState = "pending" | "active" | "done" | "skip" | "error" | "input";
+
+function lastEvent(run: OnboardingRun, stage: string): OnboardEvent | null {
+  for (let i = run.events.length - 1; i >= 0; i--) if (run.events[i].stage === stage) return run.events[i];
+  return null;
+}
+
+// The pipeline is: deterministic resolve -> (only if it misses) AI agent -> validate & add.
+function computeSteps(run: OnboardingRun): StepState[] {
+  const st = run.state;
+  const running = st === "running";
+  const det = lastEvent(run, "deterministic");
+  const escalated = det?.status === "skip";
+
+  let d: StepState;                                   // 1) deterministic
+  if (det?.status === "done") d = "done";
+  else if (escalated) d = "skip";
+  else if (det) d = running ? "active" : "done";
+  else d = running ? "active" : "pending";
+
+  let a: StepState;                                   // 2) AI agent (only when escalated)
+  if (!escalated) a = st === "resolved" ? "skip" : "pending";
+  else if (running) a = "active";
+  else if (st === "needs_input") a = "input";
+  else if (st === "resolved") a = "done";
+  else a = "error";                                   // unresolved / killed / stopped / error
+
+  let w: StepState;                                   // 3) validate & add to watchlist
+  if (st === "resolved") w = "done";
+  else if (["unresolved", "killed", "stopped", "error"].includes(st)) w = "error";
+  else w = "pending";
+
+  return [d, a, w];
+}
+
+function StepIcon({ s }: { s: StepState }) {
+  if (s === "active") return <span className="spinner sm" aria-hidden />;
+  const ch = s === "done" ? "✓" : s === "error" ? "✕" : s === "skip" ? "→" : s === "input" ? "?" : "•";
+  return <span className={`onb-ico ${s}`}>{ch}</span>;
+}
+
+// Turn raw event details into friendlier live status text.
+function prettyDetail(d: string): string {
+  return d
+    .replace("dispatching GitHub Actions resolve", "dispatching to GitHub Actions…")
+    .replace("Actions in_progress", "running in the sandbox…")
+    .replace("Actions queued", "queued on a runner…")
+    .replace("sandboxed Claude resolver", "running the sandboxed resolver…");
+}
+
+function fmtElapsed(sec: number): string {
+  const s = Math.max(0, Math.floor(sec));
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+}
 
 export default function OnboardPage() {
   const [name, setName] = useState("");
@@ -17,7 +73,9 @@ export default function OnboardPage() {
   const [run, setRun] = useState<OnboardingRun | null>(null);
   const [answer, setAnswer] = useState("");
   const [showLog, setShowLog] = useState(false);
+  const [now, setNow] = useState(() => Date.now());   // ticks while a run is in flight (elapsed timer)
   const pollRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const startedRef = useRef(false);   // set once the user starts/answers a run — blocks stale restore
   const [error, setError] = useState("");
   const [companies, setCompanies] = useState<Company[]>([]);
   const [sourceFilter, setSourceFilter] = useState("");
@@ -45,9 +103,27 @@ export default function OnboardPage() {
     tick();
   }, [refresh]);
   useEffect(() => () => { if (pollRef.current) clearTimeout(pollRef.current); }, []);
+  // Re-attach to the most recent onboarding run on load — the run lives in the DB, so a page
+  // reload should reconnect to in-flight work (resume polling) or show a just-finished result,
+  // instead of silently dropping the progress/answer box.
+  useEffect(() => {
+    const recent = (iso: string | null) => !!iso && Date.now() - new Date(iso).getTime() < 20 * 60_000;
+    listOnboardRuns(1).then((runs) => {
+      const r = runs[0];
+      if (!r || startedRef.current) return;   // user already kicked off a fresh run — don't clobber
+      if (r.state === "running") { setRun(r); poll(r.id); }
+      else if (r.state === "needs_input" || recent(r.updated_at)) { setRun(r); }
+    }).catch(() => {});
+  }, [poll]);
+  useEffect(() => {                                   // 1s elapsed clock, only while running
+    if (run?.state !== "running") return;
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [run?.state]);
 
   async function submit() {
     if (!name.trim()) return;
+    startedRef.current = true;
     if (pollRef.current) clearTimeout(pollRef.current);
     setBusy(true); setError(""); setRun(null);
     try {
@@ -58,6 +134,7 @@ export default function OnboardPage() {
 
   async function sendAnswer() {
     if (!run || !answer.trim()) return;
+    startedRef.current = true;
     try {
       const r = await provideOnboardInput(run.id, answer.trim());
       setAnswer(""); setRun(r); poll(r.id);
@@ -145,13 +222,54 @@ export default function OnboardPage() {
                   <span className={`onb-status ${st}`}>{label}</span>
                   <b>{run.name}</b>
                   {run.method && <span className="mono muted" style={{ fontSize: 11.5 }}>via {run.method}</span>}
-                  {running && <button className="btn btn-sm" style={{ marginLeft: "auto" }} onClick={stopRun}>Stop</button>}
+                  {running
+                    ? <button className="btn btn-sm" style={{ marginLeft: "auto" }} onClick={stopRun}>Stop</button>
+                    : <button className="btn btn-sm" style={{ marginLeft: "auto" }} onClick={() => setRun(null)} title="dismiss">✕</button>}
                 </div>
 
-                {st === "running" && (
-                  <p className="matching mono" style={{ marginTop: 10 }}>
-                    {cur ? `${cur.stage}${cur.detail ? " — " + cur.detail : ""}` : "starting…"}
-                  </p>
+                {(() => {
+                  const states = computeSteps(run);
+                  const cloud = run.events.some((e) => e.stage === "agent" && /Actions/i.test(e.detail));
+                  const meta = [
+                    { label: "Deterministic resolve", hint: "slug-probe + careers-page parse · $0", stage: "deterministic" },
+                    { label: "AI agent", hint: cloud ? "sandboxed resolver · GitHub Actions" : "sandboxed Claude resolver", stage: "agent" },
+                    { label: "Validate & add to watchlist", hint: "confirm the board has live postings", stage: "" },
+                  ];
+                  const elapsed = run.events.length ? now / 1000 - run.events[0].ts : 0;
+                  return (
+                    <div className="onb-steps">
+                      {meta.map((m, i) => {
+                        const s = states[i];
+                        const ev = m.stage ? lastEvent(run, m.stage) : null;
+                        const suffix = s === "skip" && i === 0 ? " · escalated to agent"
+                          : s === "skip" && i === 1 ? " · not needed" : "";
+                        return (
+                          <div key={i} className={`onb-step${s === "active" ? " on" : ""}${s === "pending" || s === "skip" ? " muted-step" : ""}`}>
+                            <span className="ico"><StepIcon s={s} /></span>
+                            <div>
+                              <div className="st-main">{m.label}{suffix}</div>
+                              <div className="st-hint">{m.hint}</div>
+                              {s === "active" && ev?.detail && (
+                                <div className="st-detail">
+                                  {prettyDetail(ev.detail)}{i === 1 && running ? ` · ${fmtElapsed(elapsed)}` : ""}
+                                </div>
+                              )}
+                              {s === "input" && i === 1 && (
+                                <div className="st-detail" style={{ color: "var(--gold)" }}>waiting for your input ↓</div>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
+
+                {(run.turns > 0 || run.cost_usd > 0) && (
+                  <div className="onb-meta">
+                    <span>{run.turns} turn{run.turns === 1 ? "" : "s"}</span>
+                    <span>${run.cost_usd.toFixed(3)}</span>
+                  </div>
                 )}
 
                 {st === "resolved" && run.board && (
