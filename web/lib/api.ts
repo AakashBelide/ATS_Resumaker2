@@ -1,12 +1,12 @@
-// Typed client for the resumaker API. The dashboard talks only to this module so the
-// API contract lives in one place. Config via NEXT_PUBLIC_API_BASE + NEXT_PUBLIC_API_TOKEN.
-
-const BASE = process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:8000";
-const TOKEN = process.env.NEXT_PUBLIC_API_TOKEN ?? "";
+// Typed client for the resumaker API. The dashboard talks only to this module so the API
+// contract lives in one place. ALL calls go through the same-origin BFF proxy
+// (web/app/api/[...path]/route.ts), which attaches the API token SERVER-SIDE — so the token is
+// never shipped to the browser (and there's no CORS). The proxy's upstream + token come from the
+// server-only env vars API_ORIGIN + API_TOKEN (set on Vercel / in web/.env.local for dev).
+const BASE = "/api";
 
 function headers(): HeadersInit {
-  return TOKEN ? { "X-API-Key": TOKEN, "Content-Type": "application/json" }
-               : { "Content-Type": "application/json" };
+  return { "Content-Type": "application/json" };  // auth is added by the proxy, not here
 }
 
 export type RunRecord = {
