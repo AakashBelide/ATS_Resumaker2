@@ -4,6 +4,7 @@ from resumaker.providers.sources.amazon import AmazonJobsSource
 from resumaker.providers.sources.apple import AppleSource
 from resumaker.providers.sources.ashby import AshbySource
 from resumaker.providers.sources.base import PostingStub, SourceAdapter
+from resumaker.providers.sources.breezy import BreezySource
 from resumaker.providers.sources.bytedance import ByteDanceSource
 from resumaker.providers.sources.dassault import DassaultSource
 from resumaker.providers.sources.eightfold import EightfoldSource
@@ -56,6 +57,7 @@ _SOURCES: dict[str, SourceAdapter] = {
     WayfairSource.source: WayfairSource(),
     AlgoliaSource.source: AlgoliaSource(),
     RecruiteeSource.source: RecruiteeSource(),
+    BreezySource.source: BreezySource(),
 }
 
 
