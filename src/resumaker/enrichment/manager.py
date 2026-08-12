@@ -45,11 +45,12 @@ def _now() -> str:
 
 # ---------------------------------------------------------------- house rules
 def load_house_rules(path: Path | None = None) -> dict:
-    path = path or HOUSE_RULES_PATH
-    if not path.exists():
-        return {"rules": [], "do_not_repeat": []}
-    with path.open() as fh:
-        return json.load(fh)
+    _default = {"rules": [], "do_not_repeat": []}
+    if path is not None:                          # explicit path -> read that file (tests/tools)
+        return json.loads(path.read_text()) if path.exists() else _default
+    # DB-backed (dual-mode), auto-migrating the legacy JSON file on first read
+    from resumaker.persistence.profile import _load_doc
+    return _load_doc("house_rules", get_settings().house_rules_path, default=_default)
 
 
 def house_rules_for(*scopes: str, path: Path | None = None) -> list[dict]:

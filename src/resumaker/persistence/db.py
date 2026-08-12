@@ -113,6 +113,11 @@ CREATE TABLE IF NOT EXISTS onboarding_runs (
     created_at   TEXT NOT NULL,
     updated_at   TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS documents (
+    name        TEXT PRIMARY KEY,            -- profile | preferences | house_rules
+    json        TEXT NOT NULL,               -- the document as JSON
+    updated_at  TEXT NOT NULL
+);
 CREATE INDEX IF NOT EXISTS idx_runs_created ON runs(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_jobs_status ON jobs(status);
 CREATE INDEX IF NOT EXISTS idx_tracker_stage ON tracker(stage);
@@ -574,6 +579,30 @@ def _run_from_row(r: sqlite3.Row) -> RunRecord:
         ats_verify_pass=None if r["ats_verify_pass"] is None else bool(r["ats_verify_pass"]),
         page_count=r["page_count"], cost_usd=r["cost_usd"], error=r["error"],
         created_at=_dt(r["created_at"]), finished_at=_dt(r["finished_at"]))
+
+
+# ------------------------------------------------------------------ documents (profile etc.)
+def get_document(name: str) -> dict | None:
+    """Read a config document (profile/preferences/house_rules) from the DB, or None if absent.
+    Tolerates the table not existing yet (DB created before this schema / not init_db'd) by
+    returning None, so callers fall back to the legacy JSON file."""
+    with connect() as conn:
+        try:
+            row = conn.execute("SELECT json FROM documents WHERE name=?", (name,)).fetchone()
+        except Exception as e:  # noqa: BLE001 - only swallow "no such table"; re-raise anything else
+            if "no such table" in str(e).lower():
+                return None
+            raise
+    return json.loads(row["json"]) if row else None
+
+
+def put_document(name: str, data: dict) -> None:
+    """Insert or replace a config document (dual-mode: local SQLite or Turso)."""
+    with connect() as conn:
+        conn.execute(
+            """INSERT INTO documents (name, json, updated_at) VALUES (?,?,?)
+               ON CONFLICT(name) DO UPDATE SET json=excluded.json, updated_at=excluded.updated_at""",
+            (name, json.dumps(data), _now()))
 
 
 def _tracker_from_row(r: sqlite3.Row) -> TrackerEntry:

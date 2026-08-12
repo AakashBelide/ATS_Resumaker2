@@ -2,37 +2,64 @@
 
 Everything the pipeline generates must trace back to this. The fact-gate uses
 `all_metrics/all_employers/all_titles` + `facts_allowlist` to block fabrication.
-Files remain canonical; this module just reads + caches them.
+
+The profile/preferences live in the DB (dual-mode: local SQLite or hosted Turso) so the cloud
+services can read them and they're editable in-app. On first read, a legacy JSON file under
+`data/profile/` is auto-imported into the DB, so existing local setups migrate transparently.
 """
 from __future__ import annotations
 
+import contextlib
 import datetime
 import functools
 import json
 import re
+from pathlib import Path
 
 from resumaker.config import get_settings
 
 
+def _load_doc(name: str, file_path: Path, default: dict) -> dict:
+    """Read a config document from the DB, auto-migrating the legacy JSON file on first read."""
+    from resumaker.persistence import db
+    doc = db.get_document(name)
+    if doc is not None:
+        return doc
+    if file_path.exists():                       # first run: import the file into the DB
+        data = json.loads(file_path.read_text())
+        with contextlib.suppress(Exception):     # best-effort cache (DB may lack the table yet)
+            db.put_document(name, data)
+        return data
+    return default
+
+
 @functools.lru_cache(maxsize=1)
 def load_profile() -> dict:
-    with get_settings().profile_path.open() as fh:
-        return json.load(fh)
+    return _load_doc("profile", get_settings().profile_path, default={})
 
 
 @functools.lru_cache(maxsize=1)
 def load_preferences() -> dict:
     """Job-search preferences: target roles, comp, location (incl. relocation metros),
     work-model, seniority, sponsorship. Returns {} if not yet configured."""
-    p = get_settings().preferences_path
-    if not p.exists():
-        return {}
-    with p.open() as fh:
-        return json.load(fh)
+    return _load_doc("preferences", get_settings().preferences_path, default={})
+
+
+def save_profile(data: dict) -> None:
+    """Persist an edited profile to the DB and refresh caches (used by the API editor)."""
+    from resumaker.persistence import db
+    db.put_document("profile", data)
+    invalidate()
+
+
+def save_preferences(data: dict) -> None:
+    from resumaker.persistence import db
+    db.put_document("preferences", data)
+    invalidate()
 
 
 def invalidate() -> None:
-    """Drop cached profile/preferences after an enrichment update writes to disk."""
+    """Drop cached profile/preferences after an update writes to the DB."""
     load_profile.cache_clear()
     load_preferences.cache_clear()
 
