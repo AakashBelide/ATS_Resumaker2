@@ -76,6 +76,28 @@ def test_db_run_upsert(tmp_settings):
     assert len(db.list_runs()) == 1
 
 
+def test_db_run_record_serializes_datetimes(tmp_settings):
+    """record_run must serialize datetime timestamps to ISO strings before binding: the
+    libSQL/Turso driver rejects datetime params ("Unsupported parameter type"), which silently
+    dropped every generation run's row in the cloud. `_index_run` passes real datetimes, so this
+    path must not raise and must round-trip."""
+    from datetime import UTC, datetime
+
+    from resumaker.persistence.db import _iso
+
+    assert _iso(None) is None
+    assert _iso("2026-08-12T00:00:00+00:00") == "2026-08-12T00:00:00+00:00"
+    ts = datetime(2026, 8, 12, 15, 30, tzinfo=UTC)
+    assert _iso(ts) == ts.isoformat()
+
+    db.init_db()
+    run = RunRecord(id="dt1", url="http://x", out_dir="/o", status="done",
+                    created_at=ts, finished_at=ts)
+    db.record_run(run)  # would raise on the libSQL backend if datetimes weren't serialized
+    got = db.get_run("dt1")
+    assert got is not None and got.created_at == ts and got.finished_at == ts
+
+
 def test_ensure_column_tolerates_stale_duplicate(tmp_settings):
     """_ensure_column swallows a 'duplicate column' ALTER error (libSQL/Turso stale-view case)
     but re-raises anything else. Reproduces the real-Turso first-run failure."""

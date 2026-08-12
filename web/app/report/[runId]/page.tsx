@@ -36,7 +36,6 @@ export default function ReportPage() {
   const [r, setR] = useState<Report | null>(null);
   const [error, setError] = useState("");
   const [gen, setGen] = useState<{ stage: string } | null>(null);   // in-progress generation
-  const [genDone, setGenDone] = useState<string | null>(null);       // new run id when done
 
   const load = useCallback(() => {
     setError("");
@@ -46,9 +45,11 @@ export default function ReportPage() {
 
   async function generate() {
     if (!r) return;
-    setGen({ stage: "starting" }); setGenDone(null); setError("");
+    setGen({ stage: "starting" }); setError("");
     try {
-      const { run_id } = await startRun(r.url);
+      // Reuse THIS report's run_id so the resume is written into the same folder; on success we
+      // just reload the report (it now carries the resume + cover), so a refresh keeps showing it.
+      const { run_id } = await startRun(r.url, runId);
       // Poll progress (no SSE): status.json gives the live stage; `done` ends the loop, then
       // one getRun tells us success vs error. status.json may not exist for the first tick.
       const poll = setInterval(async () => {
@@ -57,10 +58,10 @@ export default function ReportPage() {
           if (p.current) setGen({ stage: p.current });
           if (p.done) {
             clearInterval(poll);
-            const rec = await getRun(run_id);
+            const rec = await getRun(run_id).catch(() => null);
             setGen(null);
-            if (rec.status === "error") setError("generation failed - see the run log");
-            else setGenDone(run_id);
+            if (rec && rec.status === "error") setError("generation failed - see the run log");
+            else load();   // re-fetch the report; resume + cover now present -> chips render
           }
         } catch { /* status.json not written yet - keep polling */ }
       }, 2000);
@@ -257,8 +258,6 @@ export default function ReportPage() {
                       <button className="btn btn-sm" disabled>
                         <span className="matching mono">generating… {gen.stage}</span>
                       </button>
-                    ) : genDone ? (
-                      <a className="btn btn-sm btn-primary" href={`/report/${encodeURIComponent(genDone)}`}>view generated documents ↗</a>
                     ) : (
                       <button className="btn btn-sm btn-primary" onClick={generate}>Generate résumé &amp; cover letter</button>
                     )}

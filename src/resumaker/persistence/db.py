@@ -130,6 +130,15 @@ def _now() -> str:
     return datetime.now(UTC).isoformat()
 
 
+def _iso(dt: datetime | str | None) -> str | None:
+    """Serialize a datetime to an ISO string before binding. stdlib sqlite3 adapts datetimes
+    automatically, but the libSQL/Turso driver does not (it raises "Unsupported parameter type"),
+    so every timestamp bound to the DB must be a string. Passes through strings/None unchanged."""
+    if dt is None:
+        return None
+    return dt.isoformat() if isinstance(dt, datetime) else str(dt)
+
+
 _turso_lock = threading.Lock()
 _turso_conn: Any = None
 
@@ -252,7 +261,7 @@ def record_run(run: RunRecord) -> None:
             (run.id, run.job_id, run.url, run.out_dir, run.status,
              _b(run.recommend_apply), run.fit_0_100, run.ats_overall,
              _b(run.fact_gate_pass), _b(run.ats_verify_pass), run.page_count,
-             run.cost_usd, run.error, run.created_at or _now(), run.finished_at),
+             run.cost_usd, run.error, _iso(run.created_at) or _now(), _iso(run.finished_at)),
         )
 
 
@@ -463,7 +472,7 @@ def add_company(company: Company) -> int:
         cur = conn.execute(
             "INSERT INTO companies (name, active, created_at) VALUES (?,?,?) "
             "ON CONFLICT(name) DO UPDATE SET active=excluded.active RETURNING id",
-            (company.name, int(company.active), company.created_at or _now()))
+            (company.name, int(company.active), _iso(company.created_at) or _now()))
         row = cur.fetchone()
         assert row is not None  # RETURNING always yields a row here
         cid = int(row["id"])

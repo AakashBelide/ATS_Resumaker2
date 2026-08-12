@@ -29,6 +29,11 @@ router = APIRouter(prefix="/v1/runs", tags=["runs"], dependencies=[Depends(requi
 
 class RunRequest(BaseModel):
     url: str
+    # When generating from a tracked job, the frontend passes that job's stable run_id (the match
+    # slug) so the tailored resume lands in the SAME run folder as its match report - it overwrites
+    # report.json with the full (resume-bearing) version, so the report page shows the documents on
+    # reload with no separate id to remember. Omitted for ad-hoc runs -> a fresh id is minted.
+    run_id: str | None = None
     gate: bool = False
     make_cover_letter: bool = True
     target_pages: int = 1
@@ -49,7 +54,7 @@ def start_run(req: RunRequest) -> RunStarted:
 
     from apps.api.jobs.queue import get_job_queue
 
-    run_id = uuid.uuid4().hex[:12]
+    run_id = req.run_id or uuid.uuid4().hex[:12]
     get_job_queue().submit_pipeline(run_id, req.url, {
         "gate": req.gate, "make_cover_letter": req.make_cover_letter,
         "target_pages": req.target_pages, "semantic_method": req.semantic_method,

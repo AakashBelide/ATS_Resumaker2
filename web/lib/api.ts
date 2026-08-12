@@ -29,9 +29,13 @@ export async function getRun(runId: string): Promise<RunRecord> {
   return r.json();
 }
 
-export async function startRun(url: string): Promise<{ run_id: string }> {
+// `runId` (optional): when generating from a tracked job, pass that job's stable id so the
+// tailored resume is written into its match-report folder (overwriting report.json with the
+// resume-bearing version). The report page then shows the documents on reload - no id to remember.
+export async function startRun(url: string, runId?: string): Promise<{ run_id: string }> {
   const r = await fetch(`${BASE}/v1/runs`, {
-    method: "POST", headers: headers(), body: JSON.stringify({ url }),
+    method: "POST", headers: headers(),
+    body: JSON.stringify(runId ? { url, run_id: runId } : { url }),
   });
   if (!r.ok) throw new Error(`startRun ${r.status}`);
   return r.json();

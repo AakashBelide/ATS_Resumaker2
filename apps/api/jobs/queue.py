@@ -74,8 +74,10 @@ class CloudTasksQueue:
                 "headers": headers,
                 "body": body,
             },
-            # dedupe: one task per run id (Cloud Tasks drops duplicates by name for ~1h)
-            "name": client.task_path(self._project, self._region, self._queue, run_id),
+            # No task name -> not deduped. A generation reuses its tracked job's stable run_id (so
+            # the resume lands in the match folder), and a re-generate must run even though the id
+            # repeats - a name would make Cloud Tasks silently drop it for ~1h. The frontend already
+            # disables the button while a run is in flight, so accidental double-submits are guarded.
         }
         client.create_task(parent=parent, task=task)
         _log.info("enqueued pipeline task", extra={"run_id": run_id, "queue": self._queue})

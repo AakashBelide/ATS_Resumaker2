@@ -29,7 +29,11 @@ def _apply_match(entry: TrackerEntry) -> None:
     match must be visibly distinct from one still in flight."""
     from resumaker.pipeline import run_pipeline
     try:
-        res = run_pipeline(url=entry.url, match_only=True)
+        # Reuse the entry's existing run_id (the stable match slug) when it has one, so a re-match
+        # lands in the SAME run folder even if the refreshed title would derive a different slug -
+        # entry.run_id is the one durable id for this tracked job (match report + on-demand resume
+        # + cover all live under it). A first add has no id yet -> the pipeline derives one.
+        res = run_pipeline(url=entry.url, match_only=True, run_id=entry.run_id or None)
     except Exception as e:  # noqa: BLE001 - surface any crash as a retryable failed state
         _log.warning("tracker match crashed", extra={"url": entry.url, "error": str(e)})
         entry.match_error = str(e)
@@ -98,6 +102,15 @@ def run_match_for(entry_id: int) -> None:
     entry = db.get_tracker(entry_id)
     if entry is None:
         return
+    # A re-match starts clean: wipe the prior run's artifacts - the match report AND any tailored
+    # resume/cover, which were built from the now-stale analysis - so nothing orphaned is left in
+    # the folder. The match below reuses this same stable run_id, repopulating the folder fresh.
+    if entry.run_id:
+        import contextlib
+
+        from resumaker.persistence.artifacts import get_artifact_store
+        with contextlib.suppress(Exception):
+            get_artifact_store().delete_run(entry.run_id)
     # Refresh the posting title/company from the watchlist first, so a re-match *corrects* a
     # stale/wrong stored title (e.g. an old JD-derived "Software Engineering III") back to the
     # real ATS listing title. _apply_match then keeps this over the JD-extracted value.
