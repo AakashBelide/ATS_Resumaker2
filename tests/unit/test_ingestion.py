@@ -339,6 +339,35 @@ def test_mailer_preview_counts(tmp_db):
     assert got["on_target"] == 3                         # denominator unaffected by the filter
 
 
+def test_mailer_frequency_sync_noop_off_cloud(monkeypatch):
+    """Off-cloud (no GCP project) the Cloud Scheduler sync is a no-op."""
+    from types import SimpleNamespace
+
+    from resumaker.ingestion import schedule_sync
+    monkeypatch.setattr(schedule_sync, "get_settings",
+                        lambda: SimpleNamespace(gcp_project=None, gcp_region="us-central1",
+                                                ingest_scheduler_job="resumaker-ingest-fast"))
+    assert schedule_sync.sync_mailer_frequency("hourly") == "skipped (no gcp)"
+
+
+def test_email_pending_uses_full_backlog(tmp_db, monkeypatch):
+    """email_pending emails the whole unnotified on-target backlog, not just a single tick's new
+    jobs — so a posting deferred earlier (quiet hours / low frequency) still goes out later."""
+    from resumaker.domain import JobRecord
+    from resumaker.ingestion import notify
+    from resumaker.persistence import db
+
+    for i, t in enumerate(["AI Engineer", "ML Engineer", "Office Manager"]):
+        db.upsert_job(JobRecord(source="greenhouse", external_id=str(i), title=t,
+                                company="Acme", url=f"https://x/{i}", content_hash=str(i)))
+    sent = {}
+    monkeypatch.setattr(notify, "email_new", lambda jobs, **kw: sent.setdefault("n", len(jobs)))
+
+    notify.email_pending()
+    # both on-target titles are queued from the table (Office Manager is off-target, dropped)
+    assert sent["n"] == 3   # email_new receives the full jobs table; its own pending() narrows
+
+
 def test_actions_agent_runner_dispatch_poll_artifact(monkeypatch):
     """ActionsAgentRunner: dispatch the workflow, find the run by run-name, then download the
     contract artifact - all mocked (no GitHub calls). Fits the synchronous resolve() seam."""

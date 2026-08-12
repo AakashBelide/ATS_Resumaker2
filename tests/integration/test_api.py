@@ -123,8 +123,9 @@ def test_worker_ingest_tick(client, monkeypatch):
     fake = [SimpleNamespace(new_jobs=[{"x": 1}]), SimpleNamespace(new_jobs=[])]
     captured = {}
 
-    def fake_run_tick(sources):
+    def fake_run_tick(sources, *, email_digest=True):
         captured["sources"] = sources
+        captured["email_digest"] = email_digest
         return fake
     monkeypatch.setattr("resumaker.ingestion.scheduler.run_tick", fake_run_tick)
 
@@ -133,6 +134,10 @@ def test_worker_ingest_tick(client, monkeypatch):
     assert r.status_code == 200
     assert r.json() == {"sources": "fast", "companies": 2, "new": 1}
     assert captured["sources"] is not None and "greenhouse" in captured["sources"]  # fast set
+    assert captured["email_digest"] is True                    # fast tick drives the email
+
+    client.post("/v1/worker/ingest-tick", headers={"X-API-Key": "secret"}, json={"sources": "slow"})
+    assert captured["email_digest"] is False                   # slow tick ingests silently
 
 
 def test_worker_run_pipeline(client, monkeypatch):

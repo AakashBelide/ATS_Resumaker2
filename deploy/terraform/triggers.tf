@@ -36,6 +36,12 @@ resource "google_cloud_scheduler_job" "ingest_fast" {
     body = base64encode(jsonencode({ sources = "fast" }))
   }
   depends_on = [google_project_service.enabled]
+
+  // The app rewrites this job's cron live from the Mailer "frequency" control, so let it own
+  // the schedule + paused state - Terraform sets the initial value but won't fight later edits.
+  lifecycle {
+    ignore_changes = [schedule, paused]
+  }
 }
 
 resource "google_cloud_scheduler_job" "ingest_slow" {

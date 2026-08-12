@@ -69,7 +69,9 @@ def ingest_tick(body: IngestTickIn) -> IngestTickOut:
     """Run one watchlist poll over the selected source set (the Cloud Scheduler cron target).
     Idempotent - re-ingesting the same postings dedupes to zero new."""
     from resumaker.ingestion.scheduler import run_tick
-    results = run_tick(_sources_for(body.sources))
+    # Email rides on the fast/all tick only (its cron is what the Mailer frequency controls); the
+    # slow tick ingests silently and its postings go out on the next fast tick (backlog-wide).
+    results = run_tick(_sources_for(body.sources), email_digest=body.sources != "slow")
     new = sum(len(r.new_jobs) for r in results)
     return IngestTickOut(sources=body.sources, companies=len(results), new=new)
 

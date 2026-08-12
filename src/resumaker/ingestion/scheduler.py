@@ -12,7 +12,7 @@ without SQLAlchemy). APScheduler is lazy-imported (it lives in the `api` extra).
 from __future__ import annotations
 
 from resumaker.config import get_settings
-from resumaker.ingestion.notify import notify_new
+from resumaker.ingestion.notify import email_pending, notify_new
 from resumaker.ingestion.service import IngestResult, ingest_all
 from resumaker.observability.logging import get_logger
 
@@ -35,15 +35,22 @@ def _slow_sources() -> set[str]:
     return set(available_sources()) - _FAST_SOURCES
 
 
-def run_tick(sources: set[str] | None = None) -> list[IngestResult]:
+def run_tick(sources: set[str] | None = None, *, email_digest: bool = True) -> list[IngestResult]:
     """One poll over the given ATS sources (all if None): ingest -> tech+US filter -> dedupe
     -> notify. Uses the broad tech-role gate (not the narrower target-role preference) so we
-    catch all of SWE/AI/ML/DS/DE, not just the exact preferred titles."""
+    catch all of SWE/AI/ML/DS/DE, not just the exact preferred titles.
+
+    `email_digest` (fast tick only) flushes the email backlog: the digest rides on the fast
+    tick because that job's cron is what the Mailer 'frequency' control rewrites, so email
+    cadence == fast-tick cadence (and 'off' pauses the fast job -> no emails). The slow/Workday
+    tick still ingests; its postings are emailed on the next fast tick (backlog-wide)."""
     results = ingest_all(tech_only=True, us_only=True, sources=sources)
     new_jobs = [j for r in results for j in r.new_jobs]
     notify_new(new_jobs)
+    emailed = email_pending() if email_digest else 0
     _log.info("watchlist tick", extra={"sources": sorted(sources) if sources else "all",
-                                       "companies": len(results), "new": len(new_jobs)})
+                                       "companies": len(results), "new": len(new_jobs),
+                                       "emailed": emailed})
     return results
 
 
@@ -55,7 +62,7 @@ def build_scheduler():
     sched.add_job(lambda: run_tick(_FAST_SOURCES), "interval",
                   minutes=s.scheduler_interval_minutes, id="boards_fast",
                   replace_existing=True)
-    sched.add_job(lambda: run_tick(_slow_sources()), "interval",
+    sched.add_job(lambda: run_tick(_slow_sources(), email_digest=False), "interval",
                   minutes=s.scheduler_workday_interval_minutes, id="boards_slow",
                   replace_existing=True)
     return sched

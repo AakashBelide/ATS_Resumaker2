@@ -7,18 +7,10 @@ from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
 
 from apps.api.security import require_token
+from resumaker.ingestion.schedule_sync import FREQUENCIES, sync_mailer_frequency
 from resumaker.persistence import profile
 
 router = APIRouter(prefix="/v1/mailer", tags=["mailer"], dependencies=[Depends(require_token)])
-
-# Allowed send cadences -> their cron (Cloud Scheduler). "off" pauses the digest.
-FREQUENCIES: dict[str, str] = {
-    "off": "",
-    "hourly": "0 * * * *",
-    "every_4h": "0 */4 * * *",
-    "every_12h": "0 */12 * * *",
-    "daily": "0 8 * * *",
-}
 
 
 class MailerPrefs(BaseModel):
@@ -44,9 +36,8 @@ def set_prefs(body: MailerPrefs) -> MailerPrefs:
     data = body.model_dump()
     if data["frequency"] not in FREQUENCIES:
         data["frequency"] = "hourly"
-    profile.save_mailer_prefs(data)
-    # The frequency->Cloud Scheduler push is applied by the scheduler seam (see mailer schedule
-    # sync); here we just persist the source of truth.
+    profile.save_mailer_prefs(data)                 # the prefs doc is the source of truth...
+    sync_mailer_frequency(data["frequency"])        # ...then push the cadence to Cloud Scheduler
     return MailerPrefs(**data)
 
 

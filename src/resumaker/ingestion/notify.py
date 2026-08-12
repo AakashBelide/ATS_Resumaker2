@@ -43,14 +43,23 @@ _LVL_DEFAULT = (_MUTED, "rgba(255,255,255,0.03)", _LINE2)
 
 
 def notify_new(jobs: list[JobRecord]) -> None:
-    """Scheduler hook: durable digest + optional webhook, then the email digest (best-effort)."""
+    """Scheduler hook: durable digest (JSONL) + optional webhook for THIS tick's new postings.
+    The email digest is sent separately by `email_pending` (driven off the fast tick), so it can
+    email the whole pending backlog - not just this tick's new jobs - and honor quiet hours."""
     if not jobs:
         return
     _write_digest_and_webhook(jobs)
+
+
+def email_pending() -> int:
+    """Email the full pending on-target backlog (best-effort). Separate from `notify_new` so a
+    quiet-hours / low-frequency deferral catches up whenever the digest next runs, and so a tick
+    that ingested nothing new still flushes a backlog left from an earlier deferral."""
     try:
-        email_new(jobs)
+        return email_new(db.list_jobs(limit=100_000))
     except Exception as e:  # noqa: BLE001 - notification is best-effort, never sinks a tick
         _log.warning("email digest failed", extra={"error": str(e)})
+        return 0
 
 
 def _write_digest_and_webhook(jobs: list[JobRecord]) -> None:

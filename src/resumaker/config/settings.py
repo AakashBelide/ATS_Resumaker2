@@ -119,6 +119,9 @@ class Settings(BaseSettings):
     # A sweep fetches boards grouped by ATS source (== host): groups run concurrently up to
     # this many at a time, while companies *within* a group stay serial + jittered (same host).
     ingest_fetch_workers: int = 5
+    # The Cloud Scheduler job whose cron the Mailer "frequency" control rewrites (emails ride on
+    # the fast ingest tick). Blank / non-cloud -> the frequency sync is a no-op (local dev).
+    ingest_scheduler_job: str = "resumaker-ingest-fast"
     notify_webhook: str | None = None     # optional: POST a JSON digest of new jobs here
     # -- email digest of new on-target postings (all from .env; nothing hardcoded) -----------
     notify_to: str | None = None          # recipient; blank -> email disabled
