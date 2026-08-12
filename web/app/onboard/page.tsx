@@ -35,11 +35,12 @@ function computeSteps(run: OnboardingRun): StepState[] {
   if (!escalated) a = st === "resolved" ? "skip" : "pending";
   else if (running) a = "active";
   else if (st === "needs_input") a = "input";
-  else if (st === "resolved") a = "done";
+  else if (st === "resolved" || st === "drafted") a = "done";
   else a = "error";                                   // unresolved / killed / stopped / error
 
   let w: StepState;                                   // 3) validate & add to watchlist
   if (st === "resolved") w = "done";
+  else if (st === "drafted") w = "skip";              // adapter drafted + PR'd; not added yet
   else if (["unresolved", "killed", "stopped", "error"].includes(st)) w = "error";
   else w = "pending";
 
@@ -211,13 +212,13 @@ export default function OnboardPage() {
             {run && (() => {
               const st = run.state;
               const label = st === "resolved" ? "✓ Resolved" : st === "running" ? "Resolving…"
-                : st === "needs_input" ? "Needs your input" : st === "unresolved" ? "Couldn’t resolve"
-                : st === "error" ? "Error" : st;
+                : st === "needs_input" ? "Needs your input" : st === "drafted" ? "Adapter drafted · PR opened"
+                : st === "unresolved" ? "Couldn’t resolve" : st === "error" ? "Error" : st;
               const cur = run.events[run.events.length - 1];
               const cUrl = run.board
                 ? careersUrl({ source: run.board.source, token: run.board.token, extra: run.board.extra || {} }) : "";
               return (
-              <div className={`result ${st === "resolved" ? "ok" : ["running", "needs_input"].includes(st) ? "" : "no"}`}>
+              <div className={`result ${["resolved", "drafted"].includes(st) ? "ok" : ["running", "needs_input"].includes(st) ? "" : "no"}`}>
                 <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                   <span className={`onb-status ${st}`}>{label}</span>
                   <b>{run.name}</b>
@@ -277,6 +278,18 @@ export default function OnboardPage() {
                     <span className="tag">{run.board.source} / {run.board.token}</span>
                     {cUrl && <a href={cUrl} target="_blank" rel="noreferrer" className="cc-link" style={{ marginLeft: 10, fontSize: 12.5 }}>careers ↗</a>}
                     <div className="muted" style={{ marginTop: 6, fontSize: 12.5 }}>Added to the watchlist — included in the next ingest.</div>
+                  </div>
+                )}
+
+                {st === "drafted" && (
+                  <div style={{ marginTop: 10 }}>
+                    {run.board && <span className="tag">{run.board.source}</span>}
+                    <div className="muted" style={{ marginTop: 6, fontSize: 12.5 }}>
+                      {cur?.detail || "New adapter drafted, validated against the live board, and a PR opened."}
+                    </div>
+                    <div className="muted" style={{ marginTop: 4, fontSize: 12 }}>
+                      Review &amp; merge the PR, then redeploy — re-onboarding will then resolve this company normally.
+                    </div>
                   </div>
                 )}
 

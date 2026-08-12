@@ -14,12 +14,72 @@ from __future__ import annotations
 
 import ast
 import re
+from collections.abc import Callable
 from pathlib import Path
+from urllib.parse import urlsplit
 
 from resumaker.observability.logging import get_logger
 from resumaker.onboarding.agent import gate
 
 _log = get_logger("resumaker.onboarding.drafting")
+
+OnEvent = Callable[[str, str, str], None]
+
+
+def _fp_hosts(fp: dict) -> list[str]:
+    """The exact API hosts the fingerprint saw — the egress the drafted adapter is allowed to hit."""
+    hosts: set[str] = set()
+    for call in (fp or {}).get("api_calls", []):
+        if (hn := urlsplit(call.get("url", "")).hostname):
+            hosts.add(hn)
+    if (ah := (fp or {}).get("algolia", {}).get("host")):
+        hosts.add(ah)
+    return sorted(hosts)
+
+
+def orchestrate(name: str, careers_url: str | None, *, run_id: str, on_event: OnEvent,
+                repo_root: str | Path | None = None) -> dict:
+    """The full runner-side onboarding flow (has a browser + Docker, unlike the lean cloud API):
+    deterministic resolve -> headless fingerprint -> sandboxed agent (map OR draft, given the
+    fingerprint) -> gate + write + register a drafted adapter. Returns the final contract."""
+    from resumaker.ingestion import onboard as det  # noqa: PLC0415
+    from resumaker.ingestion.fingerprint import fingerprint as fp_fn  # noqa: PLC0415
+    from resumaker.onboarding.agent_runner import DockerAgentRunner  # noqa: PLC0415
+
+    res = det.resolve(name, careers_url=careers_url or None)
+    if res.resolved and res.boards:
+        b = res.boards[0]
+        on_event("deterministic", "done", f"{b.source}:{b.token} via {res.method}")
+        return {"status": "resolved",
+                "board": {"source": b.source, "token": b.token, "extra": b.extra},
+                "evidence": {"method": res.method}}
+    on_event("deterministic", "skip", "no supported board; fingerprinting for the agent")
+
+    fp: dict = {}
+    if careers_url:
+        on_event("fingerprint", "start", "headless capture of the careers page")
+        fp = fp_fn(careers_url)
+        on_event("fingerprint", "done",
+                 f"api_calls={len(fp.get('api_calls', []))} algolia={'yes' if fp.get('algolia') else 'no'}")
+
+    contract = DockerAgentRunner().resolve(name, careers_url or None, run_id=run_id,
+                                           on_event=on_event, fingerprint=fp)
+    if contract.get("adapter_code"):
+        on_event("draft", "start", f"gating drafted adapter '{contract.get('adapter_name', '?')}'")
+        # The gate runs the adapter with egress to the fingerprinted hosts PLUS the careers
+        # domain (where a board API usually lives — the fingerprint misses server-rendered feeds).
+        allow = _fp_hosts(fp)
+        if careers_url:
+            h = urlsplit(careers_url if "://" in careers_url else "https://" + careers_url).hostname
+            if h:
+                allow.append(h)
+                parts = h.split(".")
+                if len(parts) >= 2:
+                    allow.append("." + ".".join(parts[-2:]))   # wildcard the registrable domain
+        contract = process_draft(contract, allow_hosts=allow, repo_root=repo_root)
+        on_event("draft", "done" if contract.get("status") == "drafted" else "error",
+                 contract.get("note", "")[:120])
+    return contract
 
 
 def _repo_root() -> Path:
@@ -129,6 +189,7 @@ def process_draft(contract: dict, *, allow_hosts: list[str] | None = None,
         "evidence": {"count": v.get("count"), "well_formed": v.get("well_formed"),
                      "sample": v.get("sample")},
         "adapter_name": name,
-        "note": (f"adapter '{name}' drafted + validated ({v.get('count')} live postings); "
-                 "a PR was opened for review — merge + redeploy to enable this company."),
+        "note": (f"adapter '{name}' drafted + validated ({v.get('count')} live postings) and "
+                 "written to providers/sources/; the onboarding workflow opens a review PR from it "
+                 "(cloud path only). Merge + redeploy to enable this company."),
     }

@@ -22,6 +22,7 @@ from resumaker.providers.sources.paradox import ParadoxSource
 from resumaker.providers.sources.pcsx import PcsxSource
 from resumaker.providers.sources.phenom import PhenomSource
 from resumaker.providers.sources.radancy import RadancySource
+from resumaker.providers.sources.recruitee import RecruiteeSource
 from resumaker.providers.sources.smartrecruiters import SmartRecruitersSource
 from resumaker.providers.sources.tesla import TeslaSource
 from resumaker.providers.sources.wayfair import WayfairSource
@@ -54,6 +55,7 @@ _SOURCES: dict[str, SourceAdapter] = {
     ICIMSSource.source: ICIMSSource(),
     WayfairSource.source: WayfairSource(),
     AlgoliaSource.source: AlgoliaSource(),
+    RecruiteeSource.source: RecruiteeSource(),
 }
 
 
