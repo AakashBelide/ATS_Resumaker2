@@ -682,10 +682,12 @@ button, input, select, textarea { font-family: inherit; }
     background-size: 46px 46px;
     -webkit-mask-image: radial-gradient(ellipse 80% 55% at 50% 0%, #000 40%, transparent 78%);
     mask-image: radial-gradient(ellipse 80% 55% at 50% 0%, #000 40%, transparent 78%); }
-.lp > :not(.lp-orb):not(.lp-grid) { position: relative; z-index: 1; }
+.lp > :not(.lp-orb):not(.lp-grid):not(.lp-nav) { position: relative; z-index: 1; }
 
-.lp-nav { display: flex; align-items: center; justify-content: space-between; max-width: 1080px;
-    margin: 0 auto; padding: 22px 24px; }
+.lp-nav { position: sticky; top: 0; z-index: 50; transition: transform .32s ease;
+    background: linear-gradient(180deg, rgba(6,10,20,.82), rgba(6,10,20,0)); backdrop-filter: blur(9px); }
+.lp-nav-hidden { transform: translateY(-100%); }
+.lp-nav-inner { display: flex; align-items: center; justify-content: space-between; max-width: 1080px; margin: 0 auto; padding: 18px 24px; }
 .lp-brand { display: flex; align-items: center; gap: 10px; }
 .lp-brand .rail-hex { width: 26px; height: 26px; color: var(--electric); }
 .lp-brand b { font-family: var(--font-display); font-size: 16px; font-weight: 700; letter-spacing: .2px; white-space: nowrap; }
@@ -698,7 +700,7 @@ button, input, select, textarea { font-family: inherit; }
 .lp-iconbtn svg { width: 15px; height: 15px; }
 /* below 760px the top nav collapses to brand + github + login + CTA */
 @media (max-width: 760px) {
-  .lp-nav { padding: 16px 18px; }
+  .lp-nav-inner { padding: 14px 18px; }
   .lp-nav-links { gap: 10px; }
   .lp-nav-links .lp-navlink { display: none; }
 }
@@ -765,9 +767,11 @@ button, input, select, textarea { font-family: inherit; }
 .lp-mini-toast { position: absolute; left: 22px; bottom: 18px; color: var(--sky); background: #0e1728;
     border: 1px solid var(--line-2); border-radius: 9px; padding: 8px 12px; font-size: 12px; }
 
-.lp-cta-band { max-width: 900px; margin: 84px auto 0; padding: 48px 24px; text-align: center;
+.lp-cta-band { max-width: 900px; margin: 84px auto 0; padding: 60px 56px; text-align: center;
     border: 1px solid var(--line-2); border-radius: 22px;
     background: radial-gradient(ellipse at center, rgba(59,116,255,.12), rgba(14,23,40,.5)); }
+.lp-cta-inner { max-width: 620px; margin: 0 auto; }
+@media (max-width: 620px) { .lp-cta-band { margin: 60px 16px 0; padding: 40px 22px; } }
 .lp-cta-band .lp-h2 { margin: 12px auto 0; }
 .lp-cta-band .lp-card-ico { margin: 0 auto; }
 
@@ -786,6 +790,8 @@ button, input, select, textarea { font-family: inherit; }
    SETUP DOCS (public /setup) — Anthropic/OpenAI docs style
    ============================================================================ */
 .doc { position: relative; min-height: 100vh; }
+/* softer background on docs so the grid does not clash with tables and text */
+.doc .glow-bg { opacity: .45; }
 .doc-topbar { position: sticky; top: 0; z-index: 20; display: flex; align-items: center; justify-content: space-between;
     padding: 14px 24px; border-bottom: 1px solid var(--line); background: rgba(6,10,20,.72); backdrop-filter: blur(12px); }
 .doc-brand { display: flex; align-items: center; gap: 9px; }
@@ -821,10 +827,13 @@ button, input, select, textarea { font-family: inherit; }
     background: rgba(59,116,255,.06); padding: 12px 15px; margin: 0 0 16px; font-size: 13.5px; line-height: 1.65; color: var(--mist); }
 .doc-callout.warn { border-left-color: var(--gold); background: rgba(242,194,75,.06); }
 .doc-callout code { background: rgba(0,0,0,.25); }
-.doc-table { width: 100%; border-collapse: collapse; margin: 0 0 14px; font-size: 15px; display: table; }
-.doc-table th, .doc-table td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--line); }
-.doc-table th { font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: .5px; color: var(--muted); }
+.doc-table { width: 100%; border-collapse: separate; border-spacing: 0; margin: 0 0 16px; font-size: 15px; display: table;
+    background: rgba(10,17,32,.6); border: 1px solid var(--line-2); border-radius: 12px; overflow: hidden; }
+.doc-table th, .doc-table td { text-align: left; padding: 11px 14px; border-bottom: 1px solid var(--line); }
+.doc-table tr:last-child td { border-bottom: none; }
+.doc-table th { font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: .5px; color: var(--muted); background: rgba(6,10,20,.5); }
 .doc-table td { color: var(--mist); }
+.doc-table td:first-child, .doc-table th:first-child { border-right: 1px solid var(--line); }
 .doc-foot { display: flex; gap: 10px; margin-top: 34px; padding-top: 20px; border-top: 1px solid var(--line); }
 
 @media (max-width: 900px) {
@@ -833,13 +842,17 @@ button, input, select, textarea { font-family: inherit; }
 }
 @media (max-width: 560px) {
   .doc-topbar { padding: 12px 16px; }
-  .doc-layout { padding: 22px 16px 60px; }
-  .doc-h1 { font-size: 30px; }
-  .doc-main p, .doc-list { font-size: 15px; }
-  /* let wide tables scroll instead of overflowing the viewport */
-  .doc-table { display: block; overflow-x: auto; white-space: nowrap; }
-  /* long inline code tokens (e.g. SESSION_SECRET) must break, not overflow */
-  .doc-main code { overflow-wrap: anywhere; word-break: break-word; }
+  .doc-layout { padding: 24px 18px 64px; }
+  .doc-h1 { font-size: 31px; }
+  .doc-lead { font-size: 16.5px; line-height: 1.7; }
+  .doc-h2 { font-size: 22px; }
+  .doc-main p, .doc-list { font-size: 16px; line-height: 1.75; }
+  .doc-list li { margin-bottom: 9px; }
+  .doc-table { font-size: 14.5px; display: block; overflow-x: auto; }  /* scroll wide tables */
+  .doc-table th, .doc-table td { padding: 11px 13px; white-space: nowrap; }
+  .doc-pre code { font-size: 12.5px; }
+  .doc-main code { font-size: 13px; overflow-wrap: anywhere; word-break: break-word; }
+  .doc-callout { font-size: 14.5px; }
 }
 
 /* ---- landing redesign additions (Supabase-inspired) ---- */

@@ -5,7 +5,7 @@
 // open/self-host band, and a final CTA. No AI-tell punctuation in the copy.
 import { AnimatePresence, motion, type Variants } from "framer-motion";
 import Link from "next/link";
-import { type ReactNode, useEffect, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import DemoConsole from "@/components/DemoConsole";
 
 const REPO = "https://github.com/AakashBelide/ATS_Resumaker2";
@@ -193,6 +193,40 @@ function Rotator() {
 }
 
 export default function LandingPage() {
+  const [navHidden, setNavHidden] = useState(false);
+  const carouselRef = useRef<HTMLDivElement>(null);
+
+  // sticky nav: hide on scroll down, reveal on scroll up
+  useEffect(() => {
+    let last = window.scrollY;
+    const onScroll = () => {
+      const y = window.scrollY;
+      if (y > last && y > 120) setNavHidden(true);
+      else if (y < last) setNavHidden(false);
+      last = y;
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  // auto-advance the secondary-card carousel on mobile
+  useEffect(() => {
+    const el = carouselRef.current;
+    if (!el || !window.matchMedia("(max-width: 560px)").matches) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    let i = 0, paused = false;
+    const pause = () => { paused = true; };
+    el.addEventListener("pointerdown", pause, { once: true });
+    const id = window.setInterval(() => {
+      if (paused) return;
+      const cards = el.children;
+      if (!cards.length) return;
+      i = (i + 1) % cards.length;
+      el.scrollTo({ left: (cards[i] as HTMLElement).offsetLeft - el.offsetLeft, behavior: "smooth" });
+    }, 3200);
+    return () => { window.clearInterval(id); el.removeEventListener("pointerdown", pause); };
+  }, []);
+
   return (
     <div className="lp">
       <div className="lp-orb lp-orb-a" aria-hidden />
@@ -200,24 +234,26 @@ export default function LandingPage() {
       <div className="lp-grid" aria-hidden />
 
       {/* nav */}
-      <header className="lp-nav">
-        <div className="lp-brand">
-          <span className="rail-hex" aria-hidden>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-              <path d="M12 2l8.66 5v10L12 22l-8.66-5V7L12 2z" />
-              <path d="M12 7l4.33 2.5v5L12 17l-4.33-2.5v-5L12 7z" fill="currentColor" opacity="0.35" stroke="none" />
-            </svg>
-          </span>
-          <b>ATS Resumaker</b>
+      <header className={`lp-nav ${navHidden ? "lp-nav-hidden" : ""}`}>
+        <div className="lp-nav-inner">
+          <div className="lp-brand">
+            <span className="rail-hex" aria-hidden>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+                <path d="M12 2l8.66 5v10L12 22l-8.66-5V7L12 2z" />
+                <path d="M12 7l4.33 2.5v5L12 17l-4.33-2.5v-5L12 7z" fill="currentColor" opacity="0.35" stroke="none" />
+              </svg>
+            </span>
+            <b>ATS Resumaker</b>
+          </div>
+          <nav className="lp-nav-links">
+            <a className="lp-navlink" href="#features">Features</a>
+            <a className="lp-navlink" href="#how">How it works</a>
+            <Link className="lp-navlink" href="/setup">Self-host</Link>
+            <a className="lp-navicon" href={REPO} target="_blank" rel="noreferrer" title="View on GitHub" aria-label="GitHub">{icons.github}</a>
+            <Link className="btn btn-sm lp-iconbtn" href="/login">{icons.login}<span className="lp-btn-t">Login</span></Link>
+            <Link className="btn btn-sm btn-primary" href="/setup">Get started</Link>
+          </nav>
         </div>
-        <nav className="lp-nav-links">
-          <a className="lp-navlink" href="#features">Features</a>
-          <a className="lp-navlink" href="#how">How it works</a>
-          <Link className="lp-navlink" href="/setup">Self-host</Link>
-          <a className="lp-navicon" href={REPO} target="_blank" rel="noreferrer" title="View on GitHub" aria-label="GitHub">{icons.github}</a>
-          <Link className="btn btn-sm lp-iconbtn" href="/login">{icons.login}<span className="lp-btn-t">Login</span></Link>
-          <Link className="btn btn-sm btn-primary" href="/setup">Get started</Link>
-        </nav>
       </header>
 
       {/* hero */}
@@ -289,7 +325,7 @@ export default function LandingPage() {
             </Reveal>
           ))}
         </div>
-        <div className="lp-cards4">
+        <div className="lp-cards4" ref={carouselRef}>
           {SECONDARY.map((f, i) => (
             <Reveal key={f.t} i={i} className="lp-card sm">
               <span className="lp-card-ico">{f.icon}</span>
@@ -417,8 +453,8 @@ export default function LandingPage() {
           <Rotator />
           <h2 className="lp-h2">Land interviews faster, <span className="lp-grad">without the fabrication.</span></h2>
           <div className="lp-cta" style={{ justifyContent: "center", marginTop: 20 }}>
-            <Link className="btn btn-primary" href="/login">Get started</Link>
-            <Link className="btn" href="/setup">Self-host guide</Link>
+            <Link className="btn btn-primary" href="/setup">Get started</Link>
+            <Link className="btn lp-iconbtn" href="/login">{icons.login}Login</Link>
           </div>
         </div>
       </Reveal>
