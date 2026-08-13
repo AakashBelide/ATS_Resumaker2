@@ -7,6 +7,7 @@ import { AnimatePresence, motion, type Variants } from "framer-motion";
 import Link from "next/link";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import DemoConsole from "@/components/DemoConsole";
+import ScrollTop from "@/components/ScrollTop";
 
 const REPO = "https://github.com/AakashBelide/ATS_Resumaker2";
 
@@ -472,6 +473,7 @@ export default function LandingPage() {
           <Link href="/login">Login</Link>
         </div>
       </footer>
+      <ScrollTop />
     </div>
   );
 }

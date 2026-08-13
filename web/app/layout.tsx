@@ -20,7 +20,9 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={`${inter.variable} ${grotesk.variable} ${mono.variable}`}>
-      <body>
+      {/* suppressHydrationWarning: browser extensions (e.g. Grammarly) inject data-* attrs on
+          <body> before React hydrates, which is a benign server/client attribute mismatch. */}
+      <body suppressHydrationWarning>
         <div className="glow-bg" />
         {/* No app shell here — the sidebar/grid live in app/(app)/layout.tsx (gated pages).
             Public pages (landing, login, setup) render bare on top of the ambient glow. */}

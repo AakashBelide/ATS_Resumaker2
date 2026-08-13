@@ -3,6 +3,7 @@
 // runnable scripts (run-local.sh / bootstrap.sh) and the paste-into-a-CLI SETUP_SKILL.md live in the repo.
 import Link from "next/link";
 import type { ReactNode } from "react";
+import ScrollTop from "@/components/ScrollTop";
 
 const REPO = "https://github.com/AakashBelide/ATS_Resumaker2";
 
@@ -313,6 +314,7 @@ export CLAUDE_CODE_OAUTH_TOKEN="$(claude setup-token)"   # personal-use only`}</
           </footer>
         </main>
       </div>
+      <ScrollTop />
     </div>
   );
 }
