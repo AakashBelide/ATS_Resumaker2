@@ -53,3 +53,6 @@ deploy/terraform/.terraform.lock.hcl
 *.tfstate.*
 deploy/terraform/terraform.tfvars
 crash.log
+
+# personal metrics snapshot (do not commit)
+PROJECT_METRICS.md
