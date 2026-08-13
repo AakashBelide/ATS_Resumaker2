@@ -256,7 +256,7 @@ ats-resumaker/
 | Order | Task | Status | Notes |
 |-------|------|--------|-------|
 | 1 | **Extension simplification** — collapse the MV3 extension to a **thin HTTP client** → `POST /v1/tracker` at the configurable endpoint (Options: base URL / token / web URL). Drop the native-messaging host + `native-host/install.sh`; the backend already runs CLI-first internally. | ✅ Done | 2026-08-10. Removed `native-host/`, `nativeMessaging` permission, cli/auto modes, "copy CLI" popup link. `background.js` now a single `POST /v1/tracker`. |
-| 2 | **Agentic auto-onboarding (the original MVP)** — upgrade RI.0 from deterministic slug-probe/regex to a **Claude-CLI agent with tools + shell** that, given a company name (+ optional careers URL), *dynamically* resolves the ATS board and **self-heals failures** (tries alternate slugs, parses odd careers pages, discovers the adapter/tenant, reports what it needs). Deterministic path stays as the fast first attempt; the agent is the fallback that "figures it out." Runs after the extension. | ⬜ Todo | This is what onboarding was always meant to be (RI.0 shipped a deterministic stopgap). **MUST run sandboxed — see security design below.** CLI-agnostic later (Codex/Gemini-CLI) per the backlog row. |
+| 2 | **Agentic auto-onboarding (the original MVP)** — upgrade RI.0 from deterministic slug-probe/regex to a **Claude-CLI agent with tools + shell** that, given a company name (+ optional careers URL), *dynamically* resolves the ATS board and **self-heals failures** (tries alternate slugs, parses odd careers pages, discovers the adapter/tenant, reports what it needs). Deterministic path stays as the fast first attempt; the agent is the fallback that "figures it out." Runs after the extension. | ✅ Done | Live: async human-in-the-loop onboarding (`onboarding/service.py` + `/v1/onboard`, states running/needs_input/resolved/drafted) with the Onboarding page; sandboxed via the Docker/Actions `AgentRunner` seam (D.7). CLI-agnostic swap still a future backlog row. |
 
 ### Agentic-onboarding security design (prompt-injection containment)
 
@@ -272,9 +272,9 @@ The agent acts on **attacker-controlled scraped web content**, so it needs tools
 
 ### Post-deploy follow-ups (backlog)
 
-- **Loading spinners / skeletons** on Discovery / Tracker / Onboarding / Profile — replace the bare `loading…` text with a spinner or skeleton cards (matters mainly for the one-time cold start now that warm loads are ~0.15s).
-- **Free CI/CD** (GitHub Actions → build+push images to Artifact Registry + `gcloud run deploy` on push to `main`) — deploys are currently manual from the local CLI. Actions free tier (2000 min/mo) covers it; mirrors the existing `onboard.yml` pattern.
-- **Write durability window**: with Turso background auto-sync (`turso_sync_interval_s=60`), a write is durable in Turso only after the next sync (≤60s). Low risk single-user; could force a `sync()` after important writes (add-to-tracker) for immediate durability (~0.14s each).
+- ~~**Loading spinners / skeletons**~~ ✅ Done — `Spinner` component in use on Discovery / Tracker / Onboarding / Report.
+- ~~**Free CI/CD**~~ ✅ Done — `.github/workflows/deploy.yml` builds + `gcloud run deploy`s api/ingestor/worker on push to `main` (deploy is main-only).
+- **Write durability window**: Turso is now **remote-only** in cloud (no embedded-replica sync lag); this row is moot for the deployed services. (Local dev may still use a `file:` DB.)
 
 ### Interim reliability fixes (2026-08-11, on `main`)
 
@@ -307,16 +307,16 @@ first-class forever.** (Dual-mode adapter table in DEPLOYMENT.md.)
 
 | # | Task | Status | Notes |
 |---|------|--------|-------|
-| D.0 | Pre-flight sign-ups + verify free tiers (GCP+card+$1 budget alert, Turso, Vercel, Anthropic API key, confirm Resend/Actions) | ⬜ Todo | card needed: GCP + Anthropic; rest cardless. See DEPLOYMENT.md §pre-flight |
+| D.0 | Pre-flight sign-ups + verify free tiers (GCP+card+$1 budget alert, Turso, Vercel, Anthropic API key, confirm Resend/Actions) | ✅ Done | All accounts live: GCP (Cloud Run/Tasks/Scheduler/GCS/Secret Manager), Turso, Vercel, Resend, GitHub Actions. |
 | D.1 | **DB → Turso** — `persistence/db.py` `connect()` to libSQL; exercise repository methods | ✅ Done | Dual-mode: stdlib `sqlite3` (default) OR libSQL/Turso via `libsql_shim.py` (sqlite3.Row-compatible; eager-materialize to dodge libSQL's "statements in progress"). Selected by `TURSO_DATABASE_URL` / `RESUMAKER_DB_BACKEND=libsql`. **128 tests pass on BOTH backends** + onboarding smoke via libSQL. Real-Turso creds are a config swap (embedded replica). |
-| D.2 | Split images: lean **api** + heavy **worker** (LibreOffice/curl_cffi); **prebuilt** to Artifact Registry; listen on `$PORT` | 🟨 Partial | `deploy/Dockerfile.api` (lean, **597 MB** — no LibreOffice/CLI; serves traffic + `/ingest-tick`) + `deploy/Dockerfile.worker` (heavy — LibreOffice + Carlito + Node/Claude CLI for CLI-first LLM; runs `/run-pipeline`). Both `CMD` on `$PORT`. `deploy/docker-compose.split.yml` runs the split locally (dual-mode parity). **Must build `--platform linux/amd64`** (Cloud Run arch; `libsql-experimental` has no arm64 wheel → source build fails). **Both images built + smoke-tested on amd64:** api (health 200, worker routes); worker **1.78 GB** (health 200, `claude` CLI 2.1.228 + `soffice` present). Remaining: **push both to Artifact Registry** (D.9/gcloud). |
+| D.2 | Split images: lean **api** + heavy **worker** (LibreOffice/curl_cffi); **prebuilt** to Artifact Registry; listen on `$PORT` | ✅ Done | `deploy/Dockerfile.api` (lean, **597 MB** — no LibreOffice/CLI; serves traffic + `/ingest-tick`) + `deploy/Dockerfile.worker` (heavy — LibreOffice + Carlito + Node/Claude CLI for CLI-first LLM; runs `/run-pipeline`). Both `CMD` on `$PORT`. `deploy/docker-compose.split.yml` runs the split locally (dual-mode parity). **Must build `--platform linux/amd64`** (Cloud Run arch; `libsql-experimental` has no arm64 wheel → source build fails). **Both images built + smoke-tested on amd64:** api (health 200, worker routes); worker **1.78 GB** (health 200, `claude` CLI 2.1.228 + `soffice` present). Remaining: **push both to Artifact Registry** (D.9/gcloud). |
 | D.3 | **worker** endpoints `POST /ingest-tick` (drop APScheduler) + `POST /run-pipeline`; status → `runs` (Turso) | ✅ Done | `apps/api/routers/worker.py`: `POST /v1/worker/ingest-tick` (Cloud Scheduler target; `sources=all\|fast\|slow` → the two cadences via `run_tick`) + `POST /v1/worker/run-pipeline` (Cloud Tasks target; runs one pipeline **synchronously** so Tasks awaits + retries on non-2xx; orchestrator persists the `runs` row). Token-protected (Scheduler/Tasks send the header). **Dual-mode:** in-process APScheduler + ThreadPool stay the local default; these endpoints are what the cloud triggers hit — same core fns. Verified live (a real tick ingested Fidelity/State Street). Tests: `test_worker_ingest_tick`, `test_worker_run_pipeline`, `test_worker_endpoints_require_token`. |
-| D.4 | **Cloud Scheduler** cron → `/ingest-tick`; **Cloud Tasks** queue → `/run-pipeline` | 🟨 Partial | **Enqueue seam done + local-tested.** `apps/api/jobs/queue.py`: `JobQueue` (Protocol) + `InProcessQueue` (local default → ThreadPool via `manager.submit`) + `CloudTasksQueue` (lazy `google-cloud-tasks`; POSTs a task to the worker `/run-pipeline`, deduped by run-id, api-token header). `get_job_queue()` config-selects; `start_run` mints the id and hands off (same call site both modes). Tests: `test_start_run_returns_id`, `test_job_queue_seam_selects_by_config`. Remaining (cloud): create the Scheduler jobs + Tasks queue + IAM (D.9). |
-| D.5 | **Artifacts → GCS** (signed URLs); **PDF on-demand** (ship .docx, render PDF only on download) | 🟨 Partial | **Store seam done + local-tested.** `persistence/artifacts.py`: `ArtifactStore` (Protocol) + `LocalArtifactStore` (default: disk, inline serve, `publish` no-op) + `GCSArtifactStore` (lazy `google-cloud-storage`; run writes local temp → `publish()` uploads → `url()` signed URL). `get_artifact_store()` config-selects. Artifact GET redirects to a signed URL for gcs / streams the file for local; `/run-pipeline` calls `publish()` after a run. Tests: `test_artifact_store_seam_local_default`, `..._selects_by_config`. Remaining (cloud): the bucket + PDF-on-demand render. |
-| D.6 | **SSE → polling** in frontend (`/v1/runs/{id}`); deploy **frontend on Vercel** | 🟨 Partial | **Polling done + verified locally.** Dropped the SSE `/events` endpoint + `sse_starlette`/`EventSource`; added `GET /v1/runs/{id}/progress` reading the run's `status.json` snapshot (file-based → any instance can serve it; shared storage in D.5). Report page polls it (2s) for the live stage; `done` ends the loop, then one `GET /{id}` for success/error. Test: `test_run_progress_is_polled_from_status_json`. Remaining: **Vercel deploy** (needs account). |
+| D.4 | **Cloud Scheduler** cron → `/ingest-tick`; **Cloud Tasks** queue → `/run-pipeline` | ✅ Done | **Enqueue seam done + local-tested.** `apps/api/jobs/queue.py`: `JobQueue` (Protocol) + `InProcessQueue` (local default → ThreadPool via `manager.submit`) + `CloudTasksQueue` (lazy `google-cloud-tasks`; POSTs a task to the worker `/run-pipeline`, deduped by run-id, api-token header). `get_job_queue()` config-selects; `start_run` mints the id and hands off (same call site both modes). Tests: `test_start_run_returns_id`, `test_job_queue_seam_selects_by_config`. Remaining (cloud): create the Scheduler jobs + Tasks queue + IAM (D.9). |
+| D.5 | **Artifacts → GCS** (signed URLs); **PDF on-demand** (ship .docx, render PDF only on download) | ✅ Done | **Store seam done + local-tested.** `persistence/artifacts.py`: `ArtifactStore` (Protocol) + `LocalArtifactStore` (default: disk, inline serve, `publish` no-op) + `GCSArtifactStore` (lazy `google-cloud-storage`; run writes local temp → `publish()` uploads → `url()` signed URL). `get_artifact_store()` config-selects. Artifact GET redirects to a signed URL for gcs / streams the file for local; `/run-pipeline` calls `publish()` after a run. Tests: `test_artifact_store_seam_local_default`, `..._selects_by_config`. Remaining (cloud): the bucket + PDF-on-demand render. |
+| D.6 | **SSE → polling** in frontend (`/v1/runs/{id}`); deploy **frontend on Vercel** | ✅ Done | **Polling done + verified locally.** Dropped the SSE `/events` endpoint + `sse_starlette`/`EventSource`; added `GET /v1/runs/{id}/progress` reading the run's `status.json` snapshot (file-based → any instance can serve it; shared storage in D.5). Report page polls it (2s) for the live stage; `done` ends the loop, then one `GET /{id}` for success/error. Test: `test_run_progress_is_polled_from_status_json`. Remaining: **Vercel deploy** (needs account). |
 | D.7 | **Onboarding on GitHub Actions** (workflow_dispatch; Docker sandbox; result→api; adapter draft→PR) | ✅ Done (code) | `ActionsAgentRunner` (same `AgentRunner` seam): dispatch `.github/workflows/onboard.yml` → poll by `run-name=onboard-<run_id>` → download the `contract-<run_id>` artifact — synchronous, so no service rework. Workflow runs the SAME Docker sandbox on the runner (`deploy/actions/onboard_entry.py` → `DockerAgentRunner`) and opens a PR via `create-pull-request` if an adapter is drafted. Config: `onboard_runner=docker\|actions`, `github_repo`, `RESUMAKER_GITHUB_TOKEN`. Tests: dispatch/poll/artifact (mocked) + Null fallback when creds missing. **YAML + runner validated locally; a real dispatch needs the repo secret `CLAUDE_CODE_OAUTH_TOKEN` + a PAT (cloud step).** |
-| D.8 | **LLM = CLI-first + auto-fallback** (local & cloud): primary subscription `claude` CLI (cloud via `CLAUDE_CODE_OAUTH_TOKEN`); provider-layer auto-fallback to a configured API (`RESUMAKER_FALLBACK_PROVIDER=anthropic\|gemini`) on failure/rate-limit. Bundle CLI+token in worker/agent images | 🟨 Partial | **Provider-layer failover done.** `FallbackProvider` in `providers/llm/registry.py` wraps the primary; on ANY primary `complete()` error (CLI raises after its own retries) it fails over to `RESUMAKER_FALLBACK_PROVIDER`. Built **lazily** (misconfigured fallback never breaks the happy path) and uses the fallback's own default model (engine model names don't port). `complete_json` rides the same path. Unset by default → backwards-compatible. Tests: `test_fallback_provider_fails_over_and_is_lazy`, `test_get_provider_wraps_with_fallback_when_configured`. Remaining: **bundle the CLI + OAuth token into the worker/agent images** (D.2). |
-| D.9 | **Terraform IaC** (`deploy/terraform/`) — provision Cloud Run services, Artifact Registry, Cloud Scheduler (cron+tz), Cloud Tasks, GCS, Secret Manager, IAM + Vercel + GitHub Actions secrets; `terraform apply`/`destroy` | ⬜ Todo | migration-branch only; local setup = just `docker compose up` |
+| D.8 | **LLM = CLI-first + auto-fallback** (local & cloud): primary subscription `claude` CLI (cloud via `CLAUDE_CODE_OAUTH_TOKEN`); provider-layer auto-fallback to a configured API (`RESUMAKER_FALLBACK_PROVIDER=anthropic\|gemini`) on failure/rate-limit. Bundle CLI+token in worker/agent images | ✅ Done | **Provider-layer failover done.** `FallbackProvider` in `providers/llm/registry.py` wraps the primary; on ANY primary `complete()` error (CLI raises after its own retries) it fails over to `RESUMAKER_FALLBACK_PROVIDER`. Built **lazily** (misconfigured fallback never breaks the happy path) and uses the fallback's own default model (engine model names don't port). `complete_json` rides the same path. Unset by default → backwards-compatible. Tests: `test_fallback_provider_fails_over_and_is_lazy`, `test_get_provider_wraps_with_fallback_when_configured`. Remaining: **bundle the CLI + OAuth token into the worker/agent images** (D.2). |
+| D.9 | **Terraform IaC** (`deploy/terraform/`) — provision Cloud Run services, Artifact Registry, Cloud Scheduler (cron+tz), Cloud Tasks, GCS, Secret Manager, IAM + Vercel + GitHub Actions secrets; `terraform apply`/`destroy` | ✅ Done | `deploy/terraform/` provisions the 3 Cloud Run services + Artifact Registry + Scheduler (ingest fast/slow + mailer) + Tasks queue + GCS + Secret Manager + IAM; local tfstate. Deploy is live and GitHub Actions redeploys on push to `main`. |
 
 **Fallback (documented):** a **$5/mo VPS** collapses all 8 pieces into one warm box (faster per-run, no
 cold starts) — same Docker Compose, so serverless↔VPS is a redeploy, not a rewrite.
@@ -380,3 +380,61 @@ cold starts) — same Docker Compose, so serverless↔VPS is a redeploy, not a r
   mypy clean; every commit secret/PII-scanned; `outputs/`+`data/` gitignored. The full
   application platform backend (Discovery→Tracker→Profile→Dashboard→Metrics) is live via
   CLI + API. **Next: Phase 5 frontend pages on top of the API.**
+
+---
+
+# POST-DEPLOY PRODUCT LOG (live on Cloud Run)
+
+- **2026-08-11→13 — Deployment LIVE + product/UX arc.** The full serverless topology (Cloud Run
+  api/ingestor/worker + Turso remote-only + Cloud Tasks + Cloud Scheduler + GCS + Secret Manager +
+  Vercel + GitHub Actions deploy-on-push) is **in production** — all D.x rows flipped to Done.
+  Post-deploy work (feature branches → merged to `main`, which triggers the deploy):
+  - **Scheduler/mailer cadence + quiet hours.** Ingest fast = hourly 8AM–midnight ET; slow = daily
+    ~10AM; mailer = every 2h. Quiet hours configurable (default 12AM–8AM) with a **no-quiet-hours**
+    option, for both mailer and ingestion. Discovery + mailer show the exact clean local date-time
+    (not "seen today").
+  - **Unified run-id + report reuse.** One stable ATS-slug run_id per tracked job (company+title+
+    url-hash); resume generation **reuses the match's report.json** (skips scrape/structure/
+    keywords/gap) so it never re-scrapes (fixes bot-walled LinkedIn re-gen); captured JD cached on
+    the tracker row so re-matches don't re-scrape; re-match wipes the run folder and rebuilds.
+  - **Report page.** Uses the authoritative ATS title (not the JD-extracted one); inline résumé
+    (PDF iframe) + cover-letter preview with copy; "back to tracker" top-left; durable per-provider
+    **LLM-usage log** in the DB (survives scale-to-zero); real per-run timing; `AakashBelide_Resume`
+    filenames.
+  - **Browser extension (MV3).** Draggable right-edge square widget, token-gated capture to
+    `POST /v1/tracker/capture` (page text + full-page screenshot). **Full-page capture** via CDP
+    `Page.captureScreenshot(captureBeyondViewport)`; handles LinkedIn's **nested/inner-scroll**
+    reader by stretching the layout viewport to the tallest inner scroller's height; stitch fallback
+    for the DevTools-open case; capture-mode shown in the toast. Screenshot shown scrollable on the
+    report.
+  - **Own-PDF upload.** Attach a resume PDF to a run (base64 → GCS bucket as resume.pdf; report.json
+    flagged); DOCX/cover shown as explicit "unavailable"; PDF/DOCX **download directly** (attachment,
+    no signed-URL redirect); cover letter is copy-only.
+  - **Turso sync hardening.** Auto-enable `remote_only` when a Turso URL is set (validator) to stop
+    embedded-replica sync bytes; root-caused a local sync-growth (dev replica + stray uvicorn), not
+    the cloud.
+  - **10-JD Opus/Sonnet bench.** Opus tailoring ~1.7× faster than Sonnet at equal quality; Sonnet
+    match slightly higher fit — **current defaults (Opus tailor, Sonnet match) kept**.
+  - **Billing.** All 3 services are **instance-based** (larger free tier 240k/450k, keeps onboarding's
+    after-response ThreadPool work alive). Steady-state comfortably within free tier; **stay
+    instance-based** (request-based would require refactoring onboarding to a Cloud Tasks hop).
+  - **UI cleanup.** Sidebar: dropped subtitle + self-hosted footer. Discovery: default last-1-day +
+    junior/mid on fresh landing (filters persist across nav); page-jump input; removed the duplicated
+    top-right count. Tracker: role→report, "posting"→listing, new Location + Salary columns
+    (tracker.location/salary), Added shows date+time, page-jump. Profile: removed the email-digest
+    filter. Mailer email: dropped the "new on-target" wording, watchlist·discovery subline, and
+    self-hosted footer.
+
+## GENUINELY PENDING (as of 2026-08-13)
+
+- **R9 cutover** — `legacy/` tree still on disk; run a 3-JD regression, then delete it and refresh
+  README/docs. (Tag `poc-complete` makes it recoverable.)
+- **2.4 CLI vs API comparison** — formal cost/quality/latency doc of the Claude-CLI vs Gemini-API
+  path (superseded in practice by the Opus/Sonnet bench + CLI-first-with-fallback default).
+- **3.4 recruiter-filter simulation** / **3.5 extension→local-ATS assisted-apply** — offline
+  validation extensions; not on the critical path.
+- **Backlog / futures (open):** CLI-agnostic LLM provider (Codex/Gemini-CLI via env); Google-Alerts
+  RSS long-tail discovery page; cold-outreach contact finder; extension autofill; interview-prep
+  section; open resume-presentation decisions (two-GitHubs link, A4 toggle, extra templates).
+- **Not yet verified end-to-end in cloud:** captured-JD re-match no-rescrape path and the
+  report.json-reuse generation on a *captured* (not scraped) entry — unit-tested, pending a live run.

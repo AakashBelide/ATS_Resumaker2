@@ -80,11 +80,10 @@ export default function DiscoveryPage() {
     try {
       const s = sessionStorage.getItem(STORE_KEY);
       if (s) {
+        // Restore the session's filters AS-IS so a change survives navigating away and back. The
+        // 1-day + junior/mid defaults (DEFAULT_Q) only apply on a fresh landing (no saved state).
         const parsed = JSON.parse(s) as DiscoveryQuery;
-        // Restore prior filters, but always re-force the day + level defaults (per request they
-        // should reset to "last 1 day" and "junior/mid" every time the page loads).
-        setQ({ ...parsed, since_days: 1, level: DEFAULT_LEVELS, offset: 0 });
-        setKw(parsed.keyword ?? "");
+        setQ(parsed); setKw(parsed.keyword ?? "");
         setTitleInc((parsed.title_include ?? []).join(", "));
         setTitleExc((parsed.title_exclude ?? []).join(", "));
       }
@@ -169,7 +168,7 @@ export default function DiscoveryPage() {
           <h1 style={{ marginTop: 6 }}>New postings</h1>
         </div>
         <div className="topbar-spacer" />
-        <span className="mono muted">{data ? `${data.total.toLocaleString()} matches` : ""}</span>
+        {/* the total also lives in the "Matching postings" stat card below, so it's not repeated here */}
       </header>
 
       <div className="page">

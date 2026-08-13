@@ -16,7 +16,10 @@ const PAGE_SIZES = [10, 20, 50];
 function fitClass(f: number | null) { return f == null ? "lo" : f >= 65 ? "hi" : f >= 45 ? "mid" : "lo"; }
 function fmtDate(iso: string | null) {
   if (!iso) return "—";
-  return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+  // date + a clean local time, e.g. "Aug 13, 2026, 3:30 PM"
+  return new Date(iso).toLocaleString(undefined, {
+    month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit",
+  });
 }
 
 export default function TrackerPage() {
