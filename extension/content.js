@@ -124,6 +124,32 @@
     setTimeout(() => { inner.textContent = prev; }, 2000);
   }
 
+  // The full content height the screenshot must cover. On most pages that's just the document, but
+  // LinkedIn (and many ATS) put the JD inside a NESTED, fixed-height scroll container - so the
+  // document stays one screen tall while the real content scrolls INSIDE that box. Find the tallest
+  // such inner scroller (a big element whose scrollHeight overflows its clientHeight and that
+  // actually scrolls) and report its full scrollHeight, so the service worker can size a tall layout
+  // viewport and capture everything. Falls back to the document height when there's no inner scroller.
+  function fullContentHeight() {
+    let max = Math.max(
+      document.documentElement.scrollHeight,
+      document.body ? document.body.scrollHeight : 0);
+    const all = document.body ? document.body.getElementsByTagName("*") : [];
+    for (const el of all) {
+      const ch = el.clientHeight;
+      if (ch < 300) continue;                     // ignore small widgets; we want big content panels
+      const sh = el.scrollHeight;
+      if (sh <= ch + 50) continue;                // not meaningfully scrollable
+      const oy = getComputedStyle(el).overflowY;
+      if (oy === "auto" || oy === "scroll" || oy === "overlay") {
+        // The inner box's own top offset + its full scroll height = how tall the page must be to show it.
+        const top = el.getBoundingClientRect().top + (window.scrollY || 0);
+        if (top + sh > max) max = top + sh;
+      }
+    }
+    return Math.ceil(max);
+  }
+
   // Best-effort visible text: the body + any SAME-ORIGIN iframes (cross-origin access throws,
   // so those frames are silently skipped). Mirrors the reference extension's getText.
   function allText(root) {
@@ -171,12 +197,22 @@
     const url = location.href;
     const title = document.title || "";
     const rawText = allText(document.body).trim();
+    const fullHeight = fullContentHeight();       // covers nested/inner scroll containers (LinkedIn)
     let result;
     try {
       if (!rawText) throw new Error("no visible text on this page");
-      result = await chrome.runtime.sendMessage({ type: "capture", url, title, rawText });
-      if (result && result.ok) { showToast("✓ tracked — fit fills in shortly", "ok"); flashLabel("✓"); }
-      else { showToast("error: " + ((result && result.error) || "unknown"), "err"); }
+      result = await chrome.runtime.sendMessage({ type: "capture", url, title, rawText, fullHeight });
+      if (result && result.ok) {
+        // Tell the user which screenshot path ran: "full" = clean CDP full-page (best); "stitched" =
+        // scroll-and-stitch full-page (DevTools was open, so the view scrolled); "viewport" = only the
+        // visible slice (capture was fully blocked -> close DevTools + retry for a full-page shot).
+        const note = result.mode === "full" ? "full page"
+          : result.mode === "stitched" ? "full page (stitched)"
+          : result.mode === "viewport" ? "viewport only — close DevTools for full page"
+          : "";
+        showToast("✓ tracked" + (note ? " · " + note : "") + " — fit fills in shortly", "ok");
+        flashLabel("✓");
+      } else { showToast("error: " + ((result && result.error) || "unknown"), "err"); }
     } catch (e) {
       result = { ok: false, error: String((e && e.message) || e) };
       showToast("error: " + result.error, "err");

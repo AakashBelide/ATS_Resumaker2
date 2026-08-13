@@ -41,51 +41,37 @@ function cdp(target, method, params) {
   });
 }
 
-// Evaluate a JS expression in the page via CDP and return its numeric value (0 on anything odd).
-async function evalNum(target, expression) {
-  try {
-    const res = await cdp(target, "Runtime.evaluate", { expression, returnByValue: true });
-    const v = res && res.result && res.result.value;
-    return typeof v === "number" && isFinite(v) ? v : 0;
-  } catch { return 0; }
-}
-
-// Lazy-loaded pages (LinkedIn, Ashby, etc.) don't render their full height until scrolled, so a
-// single captureBeyondViewport clip would miss the un-rendered tail. Walk the page top->bottom in
-// viewport-sized steps, pausing so lazy content can load/settle and the document keeps growing,
-// then return to the top so the capture's origin (and the user's view) is correct. Bounded by a
-// step cap so a pathological infinite-scroll feed can't spin forever.
-async function autoScroll(target) {
-  const step = (await evalNum(target, "window.innerHeight")) || 800;
-  let height = await evalNum(target, "document.documentElement.scrollHeight");
-  let y = 0;
-  for (let i = 0; i < 40; i++) {                 // cap: ~40 screens is plenty for any real posting
-    y = Math.min(y + step, height);
-    await cdp(target, "Runtime.evaluate", { expression: `window.scrollTo(0, ${y});` });
-    await new Promise((r) => setTimeout(r, 240));   // let lazy content fetch + paint
-    const grown = await evalNum(target, "document.documentElement.scrollHeight");
-    const atBottom = y >= height - 1;
-    height = grown;
-    if (atBottom && grown <= y + 1) break;        // reached the end AND it stopped growing -> done
-  }
-  await cdp(target, "Runtime.evaluate", { expression: "window.scrollTo(0, 0);" });
-  await new Promise((r) => setTimeout(r, 150));   // let sticky headers/top content re-settle
-  return height;
-}
-
-// Full-page shot via CDP. Returns a data URL (PNG, or JPEG for tall pages). Throws on any failure
-// so the caller can fall back to the visible viewport.
-async function fullPageShot(tabId) {
+// Full-page shot via CDP. attach -> measure -> Page.captureScreenshot(captureBeyondViewport). The
+// user's visible scroll position never moves (no visible scrolling, unlike the stitch fallback).
+//
+// The catch: many postings (LinkedIn's job "reader" especially) render the JD inside a NESTED,
+// fixed-height scroll container (or a 100vh modal), so the DOCUMENT stays one screen tall and a
+// plain captureBeyondViewport grabs only that slice. To reveal the whole posting we override the
+// device metrics to a TALL layout viewport (`Emulation.setDeviceMetricsOverride`): vh-sized and
+// inner-scroll containers then lay out at their true height, so everything becomes capturable. The
+// target height is the max of the document height and `hintHeight` (the content script's measured
+// tallest inner scroller). Cleared in `finally` so the user's page snaps back. The content script
+// already clicked "see more"/expanders before this runs. Throws on any failure so the caller falls
+// back. JPEG (q80) for tall postings; PNG (sharper) otherwise.
+async function fullPageShot(tabId, hintHeight) {
   const target = { tabId };
   await attach(target);
+  let overrode = false;
   try {
-    await autoScroll(target);                    // trigger lazy-load + settle BEFORE measuring
-    const metrics = await cdp(target, "Page.getLayoutMetrics");
-    const size = metrics.cssContentSize || metrics.contentSize || {};
+    const m0 = await cdp(target, "Page.getLayoutMetrics");
+    const s0 = m0.cssContentSize || m0.contentSize || {};
     // Clamp to CDP's texture ceiling (~16k) so an enormous page can't fail the capture outright.
-    const width = Math.min(Math.ceil(size.width || 0), 16000);
-    const height = Math.min(Math.ceil(size.height || 0), 16000);
+    const width = Math.min(Math.max(Math.ceil(s0.width || 0), 320), 16000);
+    const docH = Math.ceil(s0.height || 0);
+    const height = Math.min(Math.max(docH, Math.ceil(hintHeight || 0)), 16000);
     if (!width || !height) throw new Error("no layout metrics");
+
+    // Force a tall layout viewport so inner-scroll / vh-locked containers reveal their full content.
+    await cdp(target, "Emulation.setDeviceMetricsOverride",
+      { width, height, deviceScaleFactor: 0, mobile: false });
+    overrode = true;
+    await new Promise((r) => setTimeout(r, 300));   // let the expanded layout reflow + paint
+
     const tall = height > 4000;                  // JPEG for long postings; PNG (sharper) otherwise
     const format = tall ? "jpeg" : "png";
     const params = { format, captureBeyondViewport: true,
@@ -95,6 +81,10 @@ async function fullPageShot(tabId) {
     if (!shot || !shot.data) throw new Error("empty screenshot");
     return `data:image/${format};base64,${shot.data}`;
   } finally {
+    // Restore the user's real viewport BEFORE detaching, so the page snaps back to normal.
+    if (overrode) {
+      try { await cdp(target, "Emulation.clearDeviceMetricsOverride"); } catch { /* ignore */ }
+    }
     await detach(target);
   }
 }
@@ -173,7 +163,11 @@ async function stitchPageShot(tabId, windowId) {
       // Pace for the capture rate-limit AND let lazy content paint (first frame settles faster).
       await new Promise((r) => setTimeout(r, first ? 250 : CAPTURE_INTERVAL_MS));
       first = false;
-      const dataUrl = await captureVisible(windowId);
+      let dataUrl = await captureVisible(windowId);
+      if (!dataUrl) {                   // likely the ~2/s rate-limit: wait past the window, retry once
+        await new Promise((r) => setTimeout(r, 700));
+        dataUrl = await captureVisible(windowId);
+      }
       if (!dataUrl) { if (y === 0) throw new Error("captureVisibleTab blocked"); break; }
       const bmp = await dataUrlToBitmap(dataUrl);
       ctx.drawImage(bmp, 0, Math.round(actualY * dpr));   // place at the REAL offset (last frame overlaps)
@@ -188,25 +182,27 @@ async function stitchPageShot(tabId, windowId) {
   }
 }
 
-async function capture({ url, title, rawText, tabId, windowId }) {
+async function capture({ url, title, rawText, tabId, windowId, fullHeight }) {
   // Small delay so the content script's pill-hide has painted before we grab the page.
   await new Promise((r) => setTimeout(r, 150));
-  let screenshot = null;
+  let screenshot = null, mode = "none";        // mode surfaces to the UI which path actually ran
   if (tabId != null) {
-    // PRIMARY: debugger/CDP full-page (cleanest - no sticky-header dupes). Denied when DevTools is
-    // open on the tab (it owns the debug channel), so fall through to the stitch path.
-    try { screenshot = await fullPageShot(tabId); }
+    // PRIMARY: debugger/CDP full-page (cleanest - whole page, no visible scrolling, no sticky-header
+    // dupes). `fullHeight` is the content script's measured tallest inner scroller, used to size a
+    // tall layout viewport so nested/vh-locked scroll containers reveal all content. Denied when
+    // DevTools is open on the tab (it owns the debug channel) -> fall to stitch.
+    try { screenshot = await fullPageShot(tabId, fullHeight); if (screenshot) mode = "full"; }
     catch { screenshot = null; }
     // FALLBACK: scroll-and-stitch via captureVisibleTab - needs NO debugger, so it works even with
     // DevTools open. Yields a full-page image (with possible sticky-header dupes) instead of a
-    // single visible slice.
+    // single visible slice. This DOES scroll the visible view while it runs.
     if (!screenshot) {
-      try { screenshot = await stitchPageShot(tabId, windowId); }
+      try { screenshot = await stitchPageShot(tabId, windowId); if (screenshot) mode = "stitched"; }
       catch { screenshot = null; }
     }
   }
   // LAST RESORT: a single visible-viewport shot, if even stitching failed (capture fully blocked).
-  if (!screenshot) screenshot = await captureVisible(windowId);
+  if (!screenshot) { screenshot = await captureVisible(windowId); if (screenshot) mode = "viewport"; }
 
   const c = await cfg();
   const headers = { "Content-Type": "application/json" };
@@ -219,12 +215,12 @@ async function capture({ url, title, rawText, tabId, windowId }) {
     const body = await r.text().catch(() => "");
     throw new Error(`API ${r.status} ${body}`.slice(0, 200));   // truncate; never surface the JD/shot
   }
-  return { ok: true, entry: await r.json() };
+  return { ok: true, entry: await r.json(), mode };
 }
 
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg && msg.type === "capture") {
-    capture({ url: msg.url, title: msg.title, rawText: msg.rawText,
+    capture({ url: msg.url, title: msg.title, rawText: msg.rawText, fullHeight: msg.fullHeight,
               tabId: sender.tab ? sender.tab.id : undefined,
               windowId: sender.tab ? sender.tab.windowId : undefined })
       .then((result) => sendResponse(result))
