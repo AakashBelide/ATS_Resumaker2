@@ -32,6 +32,7 @@ class ArtifactStore(Protocol):
     def url(self, run_id: str, name: str) -> str | None: ...
     def delete_run(self, run_id: str) -> None: ...
     def find(self, run_id: str, suffix: str) -> str | None: ...
+    def purge(self, run_id: str, suffixes: tuple[str, ...]) -> None: ...
 
 
 class LocalArtifactStore:
@@ -61,6 +62,15 @@ class LocalArtifactStore:
         d = get_settings().output_root / run_id
         m = next((f for f in d.glob(f"*{suffix}")), None)
         return m.name if m else None
+
+    def purge(self, run_id: str, suffixes: tuple[str, ...]) -> None:
+        d = get_settings().output_root / run_id
+        if not d.is_dir():
+            return
+        for f in d.iterdir():
+            if f.is_file() and f.suffix.lower() in suffixes:
+                with suppress(Exception):
+                    f.unlink()
 
 
 class GCSArtifactStore:
@@ -109,6 +119,16 @@ class GCSArtifactStore:
             if name.endswith(suffix):
                 return name
         return None
+
+    def purge(self, run_id: str, suffixes: tuple[str, ...]) -> None:
+        # Delete every blob under the run whose filename ends in one of `suffixes` (e.g. drop a
+        # stale generated resume .pdf/.docx before writing an uploaded one), then the local copies.
+        for blob in self._bucket().list_blobs(prefix=f"{run_id}/"):
+            name = blob.name.rsplit("/", 1)[-1].lower()
+            if any(name.endswith(s) for s in suffixes):
+                with suppress(Exception):
+                    blob.delete()
+        self._local.purge(run_id, suffixes)
 
     def url(self, run_id: str, name: str) -> str | None:
         from datetime import timedelta

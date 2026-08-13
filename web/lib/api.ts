@@ -238,10 +238,22 @@ export type Report = {
   };
   sponsorship: { verdict: string; hard_blocker: boolean; source: string; needs_verification: boolean; reasons: string[] };
   decision: { recommend_apply: boolean; confidence: string; reasons: string[]; blockers: string[] };
-  // populated only by the FULL pipeline (null in a match-only run)
-  resume: unknown | null; cover_letter: unknown | null; ats: { overall?: number } | null;
+  // populated only by the FULL pipeline (null in a match-only run). `resume` carries `uploaded:true`
+  // when the owner attached their own PDF instead of generating one (then there's no DOCX/ATS).
+  resume: ({ uploaded?: boolean; filename?: string } & Record<string, unknown>) | null;
+  cover_letter: unknown | null; ats: { overall?: number } | null;
   warnings: string[]; error: string | null;
 };
+// Attach an owner-supplied resume PDF to a run (stored in the bucket as resume.pdf; report.json is
+// flagged so the report shows it). `dataUrl` is a base64 data: URL from FileReader.readAsDataURL.
+export async function uploadResume(runId: string, dataUrl: string, filename: string): Promise<{ ok: boolean }> {
+  const r = await fetch(`${BASE}/v1/runs/${encodeURIComponent(runId)}/resume-upload`, {
+    method: "POST", headers: headers(),
+    body: JSON.stringify({ pdf_base64: dataUrl, filename }),
+  });
+  if (!r.ok) throw new Error(`uploadResume → ${r.status}`);
+  return r.json();
+}
 export async function getReport(runId: string): Promise<Report> {
   const r = await fetch(`${BASE}/v1/runs/${encodeURIComponent(runId)}/artifacts/report.json`, { headers: headers() });
   if (!r.ok) throw new Error(`getReport → ${r.status}`);

@@ -66,6 +66,62 @@ def start_run(req: RunRequest) -> RunStarted:
     return RunStarted(run_id=run_id)
 
 
+class ResumeUpload(BaseModel):
+    # The PDF as base64 (bare or a `data:application/pdf;base64,...` URL - both accepted). Base64
+    # over the existing JSON proxy avoids a multipart dependency and mirrors the extension's
+    # base64-screenshot capture. `filename` is cosmetic (shown on the report).
+    pdf_base64: str
+    filename: str = "resume.pdf"
+
+
+@router.post("/{run_id}/resume-upload", status_code=200)
+def upload_resume(run_id: str, body: ResumeUpload) -> dict:
+    """Attach an owner-supplied resume PDF to a run instead of generating one. Stores it in the
+    run's artifact store as resume.pdf (durable in GCS after publish) and flags report.json so the
+    report page shows it; DOCX + cover letter stay 'unavailable' since only a PDF was supplied.
+    Bounded to 15MB and must be a real PDF (%PDF header). No DB migration needed - report.json is
+    the source of truth for what documents a run has, and it already rides GCS."""
+    import base64
+
+    raw = body.pdf_base64.strip()
+    if raw.startswith("data:"):                      # tolerate a data: URL straight from the browser
+        raw = raw.split(",", 1)[-1]
+    try:
+        data = base64.b64decode(raw, validate=False)
+    except Exception:  # noqa: BLE001 - malformed base64 -> 400, never a 500
+        raise HTTPException(400, "invalid base64 PDF") from None
+    if len(data) > 15 * 1024 * 1024:
+        raise HTTPException(413, "PDF too large (max 15MB)")
+    if not data.startswith(b"%PDF"):
+        raise HTTPException(400, "not a PDF (missing %PDF header)")
+
+    from resumaker.persistence.artifacts import get_artifact_store
+    store = get_artifact_store()
+    # The uploaded PDF is the single source of truth for this run's resume, so clear any prior
+    # resume artifacts first (a previously *generated* .pdf/.docx) - otherwise find(".pdf") could
+    # resolve the stale one, and a leftover .docx would look downloadable when it no longer matches.
+    store.purge(run_id, (".pdf", ".docx"))
+    run_dir = store.local_run_dir(run_id)
+    (run_dir / "resume.pdf").write_bytes(data)
+
+    # Flag report.json so the report page renders the resume tab. Prefer the local copy; on a
+    # scale-to-zero instance the run dir is empty, so pull report.json from the store (GCS) instead.
+    rep = None
+    local_report = run_dir / "report.json"
+    if local_report.is_file():
+        rep = json.loads(local_report.read_text())
+    else:
+        raw_rep = store.open(run_id, "report.json")
+        if raw_rep:
+            rep = json.loads(raw_rep)
+    if rep is not None:
+        rep["resume"] = {"uploaded": True, "filename": body.filename or "resume.pdf"}
+        rep["ats"] = None                            # an uploaded resume has no ATS score
+        local_report.write_text(json.dumps(rep))
+    store.publish(run_id)
+    return {"ok": True, "uploaded": True}
+
+
 @router.get("", response_model=list[RunRecord])
 def list_runs(limit: int = 50) -> list[RunRecord]:
     return db.list_runs(limit=limit)

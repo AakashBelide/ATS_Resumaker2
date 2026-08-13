@@ -474,18 +474,23 @@ button, input, select, textarea { font-family: inherit; }
     padding: 5px 11px; cursor: pointer; transition: color .15s, background .15s, border-color .15s; }
 .doc-tab:hover { color: var(--text); border-color: rgba(59,116,255,0.45); }
 .doc-tab.on { color: #fff; background: var(--electric); border-color: var(--electric); }
-.doc-actions { display: flex; gap: 7px; margin-left: auto; }
+.doc-actions { display: flex; gap: 7px; margin-left: auto; align-items: center; }
+/* muted "unavailable" marker for a doc format/type that this run doesn't have (e.g. an uploaded PDF
+   has no DOCX or cover letter) - reads as an explicit absence, not a broken/clickable control. */
+.doc-na { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: .3px; text-transform: uppercase;
+    color: var(--muted); border: 1px dashed var(--line-2); border-radius: 8px; padding: 5px 10px;
+    white-space: nowrap; }
+.doc-cta { display: flex; flex-wrap: wrap; gap: 9px; align-items: center; }
 .doc-frame { width: 100%; height: 80vh; min-height: 620px; border: 1px solid var(--line);
     border-radius: 12px; background: #fff; }
 .doc-cover { margin: 0; max-height: 80vh; overflow: auto; white-space: pre-wrap; word-break: break-word;
     font-family: var(--font-mono); font-size: 12.5px; line-height: 1.65; color: var(--mist);
     background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; }
 
-/* ---- captured posting: browser-extension screenshot thumbnail ---- */
-.shot-thumb { display: block; width: 100%; max-height: 340px; object-fit: cover; object-position: top;
-    border: 1px solid var(--line); border-radius: 12px; background: var(--bg); cursor: zoom-in;
-    transition: border-color .15s ease; }
-.shot-thumb:hover { border-color: var(--electric); }
+/* ---- captured posting: browser-extension full-page screenshot (scrollable) ---- */
+.shot-scroll { max-height: 72vh; overflow-y: auto; overflow-x: hidden; border: 1px solid var(--line);
+    border-radius: 12px; background: var(--bg); }
+.shot-full { display: block; width: 100%; height: auto; }   /* natural height -> the box scrolls */
 
 /* ---- profile: grouped skills ---- */
 .skill-groups { display: flex; flex-direction: column; gap: 18px; }

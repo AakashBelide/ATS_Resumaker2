@@ -8,7 +8,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Spinner from "@/components/Spinner";
 
 import CompanyLogo from "@/components/CompanyLogo";
-import { artifactUrl, fetchArtifactText, getProgress, getReport, getReportOrNull, getRun, getTrackerByRun, startRun, type Report, type TrackerEntry } from "@/lib/api";
+import { artifactUrl, fetchArtifactText, getProgress, getReport, getReportOrNull, getRun, getTrackerByRun, startRun, uploadResume, type Report, type TrackerEntry } from "@/lib/api";
 
 function scoreColor(v: number) { return v >= 65 ? "hi" : v >= 45 ? "mid" : "lo"; }
 function pct(v: number) { return Math.round(v <= 1 ? v * 100 : v); }
@@ -43,6 +43,8 @@ export default function ReportPage() {
   const [docTab, setDocTab] = useState<"resume" | "cover">("resume"); // which document is previewed
   const [coverText, setCoverText] = useState<string | null>(null);    // cover letter body, fetched inline
   const [copied, setCopied] = useState(false);                        // cover-letter copy feedback
+  const [uploading, setUploading] = useState(false);                  // own-PDF upload in flight
+  const fileRef = useRef<HTMLInputElement>(null);                     // hidden file picker for PDF upload
   // Extension capture screenshot: a full-page PNG or (for tall pages) JPEG. Try each in turn and
   // hide the block if neither exists (most runs have no capture). `shotIdx` walks the candidates.
   const shotCandidates = ["screenshot.png", "screenshot.jpg"];
@@ -52,6 +54,30 @@ export default function ReportPage() {
   async function copyCover() {
     if (!coverText) return;
     try { await navigator.clipboard.writeText(coverText); setCopied(true); setTimeout(() => setCopied(false), 1500); } catch { /* clipboard blocked */ }
+  }
+
+  // Upload the owner's own resume PDF for this run (instead of generating one). Reads the file as a
+  // base64 data URL, POSTs it, then re-polls the report so the uploaded PDF renders in the resume tab.
+  function pickPdf() { fileRef.current?.click(); }
+  async function onPdfChosen(e: React.ChangeEvent<HTMLInputElement>) {
+    const f = e.target.files?.[0];
+    e.target.value = "";                              // allow re-picking the same file later
+    if (!f) return;
+    if (f.type !== "application/pdf" && !f.name.toLowerCase().endsWith(".pdf")) { setError("please choose a PDF file"); return; }
+    if (f.size > 15 * 1024 * 1024) { setError("PDF too large (max 15MB)"); return; }
+    setUploading(true); setError("");
+    try {
+      const dataUrl: string = await new Promise((res, rej) => {
+        const reader = new FileReader();
+        reader.onload = () => res(String(reader.result));
+        reader.onerror = () => rej(new Error("could not read the file"));
+        reader.readAsDataURL(f);
+      });
+      await uploadResume(runId, dataUrl, f.name);
+      const rep = await getReport(runId).catch(() => null);   // reflect the uploaded PDF immediately
+      if (rep) setR(rep); else retry();
+    } catch (err) { setError(String(err)); }
+    finally { setUploading(false); }
   }
 
   // Shared generation-progress loop: poll the run until it ends, then reload the report so the
@@ -142,6 +168,7 @@ export default function ReportPage() {
 
   const title = tracked?.title || r?.job.title || "…";
   const company = tracked?.company || r?.job.company || "";
+  const uploaded = !!(r?.resume && (r.resume as { uploaded?: boolean }).uploaded);  // owner's own PDF
 
   async function generate() {
     if (!r) return;
@@ -334,20 +361,30 @@ export default function ReportPage() {
             <aside className="report-side">
               <div className="block-head"><h2>Documents</h2></div>
               <div className="panel">
+                {/* one hidden picker shared by every "upload PDF" affordance below */}
+                <input ref={fileRef} type="file" accept="application/pdf,.pdf" hidden onChange={onPdfChosen} />
                 {r.resume || r.cover_letter ? (
                   <div className="docs">
                     <div className="doc-tabs">
                       {r.resume != null && (
                         <button className={`doc-tab ${docTab === "resume" ? "on" : ""}`} onClick={() => setDocTab("resume")}>resume</button>
                       )}
-                      {r.cover_letter != null && (
+                      {/* cover letter tab when present; otherwise a muted "unavailable" marker (e.g. an
+                          uploaded PDF, which carries no cover letter) so the absence is explicit. */}
+                      {r.cover_letter != null ? (
                         <button className={`doc-tab ${docTab === "cover" ? "on" : ""}`} onClick={() => setDocTab("cover")}>cover letter</button>
+                      ) : (
+                        <span className="doc-na" title="no cover letter for this run">cover letter · unavailable</span>
                       )}
                       <span className="doc-actions">
                         {r.resume != null && docTab === "resume" && (
                           <>
                             <a className="btn btn-sm" href={artifactUrl(runId, "resume.pdf")} target="_blank" rel="noreferrer">PDF ↗</a>
-                            <a className="btn btn-sm" href={artifactUrl(runId, "resume.docx")} target="_blank" rel="noreferrer">DOCX ↗</a>
+                            {/* DOCX exists only for a GENERATED resume; an uploaded PDF has none. */}
+                            {uploaded
+                              ? <span className="doc-na" title="only a PDF was uploaded">DOCX · unavailable</span>
+                              : <a className="btn btn-sm" href={artifactUrl(runId, "resume.docx")} target="_blank" rel="noreferrer">DOCX ↗</a>}
+                            <button className="btn btn-sm" onClick={pickPdf} disabled={uploading}>{uploading ? "uploading…" : "replace PDF"}</button>
                           </>
                         )}
                         {r.cover_letter != null && docTab === "cover" && (
@@ -378,13 +415,19 @@ export default function ReportPage() {
                       sponsorship / keywords) — the tailored documents are generated <b>on demand</b>, not
                       automatically, so you only spend the run when you actually want to apply.
                     </p>
-                    {gen ? (
-                      <button className="btn btn-sm" disabled>
-                        <span className="matching mono">generating… {gen.stage}</span>
+                    <div className="doc-cta">
+                      {gen ? (
+                        <button className="btn btn-sm" disabled>
+                          <span className="matching mono">generating… {gen.stage}</span>
+                        </button>
+                      ) : (
+                        <button className="btn btn-sm btn-primary" onClick={generate}>Generate resume &amp; cover letter</button>
+                      )}
+                      {/* or attach your own PDF (kept in the bucket for this run) */}
+                      <button className="btn btn-sm" onClick={pickPdf} disabled={uploading || !!gen}>
+                        {uploading ? "uploading…" : "Upload your own PDF"}
                       </button>
-                    ) : (
-                      <button className="btn btn-sm btn-primary" onClick={generate}>Generate resume &amp; cover letter</button>
-                    )}
+                    </div>
                   </div>
                 )}
               </div>
@@ -396,13 +439,17 @@ export default function ReportPage() {
                 <div className="block" style={{ marginTop: 22 }}>
                   <div className="block-head"><h2>Captured posting</h2></div>
                   <div className="panel">
-                    <a href={shotUrl} target="_blank" rel="noreferrer" title="open full screenshot">
+                    {/* Scrollable full-page capture (like the reference extension): the image shows at
+                        full width and NATURAL height inside a scroll box, so the whole posting is
+                        readable in place instead of a cropped thumbnail. */}
+                    <div className="shot-scroll">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img className="shot-thumb" src={shotUrl} alt="captured job posting"
+                      <img className="shot-full" src={shotUrl} alt="captured job posting"
                            onError={() => setShotIdx((i) => i + 1)} />
-                    </a>
+                    </div>
                     <p className="mono muted" style={{ fontSize: 11.5, marginTop: 10 }}>
-                      full-page capture by the browser extension · click to open full size ↗
+                      full-page capture by the browser extension · scroll to read ·{" "}
+                      <a href={shotUrl} target="_blank" rel="noreferrer">open full size ↗</a>
                     </p>
                   </div>
                 </div>

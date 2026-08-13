@@ -196,6 +196,22 @@ def test_local_artifact_find_by_suffix(tmp_settings, monkeypatch):
     assert store.find("r9", ".txt") is None
 
 
+def test_local_artifact_purge_by_suffix(tmp_settings, monkeypatch):
+    """purge() drops a run's stale resume artifacts (a previously generated .pdf/.docx) so an
+    uploaded PDF can replace them, but leaves other files (report.json) untouched."""
+    from resumaker.persistence import artifacts
+    monkeypatch.setattr("resumaker.persistence.artifacts.get_settings", lambda: tmp_settings)
+    store = artifacts.LocalArtifactStore()
+    d = store.local_run_dir("r10")
+    (d / "acme-mle-resume.pdf").write_text("x")
+    (d / "acme-mle-resume.docx").write_text("y")
+    (d / "report.json").write_text("{}")
+    store.purge("r10", (".pdf", ".docx"))
+    assert store.find("r10", ".pdf") is None and store.find("r10", ".docx") is None
+    assert (d / "report.json").is_file()          # non-matching files survive
+    store.purge("missing-run", (".pdf",))          # no-op on an absent run dir (must not raise)
+
+
 def test_ensure_column_tolerates_stale_duplicate(tmp_settings):
     """_ensure_column swallows a 'duplicate column' ALTER error (libSQL/Turso stale-view case)
     but re-raises anything else. Reproduces the real-Turso first-run failure."""
