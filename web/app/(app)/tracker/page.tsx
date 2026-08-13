@@ -193,15 +193,19 @@ export default function TrackerPage() {
                     <td className="c mono muted">{fmtDate(e.created_at)}</td>
                     <td className="c">
                       <div className="row-actions">
-                        {/* "open" now goes to the actual job listing; the report opens from the role */}
-                        <a className="btn btn-sm" href={e.url} target="_blank" rel="noreferrer" title="open the job posting">posting ↗</a>
+                        {/* icon actions, kept on one line. the report opens from the role. */}
+                        <a className="icon-btn" href={e.url} target="_blank" rel="noreferrer" title="open the job posting" aria-label="open the job posting">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /><path d="M15 3h6v6M10 14 21 3" /></svg>
+                        </a>
                         {!pending && (
-                          <button className="btn btn-sm" title="re-run the match"
-                                  onClick={() => e.id != null && onRematch(e.id)}>re-match</button>
+                          <button className="icon-btn" title="re-run the match" aria-label="re-run the match"
+                                  onClick={() => e.id != null && onRematch(e.id)}>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9" /><circle cx="12" cy="12" r="4.5" /><circle cx="12" cy="12" r="0.7" fill="currentColor" /></svg>
+                          </button>
                         )}
-                        <button className="btn btn-sm btn-danger" title="remove from tracker"
+                        <button className="icon-btn danger" title="remove from tracker" aria-label="remove from tracker"
                                 onClick={() => e.id != null && onDelete(e.id, e.title || e.company || "this job")}>
-                          delete
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6M10 11v6M14 11v6" /></svg>
                         </button>
                       </div>
                     </td>
