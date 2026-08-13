@@ -24,12 +24,14 @@ permissions:
   contents: read
   id-token: write         # required for WIF
 
+# GCP_PROJECT / GCP_WIF_PROVIDER / GCP_DEPLOY_SA must be set as GitHub Actions
+# repository variables (Settings -> Secrets and variables -> Actions -> Variables).
 env:
-  PROJECT: your-gcp-project-id
+  PROJECT: ${{ vars.GCP_PROJECT }}
   REGION: us-central1
-  REPO: us-central1-docker.pkg.dev/your-gcp-project-id/resumaker
-  WIF_PROVIDER: projects/your-gcp-project-number/locations/global/workloadIdentityPools/github-pool/providers/github-provider
-  DEPLOY_SA: github-deployer@your-gcp-project-id.iam.gserviceaccount.com
+  REPO: us-central1-docker.pkg.dev/${{ vars.GCP_PROJECT }}/resumaker
+  WIF_PROVIDER: ${{ vars.GCP_WIF_PROVIDER }}
+  DEPLOY_SA: ${{ vars.GCP_DEPLOY_SA }}
 
 jobs:
   # Which image(s) does this push actually affect? (src/apps/deps hit both; a single Dockerfile

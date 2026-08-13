@@ -478,10 +478,14 @@ cold starts) — same Docker Compose, so serverless↔VPS is a redeploy, not a r
 > Order: RB.1 → RB.2 → RB.3 → RB.4 → RB.5 (profile agent last, POC-first). Work in a new branch off
 > `main`; commit per task; merge → `main` (triggers deploy) when validated.
 >
-> ⚠️ **BEFORE MERGING THIS BRANCH TO MAIN:** set **`LOGIN_USERNAME`, `LOGIN_PASSWORD`, and
-> `SESSION_SECRET`** (`openssl rand -hex 32`) in **Vercel's env** — the login gate fails **closed**,
-> so without them the deployed app locks everyone out. (The current prod deploy has no gate yet;
-> this only bites when RB merges.) **Remind the owner at merge time.**
+> ⚠️ **BEFORE MERGING THIS BRANCH TO MAIN — two required setup steps (remind the owner at merge time):**
+> 1. **Vercel env:** set **`LOGIN_USERNAME`, `LOGIN_PASSWORD`, `SESSION_SECRET`** (`openssl rand -hex 32`).
+>    The login gate fails **closed** — without them the deployed app locks everyone out. (Prod has no
+>    gate yet; this only bites when RB merges.)
+> 2. **GitHub Actions repository variables** (Settings → Secrets and variables → Actions → Variables):
+>    set **`GCP_PROJECT`**, **`GCP_WIF_PROVIDER`**, **`GCP_DEPLOY_SA`**. The deploy workflow was
+>    de-identified (GCP project id/number/SA moved out of the file into these vars) so the repo can be
+>    public — if they're unset, the backend deploy on push to `main` will fail WIF auth.
 
 | # | Task | Status | Deps | Notes |
 |---|------|--------|------|-------|
