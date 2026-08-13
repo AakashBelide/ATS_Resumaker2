@@ -27,6 +27,18 @@ def _slug(*parts: str) -> str:
     return re.sub(r"[^a-z0-9-]+", "-", s.lower()).strip("-")[:60] or "resume"
 
 
+def _resume_filename() -> str:
+    """The resume file's base name, from the owner's name -> e.g. 'AakashBelide_Resume'. Fixed
+    (not the JD-derived slug) so every generated resume is named consistently for the applicant."""
+    from resumaker.persistence import profile as prof
+    try:
+        name = (prof.load_profile().get("contact") or {}).get("name") or ""
+    except Exception:  # noqa: BLE001 - no profile yet -> generic name
+        name = ""
+    base = "".join(ch for ch in name if ch.isalnum() or ch == " ").strip().replace(" ", "")
+    return f"{base}_Resume" if base else "Resume"
+
+
 def _skills_count(content: ResumeContent) -> int:
     return sum(len(v) for v in content.skills.values())
 
@@ -196,8 +208,10 @@ def generate_resume(job: JobPosting, *, keyword_set: KeywordSet | None = None,
     for n in loc.notes:
         print(f"[location] note: {n}")
 
-    slug = _slug(job.company, job.title)
-    out = Path(out_dir) if out_dir else _OUT / slug
-    docx, pdf, pages = _fit_pages(content, out, slug, target_pages,
+    # File is named for the applicant (AakashBelide_Resume.docx/pdf); the folder, when not supplied
+    # by the pipeline, still uses the job slug so standalone runs don't collide.
+    fname = _resume_filename()
+    out = Path(out_dir) if out_dir else _OUT / _slug(job.company, job.title)
+    docx, pdf, pages = _fit_pages(content, out, fname, target_pages,
                                   location_override=loc.display)
     return ResumeDoc(content=content, docx_path=docx, pdf_path=pdf, page_count=pages)

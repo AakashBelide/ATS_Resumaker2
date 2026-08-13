@@ -945,3 +945,14 @@ def test_fetch_source_group_concurrency_and_budget(monkeypatch):
     past = time.monotonic() - 1
     assert service._fetch_source_group(items, deadline=past, workers=3) == [] and calls == []
     assert service._fetch_source_group(items, deadline=past, workers=1) == [] and calls == []
+
+
+def test_ats_run_id_uses_posting_name(tmp_db):
+    """The run_id/folder derives from the ATS company+title (what the tracker keeps), not the JD
+    body - so a run reads 'morgan-stanley-ai-engineer-<hash>', not 'software-engineering-iii'."""
+    from resumaker.domain import TrackerEntry
+    from resumaker.ingestion.tracker import _ats_run_id
+
+    rid = _ats_run_id(TrackerEntry(url="https://x/jobs/1", company="Morgan Stanley", title="AI Engineer"))
+    assert rid and rid.startswith("morgan-stanley-ai-engineer-")
+    assert _ats_run_id(TrackerEntry(url="https://x/jobs/2")) is None   # no company/title -> pipeline derives

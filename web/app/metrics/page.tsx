@@ -1,7 +1,6 @@
 "use client";
 // Metrics (RA.5): model calls / cost / usage. Claude CLI usage is logged for visibility
 // (subscription, not billed); the Gemini API is hard-capped.
-import Link from "next/link";
 import { useEffect, useState } from "react";
 import Spinner from "@/components/Spinner";
 
@@ -114,7 +113,7 @@ export default function MetricsPage() {
                   <table className="dtable">
                     <thead><tr>
                       <th>Run</th><th>Status</th><th className="c">Fit</th><th className="c">Apply</th>
-                      <th className="c">Time</th><th className="c">Cost</th><th className="c">Report</th>
+                      <th className="c">Time</th><th className="c">Cost</th>
                     </tr></thead>
                     <tbody>
                       {runList.map((r) => (
@@ -125,7 +124,6 @@ export default function MetricsPage() {
                           <td className="c">{r.recommend_apply == null ? "—" : <span className={`pill ${r.recommend_apply ? "apply" : "skip"}`}>{r.recommend_apply ? "apply" : "skip"}</span>}</td>
                           <td className="c mono">{fmtDur(durationS(r))}</td>
                           <td className="c mono">{r.cost_usd ? `$${r.cost_usd.toFixed(2)}` : "—"}</td>
-                          <td className="c"><Link className="btn btn-sm" href={`/report/${encodeURIComponent(r.id)}`}>open ↗</Link></td>
                         </tr>
                       ))}
                     </tbody>
