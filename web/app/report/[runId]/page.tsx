@@ -237,25 +237,6 @@ export default function ReportPage() {
                 </div>
               </div>
 
-              {/* captured posting (browser-extension screenshot) — only when one exists.
-                  We render it optimistically and hide the whole block if the image 404s (the
-                  graceful existence check: no run has a screenshot unless it came via capture). */}
-              {shotUrl && (
-                <div className="block">
-                  <div className="block-head"><h2>Captured posting</h2></div>
-                  <div className="panel">
-                    <a href={shotUrl} target="_blank" rel="noreferrer" title="open full screenshot">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img className="shot-thumb" src={shotUrl} alt="captured job posting"
-                           onError={() => setShotIdx((i) => i + 1)} />
-                    </a>
-                    <p className="mono muted" style={{ fontSize: 11.5, marginTop: 10 }}>
-                      full-page capture by the browser extension · click to open full size ↗
-                    </p>
-                  </div>
-                </div>
-              )}
-
               {/* job description (left, below the analysis) */}
               <div className="block">
                 <div className="block-head"><h2>Job description</h2></div>
@@ -282,7 +263,7 @@ export default function ReportPage() {
               </div>
             </div>
 
-            {/* -------- right: documents (résumé / cover letter), generated on demand -------- */}
+            {/* -------- right: documents (resume / cover letter), generated on demand -------- */}
             <aside className="report-side">
               <div className="block-head"><h2>Documents</h2></div>
               <div className="panel">
@@ -290,7 +271,7 @@ export default function ReportPage() {
                   <div className="docs">
                     <div className="doc-tabs">
                       {r.resume != null && (
-                        <button className={`doc-tab ${docTab === "resume" ? "on" : ""}`} onClick={() => setDocTab("resume")}>résumé</button>
+                        <button className={`doc-tab ${docTab === "resume" ? "on" : ""}`} onClick={() => setDocTab("resume")}>resume</button>
                       )}
                       {r.cover_letter != null && (
                         <button className={`doc-tab ${docTab === "cover" ? "on" : ""}`} onClick={() => setDocTab("cover")}>cover letter</button>
@@ -311,7 +292,7 @@ export default function ReportPage() {
                       </span>
                     </div>
                     {r.resume != null && docTab === "resume" && (
-                      <iframe className="doc-frame" src={artifactUrl(runId, "resume.pdf")} title="résumé PDF" />
+                      <iframe className="doc-frame" src={artifactUrl(runId, "resume.pdf")} title="resume PDF" />
                     )}
                     {r.cover_letter != null && docTab === "cover" && (
                       <pre className="doc-cover">{coverText ?? "loading…"}</pre>
@@ -326,7 +307,7 @@ export default function ReportPage() {
                       </svg>
                     </div>
                     <p className="muted" style={{ fontSize: 13.5, lineHeight: 1.6, margin: "0 0 4px" }}>
-                      No tailored résumé or cover letter yet. Tracking runs a <b>match-only</b> analysis (fit / gap /
+                      No tailored resume or cover letter yet. Tracking runs a <b>match-only</b> analysis (fit / gap /
                       sponsorship / keywords) — the tailored documents are generated <b>on demand</b>, not
                       automatically, so you only spend the run when you actually want to apply.
                     </p>
@@ -335,11 +316,30 @@ export default function ReportPage() {
                         <span className="matching mono">generating… {gen.stage}</span>
                       </button>
                     ) : (
-                      <button className="btn btn-sm btn-primary" onClick={generate}>Generate résumé &amp; cover letter</button>
+                      <button className="btn btn-sm btn-primary" onClick={generate}>Generate resume &amp; cover letter</button>
                     )}
                   </div>
                 )}
               </div>
+
+              {/* captured posting (browser-extension screenshot) — lives in the RIGHT column next to
+                  the documents, only when one exists. Rendered optimistically; the whole block hides
+                  if the image 404s (no run has a screenshot unless it came via capture). */}
+              {shotUrl && (
+                <div className="block" style={{ marginTop: 22 }}>
+                  <div className="block-head"><h2>Captured posting</h2></div>
+                  <div className="panel">
+                    <a href={shotUrl} target="_blank" rel="noreferrer" title="open full screenshot">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img className="shot-thumb" src={shotUrl} alt="captured job posting"
+                           onError={() => setShotIdx((i) => i + 1)} />
+                    </a>
+                    <p className="mono muted" style={{ fontSize: 11.5, marginTop: 10 }}>
+                      full-page capture by the browser extension · click to open full size ↗
+                    </p>
+                  </div>
+                </div>
+              )}
             </aside>
           </div>
         )}

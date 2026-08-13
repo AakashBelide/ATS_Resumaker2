@@ -65,6 +65,14 @@ def _apply_match(entry: TrackerEntry) -> None:
         entry.recommend_apply = None
         return
     entry.match_error = None                       # success: clear any prior failure
+    # Cache the scraped JD durably so future re-matches (and on-demand generation) never re-scrape
+    # the URL (slow, and bot-blockable). Only when we actually SCRAPED this time - `captured_jd` was
+    # empty - and got JD text back; never overwrite an existing capture. It's a DB column on tracker,
+    # so it survives the run-folder cleanup a re-match does (which wipes report.json). The caller's
+    # `upsert_tracker` persists it (and only writes captured_jd when non-empty, so this is safe).
+    scraped_jd = getattr(res.job, "raw_text", "") if res.job is not None else ""
+    if not entry.captured_jd and scraped_jd:
+        entry.captured_jd = scraped_jd
     entry.fit_0_100 = res.fit.final_0_100 if res.fit else None
     entry.recommend_apply = res.decision.recommend_apply if res.decision else None
     entry.sponsorship = (res.sponsorship or {}).get("verdict", "") if res.sponsorship else ""

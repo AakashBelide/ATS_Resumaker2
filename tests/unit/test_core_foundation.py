@@ -33,6 +33,62 @@ def test_get_settings_is_cached():
     assert get_settings() is get_settings()
 
 
+# `_env_file=None` keeps these hermetic (a real repo `.env` can't leak a Turso URL in).
+def test_turso_remote_only_auto_enabled_when_url_set(monkeypatch, tmp_path):
+    monkeypatch.setenv("TURSO_DATABASE_URL", "libsql://db.turso.io")
+    monkeypatch.delenv("RESUMAKER_TURSO_REMOTE_ONLY", raising=False)
+    s = Settings(root_dir=tmp_path, _env_file=None)
+    assert s.turso_url == "libsql://db.turso.io"
+    assert s.turso_remote_only is True  # forced on: a Turso URL implies prod
+
+
+def test_turso_remote_only_respects_explicit_false(monkeypatch, tmp_path):
+    monkeypatch.setenv("TURSO_DATABASE_URL", "libsql://db.turso.io")
+    monkeypatch.setenv("RESUMAKER_TURSO_REMOTE_ONLY", "false")
+    s = Settings(root_dir=tmp_path, _env_file=None)
+    assert s.turso_remote_only is False  # explicit opt-out still wins
+
+
+def test_turso_remote_only_stays_off_without_url(monkeypatch, tmp_path):
+    monkeypatch.delenv("TURSO_DATABASE_URL", raising=False)
+    monkeypatch.delenv("RESUMAKER_TURSO_REMOTE_ONLY", raising=False)
+    s = Settings(root_dir=tmp_path, _env_file=None)
+    assert s.turso_url is None
+    assert s.turso_remote_only is False  # no Turso URL -> default stays off
+
+
+def test_run_pipeline_reuses_provided_keyword_set_and_gap(tmp_settings, monkeypatch):
+    """Generation reuses a match's report.json by passing keyword_set/gap (and job) into the
+    pipeline: those stages — plus scrape + structure — must be SKIPPED, not re-run."""
+    from types import SimpleNamespace
+
+    from resumaker.domain import ApplyDecision, FitScore, GapReport, JobPosting, KeywordSet
+    from resumaker.pipeline import orchestrator
+
+    def boom(*a, **k):
+        raise AssertionError("stage must be SKIPPED when its result is provided")
+
+    # scrape/structure skipped by `job=`; keywords/gap skipped by `keyword_set=`/`gap=`.
+    monkeypatch.setattr(orchestrator, "scrape", boom)
+    monkeypatch.setattr(orchestrator, "structure_jd", boom)
+    monkeypatch.setattr(orchestrator, "extract_keywords", boom)
+    monkeypatch.setattr(orchestrator, "analyze_gaps", boom)
+    # the stages that DO run in a match get cheap stand-ins (no real LLM calls).
+    monkeypatch.setattr(orchestrator, "sponsor_signal", lambda *a, **k: None)
+    monkeypatch.setattr(orchestrator, "resolve_sponsorship", lambda *a, **k: SimpleNamespace(verdict="ok"))
+    monkeypatch.setattr(orchestrator, "score_fit", lambda *a, **k: FitScore(final_0_100=70.0))
+    monkeypatch.setattr(orchestrator, "decide_apply", lambda *a, **k: ApplyDecision(recommend_apply=True))
+
+    job = JobPosting(title="ML Engineer", company="ACME", raw_text="jd body text")
+    ks = KeywordSet(standardized=["python"])
+    gap = GapReport()
+    res = orchestrator.run_pipeline(url="https://x.co/j", job=job, keyword_set=ks, gap=gap,
+                                    match_only=True, parallel=False, run_id="reuse-1")
+    assert res.error == ""                       # no boom-ing (skipped) stage fired
+    assert res.keyword_set is ks and res.gap is gap
+    assert res.fit.final_0_100 == 70.0
+
+
 def test_slugify():
     assert files.slugify("State Street", "AI Orchestration Engineer") == \
         "state-street-ai-orchestration-engineer"

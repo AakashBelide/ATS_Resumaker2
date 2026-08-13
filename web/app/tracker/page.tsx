@@ -138,10 +138,19 @@ export default function TrackerPage() {
                   return (
                   <tr key={e.id}>
                     <td>
-                      <div className="cell-co">
-                        <CompanyLogo name={e.company} size={30} />
-                        <span>{e.company}</span>
-                      </div>
+                      {/* a freshly-captured entry has no company until the match fills it in — show a
+                          "matching…" indicator instead of a "?" logo + blank name until it resolves. */}
+                      {pending && !e.company ? (
+                        <div className="cell-co">
+                          <span className="spinner sm" aria-hidden />
+                          <span className="matching mono">matching…</span>
+                        </div>
+                      ) : (
+                        <div className="cell-co">
+                          <CompanyLogo name={e.company} size={30} />
+                          <span>{e.company}</span>
+                        </div>
+                      )}
                     </td>
                     <td>
                       <a className="rolelink" href={e.url} target="_blank" rel="noreferrer" title={e.title}>

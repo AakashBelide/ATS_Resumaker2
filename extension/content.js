@@ -10,6 +10,9 @@
   window.__atsResumakerInjected = true;
 
   const Z = 2147483647;                          // sit above page chrome
+  const SIZE = 46;                               // square edge (px) — the reference's docked tab
+  const PAD = 8;                                 // min gap from the top/bottom viewport edge
+  const DRAG_SLOP = 4;                           // px of pointer travel before a press becomes a drag
   let pill = null, toast = null, busy = false;
 
   function el(tag, css) {
@@ -18,30 +21,81 @@
     return n;
   }
 
-  // --- floating "⬡ Track" pill (our electric→azure gradient, mono label) --------------------
+  // Keep the button's top within the viewport (it's pinned to the right edge; only y is free).
+  function clampY(y) {
+    const max = Math.max(PAD, window.innerHeight - SIZE - PAD);
+    return Math.min(Math.max(y, PAD), max);
+  }
+
+  // --- floating "⬡" trigger: a SQUARE button docked to the RIGHT edge (rounded on the left only),
+  // our electric→azure theme. It's DRAGGABLE but rail-locked: x stays pinned right, y follows the
+  // pointer (clamped). A quick press = capture; a drag just repositions. y persists in storage. -----
   function mountPill() {
     if (pill) return;
     pill = el("div",
-      `position:fixed;right:18px;bottom:18px;z-index:${Z};display:flex;align-items:center;gap:8px;
-       padding:10px 15px;border-radius:999px;cursor:pointer;user-select:none;
-       font:600 13px/1 ui-sans-serif,system-ui,-apple-system,sans-serif;color:#061024;
+      `position:fixed;right:0;top:40vh;z-index:${Z};width:${SIZE}px;height:${SIZE}px;
+       display:flex;align-items:center;justify-content:center;cursor:grab;user-select:none;
+       touch-action:none;border-radius:12px 0 0 12px;color:#EAF2FF;
        background:linear-gradient(135deg,#3B74FF,#5B93FF);
-       box-shadow:0 6px 22px rgba(59,116,255,.45);border:1px solid rgba(143,187,255,.5);
-       transition:transform .15s ease, box-shadow .15s ease, opacity .15s ease;`);
+       box-shadow:-4px 0 18px rgba(59,116,255,.45);border:1px solid rgba(143,187,255,.5);
+       border-right:none;transition:box-shadow .15s ease, opacity .15s ease, width .12s ease;`);
     pill.innerHTML =
-      '<span style="font-size:15px;line-height:1">⬡</span>' +   // ⬡ brand glyph
-      '<span data-ats-label style="letter-spacing:.3px">Track</span>';
-    pill.title = "ATS Resumaker — capture this posting";
-    pill.onmouseenter = () => {
-      pill.style.transform = "translateY(-1px)";
-      pill.style.boxShadow = "0 8px 26px rgba(59,116,255,.6)";
-    };
-    pill.onmouseleave = () => {
-      pill.style.transform = "none";
-      pill.style.boxShadow = "0 6px 22px rgba(59,116,255,.45)";
-    };
-    pill.onclick = () => { if (!busy) doCapture(); };
+      '<span data-ats-glyph style="font-size:20px;line-height:1">⬡</span>';   // ⬡ brand glyph
+    pill.title = "ATS Resumaker — capture this posting (drag to move)";
+    pill.onmouseenter = () => { pill.style.boxShadow = "-6px 0 22px rgba(59,116,255,.62)"; };
+    pill.onmouseleave = () => { pill.style.boxShadow = "-4px 0 18px rgba(59,116,255,.45)"; };
+
+    // Restore the saved y (else default to ~40vh), then wire up the drag/click behaviour.
+    chrome.storage.local.get(["pillY"], (c) => {
+      const y = typeof c.pillY === "number" ? clampY(c.pillY) : clampY(Math.round(window.innerHeight * 0.4));
+      pill.style.top = `${y}px`;
+    });
+    attachDrag(pill);
     document.documentElement.appendChild(pill);
+
+    // If the viewport shrinks, pull the button back on-screen (re-clamp its current y).
+    window.addEventListener("resize", () => {
+      if (!pill) return;
+      pill.style.top = `${clampY(parseFloat(pill.style.top) || 0)}px`;
+    });
+  }
+
+  // Press-and-hold drag along the right rail. A press that never crosses DRAG_SLOP is treated as a
+  // click (capture); once it does, we move (y only) and, on release, persist without triggering.
+  function attachDrag(node) {
+    let active = false, moved = false, startY = 0, startTop = 0;
+    const onDown = (e) => {
+      if (busy || (e.button != null && e.button !== 0)) return;
+      active = true; moved = false;
+      startY = e.clientY;
+      startTop = parseFloat(node.style.top) || 0;
+      node.style.transition = "none";       // no lag while dragging
+      node.style.cursor = "grabbing";
+      try { node.setPointerCapture(e.pointerId); } catch { /* older engines */ }
+      e.preventDefault();
+    };
+    const onMove = (e) => {
+      if (!active) return;
+      const dy = e.clientY - startY;
+      if (!moved && Math.abs(dy) > DRAG_SLOP) moved = true;
+      if (moved) node.style.top = `${clampY(startTop + dy)}px`;
+    };
+    const onUp = (e) => {
+      if (!active) return;
+      active = false;
+      node.style.transition = "";
+      node.style.cursor = "grab";
+      try { node.releasePointerCapture(e.pointerId); } catch { /* ignore */ }
+      if (moved) {
+        chrome.storage.local.set({ pillY: clampY(parseFloat(node.style.top) || 0) });  // stays put across pages
+      } else if (!busy) {
+        doCapture();                          // a real click -> capture
+      }
+    };
+    node.addEventListener("pointerdown", onDown);
+    node.addEventListener("pointermove", onMove);
+    node.addEventListener("pointerup", onUp);
+    node.addEventListener("pointercancel", onUp);
   }
 
   function showToast(text, tone) {
@@ -61,8 +115,9 @@
   }
   function hideToastSoon(ms) { setTimeout(() => { if (toast) toast.style.display = "none"; }, ms); }
 
+  // Briefly swap the ⬡ glyph (e.g. to a ✓) as an inline success/error cue on the square button.
   function flashLabel(label) {
-    const inner = pill && pill.querySelector("[data-ats-label]");
+    const inner = pill && pill.querySelector("[data-ats-glyph]");
     if (!inner) return;
     const prev = inner.textContent;
     inner.textContent = label;
@@ -98,7 +153,7 @@
     try {
       if (!rawText) throw new Error("no visible text on this page");
       result = await chrome.runtime.sendMessage({ type: "capture", url, title, rawText });
-      if (result && result.ok) { showToast("✓ tracked — fit fills in shortly", "ok"); flashLabel("✓ Tracked"); }
+      if (result && result.ok) { showToast("✓ tracked — fit fills in shortly", "ok"); flashLabel("✓"); }
       else { showToast("error: " + ((result && result.error) || "unknown"), "err"); }
     } catch (e) {
       result = { ok: false, error: String((e && e.message) || e) };

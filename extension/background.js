@@ -41,12 +41,45 @@ function cdp(target, method, params) {
   });
 }
 
+// Evaluate a JS expression in the page via CDP and return its numeric value (0 on anything odd).
+async function evalNum(target, expression) {
+  try {
+    const res = await cdp(target, "Runtime.evaluate", { expression, returnByValue: true });
+    const v = res && res.result && res.result.value;
+    return typeof v === "number" && isFinite(v) ? v : 0;
+  } catch { return 0; }
+}
+
+// Lazy-loaded pages (LinkedIn, Ashby, etc.) don't render their full height until scrolled, so a
+// single captureBeyondViewport clip would miss the un-rendered tail. Walk the page top->bottom in
+// viewport-sized steps, pausing so lazy content can load/settle and the document keeps growing,
+// then return to the top so the capture's origin (and the user's view) is correct. Bounded by a
+// step cap so a pathological infinite-scroll feed can't spin forever.
+async function autoScroll(target) {
+  const step = (await evalNum(target, "window.innerHeight")) || 800;
+  let height = await evalNum(target, "document.documentElement.scrollHeight");
+  let y = 0;
+  for (let i = 0; i < 40; i++) {                 // cap: ~40 screens is plenty for any real posting
+    y = Math.min(y + step, height);
+    await cdp(target, "Runtime.evaluate", { expression: `window.scrollTo(0, ${y});` });
+    await new Promise((r) => setTimeout(r, 240));   // let lazy content fetch + paint
+    const grown = await evalNum(target, "document.documentElement.scrollHeight");
+    const atBottom = y >= height - 1;
+    height = grown;
+    if (atBottom && grown <= y + 1) break;        // reached the end AND it stopped growing -> done
+  }
+  await cdp(target, "Runtime.evaluate", { expression: "window.scrollTo(0, 0);" });
+  await new Promise((r) => setTimeout(r, 150));   // let sticky headers/top content re-settle
+  return height;
+}
+
 // Full-page shot via CDP. Returns a data URL (PNG, or JPEG for tall pages). Throws on any failure
 // so the caller can fall back to the visible viewport.
 async function fullPageShot(tabId) {
   const target = { tabId };
   await attach(target);
   try {
+    await autoScroll(target);                    // trigger lazy-load + settle BEFORE measuring
     const metrics = await cdp(target, "Page.getLayoutMetrics");
     const size = metrics.cssContentSize || metrics.contentSize || {};
     // Clamp to CDP's texture ceiling (~16k) so an enormous page can't fail the capture outright.
