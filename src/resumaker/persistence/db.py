@@ -88,6 +88,7 @@ CREATE TABLE IF NOT EXISTS tracker (
     sponsorship      TEXT NOT NULL DEFAULT '',
     match_error      TEXT,
     notes            TEXT NOT NULL DEFAULT '',
+    captured_jd      TEXT NOT NULL DEFAULT '',
     created_at       TEXT NOT NULL,
     updated_at       TEXT NOT NULL,
     UNIQUE (url)
@@ -239,6 +240,9 @@ def _migrate(conn: sqlite3.Connection) -> None:
     _ensure_column(conn, "jobs", "posted_at", "posted_at TEXT NOT NULL DEFAULT ''")
     _ensure_column(conn, "jobs", "comp", "comp TEXT NOT NULL DEFAULT ''")
     _ensure_column(conn, "tracker", "match_error", "match_error TEXT")
+    # Extension-capture (RA.2): the raw JD text the browser grabbed, stored so the match can skip
+    # scraping. Additive + NOT NULL DEFAULT '' so ALTER works on both sqlite and libSQL/Turso.
+    _ensure_column(conn, "tracker", "captured_jd", "captured_jd TEXT NOT NULL DEFAULT ''")
 
 
 # ------------------------------------------------------------------ runs
@@ -613,17 +617,22 @@ def upsert_tracker(entry: TrackerEntry) -> int:
     with connect(durable=True) as conn:
         cur = conn.execute(
             """INSERT INTO tracker (job_id, url, company, title, stage, run_id, fit_0_100,
-                   recommend_apply, sponsorship, match_error, notes, created_at, updated_at)
-               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
+                   recommend_apply, sponsorship, match_error, notes, captured_jd,
+                   created_at, updated_at)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)
                ON CONFLICT(url) DO UPDATE SET
                    job_id=excluded.job_id, company=excluded.company, title=excluded.title,
                    run_id=excluded.run_id, fit_0_100=excluded.fit_0_100,
                    recommend_apply=excluded.recommend_apply, sponsorship=excluded.sponsorship,
-                   match_error=excluded.match_error, updated_at=excluded.updated_at
+                   match_error=excluded.match_error, updated_at=excluded.updated_at,
+                   -- only overwrite the captured JD when this write actually carries one, so a
+                   -- plain re-track (empty captured_jd) never wipes a prior extension capture.
+                   captured_jd=CASE WHEN excluded.captured_jd != ''
+                                    THEN excluded.captured_jd ELSE tracker.captured_jd END
                RETURNING id""",
             (entry.job_id, entry.url, entry.company, entry.title, entry.stage, entry.run_id,
              entry.fit_0_100, _b(entry.recommend_apply), entry.sponsorship, entry.match_error,
-             entry.notes, now, now))
+             entry.notes, entry.captured_jd, now, now))
         row = cur.fetchone()
         assert row is not None
         return int(row["id"])
@@ -682,6 +691,17 @@ def _b(v: bool | None) -> int | None:
     return None if v is None else int(v)
 
 
+def _col(row: sqlite3.Row, name: str, default: str = "") -> str:
+    """Read a column that may be absent on a schema that predates it (the local replica's metadata
+    can briefly lag a migrated remote on libSQL/Turso). Returns `default` instead of raising so a
+    row read never crashes mid-migration."""
+    try:
+        val = row[name]
+    except (IndexError, KeyError):
+        return default
+    return default if val is None else val
+
+
 def _json(d: Any) -> str:
     return json.dumps(d)
 
@@ -737,6 +757,7 @@ def _tracker_from_row(r: sqlite3.Row) -> TrackerEntry:
         stage=r["stage"], run_id=r["run_id"], fit_0_100=r["fit_0_100"],
         recommend_apply=None if r["recommend_apply"] is None else bool(r["recommend_apply"]),
         sponsorship=r["sponsorship"], match_error=r["match_error"], notes=r["notes"],
+        captured_jd=_col(r, "captured_jd"),
         created_at=_dt(r["created_at"]), updated_at=_dt(r["updated_at"]))
 
 

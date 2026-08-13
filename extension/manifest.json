@@ -1,11 +1,18 @@
 {
   "manifest_version": 3,
   "name": "ATS Resumaker",
-  "version": "0.3.0",
-  "description": "Capture the current job posting and add it to your ATS Resumaker tracker. Thin client — posts to your configurable backend.",
-  "permissions": ["activeTab", "storage"],
+  "version": "0.4.0",
+  "description": "Capture the current job posting (visible text + screenshot) and add it to your ATS Resumaker tracker. The extension does the capture; your configurable backend does the rest.",
+  "permissions": ["activeTab", "storage", "tabs", "debugger"],
   "host_permissions": ["http://localhost/*", "http://127.0.0.1/*", "https://*/*"],
   "action": { "default_popup": "popup.html", "default_title": "ATS Resumaker — Track this job" },
   "options_page": "options.html",
-  "background": { "service_worker": "background.js", "type": "module" }
+  "background": { "service_worker": "background.js", "type": "module" },
+  "content_scripts": [
+    {
+      "matches": ["http://*/*", "https://*/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ]
 }

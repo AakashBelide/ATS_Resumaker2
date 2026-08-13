@@ -481,6 +481,12 @@ button, input, select, textarea { font-family: inherit; }
     font-family: var(--font-mono); font-size: 12.5px; line-height: 1.65; color: var(--mist);
     background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; }
 
+/* ---- captured posting: browser-extension screenshot thumbnail ---- */
+.shot-thumb { display: block; width: 100%; max-height: 340px; object-fit: cover; object-position: top;
+    border: 1px solid var(--line); border-radius: 12px; background: var(--bg); cursor: zoom-in;
+    transition: border-color .15s ease; }
+.shot-thumb:hover { border-color: var(--electric); }
+
 /* ---- profile: grouped skills ---- */
 .skill-groups { display: flex; flex-direction: column; gap: 18px; }
 .skill-group .sg-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 9px; }
