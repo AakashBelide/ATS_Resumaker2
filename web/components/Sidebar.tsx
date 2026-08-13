@@ -4,12 +4,12 @@
 //   the .app grid so the content reflows). Persisted in localStorage.
 // - Mobile: the rail is an off-canvas drawer toggled by the hamburger.
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 // Per-page glyphs (stroke paths inside a 24x24 viewBox) so the collapsed icon-rail is legible.
 const NAV = [
-  { href: "/", label: "Discovery", idx: "01", icon: <><circle cx="11" cy="11" r="7" /><path d="M21 21l-4.3-4.3" /></> },
+  { href: "/discovery", label: "Discovery", idx: "01", icon: <><circle cx="11" cy="11" r="7" /><path d="M21 21l-4.3-4.3" /></> },
   { href: "/tracker", label: "Tracker", idx: "02", icon: <><rect x="3" y="4" width="7" height="16" rx="1" /><rect x="14" y="4" width="7" height="10" rx="1" /></> },
   { href: "/onboard", label: "Onboarding", idx: "03", icon: <><rect x="4" y="3" width="16" height="18" rx="1.5" /><path d="M9 21v-4h6v4M9 8h.01M15 8h.01M9 12h.01M15 12h.01" /></> },
   { href: "/profile", label: "Profile", idx: "04", icon: <><circle cx="12" cy="8" r="4" /><path d="M4.5 21c0-4 3.6-6 7.5-6s7.5 2 7.5 6" /></> },
@@ -20,8 +20,15 @@ const NAV = [
 
 export default function Sidebar() {
   const path = usePathname();
+  const router = useRouter();
   const [open, setOpen] = useState(false);          // mobile drawer
   const [collapsed, setCollapsed] = useState(false); // desktop icon-rail
+
+  async function logout() {
+    try { await fetch("/api/logout", { method: "POST" }); } catch { /* clear anyway */ }
+    router.push("/login");
+    router.refresh();
+  }
 
   useEffect(() => { setOpen(false); }, [path]);      // close drawer on navigation
   useEffect(() => {
@@ -61,7 +68,7 @@ export default function Sidebar() {
         </div>
 
         {NAV.map((n) => {
-          const active = n.href === "/" ? path === "/" : path.startsWith(n.href);
+          const active = path === n.href || path.startsWith(n.href + "/");
           return (
             <Link key={n.href} href={n.href} className={`rail-link${active ? " active" : ""}`} title={n.label}>
               <span className="ico" aria-hidden>
@@ -75,6 +82,16 @@ export default function Sidebar() {
             </Link>
           );
         })}
+
+        <button className="rail-link rail-logout" onClick={logout} title="Log out">
+          <span className="ico" aria-hidden>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"
+                 strokeLinecap="round" strokeLinejoin="round" width="18" height="18">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" />
+            </svg>
+          </span>
+          <span className="rail-label">Log out</span>
+        </button>
       </nav>
     </>
   );

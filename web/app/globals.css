@@ -97,6 +97,30 @@ button, input, select, textarea { font-family: inherit; }
 .rail-link.active { color: var(--text); background: rgba(59,116,255,0.12); border-color: var(--line-2); }
 .rail-link .ico { width: 17px; height: 17px; flex-shrink: 0; }
 .rail-idx { margin-left: auto; font-family: var(--font-mono); font-size: 10px; color: var(--electric); opacity: .7; }
+/* logout: a rail-link-styled button pinned to the bottom of the column */
+.rail-logout { margin-top: auto; width: 100%; background: transparent; cursor: pointer;
+    font-family: inherit; font-size: 14.5px; text-align: left; border-top: 1px solid var(--line);
+    border-radius: 0; padding-top: 16px; margin-top: auto; }
+.rail-logout:hover { color: #ff9aa6; background: rgba(255,122,138,0.06); }
+
+/* ---- auth / landing shells (public pages, no sidebar) ---- */
+.auth-wrap { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; }
+.auth-card { display: flex; flex-direction: column; gap: 13px; width: 100%; max-width: 380px;
+    padding: 30px 28px; border: 1px solid var(--line-2); border-radius: 18px;
+    background: rgba(14,23,40,0.72); backdrop-filter: blur(14px); box-shadow: 0 24px 60px rgba(0,0,0,.4); }
+.auth-brand { display: flex; align-items: center; gap: 10px; }
+.auth-brand .rail-hex { width: 26px; height: 26px; color: var(--electric); }
+.auth-brand b { font-family: var(--font-display); font-size: 16px; font-weight: 700; }
+.auth-card h1 { font-family: var(--font-display); font-size: 22px; margin: 6px 0 0; }
+.auth-field { display: flex; flex-direction: column; gap: 6px; }
+.auth-field span { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: .5px;
+    text-transform: uppercase; color: var(--muted); }
+.auth-field input { background: rgba(0,0,0,0.28); border: 1px solid var(--line-2); border-radius: 9px;
+    color: var(--text); font-size: 14px; padding: 10px 12px; outline: none; }
+.auth-field input:focus { border-color: var(--electric); }
+.auth-card .btn-primary { margin-top: 4px; justify-content: center; }
+.auth-alt { color: var(--muted); font-size: 12px; text-align: center; margin-top: 2px; }
+.auth-alt:hover { color: var(--sky); }
 .rail-foot { margin-top: auto; font-family: var(--font-mono); font-size: 10px; letter-spacing: 1px;
     color: var(--muted); padding: 10px 12px; border-top: 1px solid var(--line); }
 .rail-brand-txt { min-width: 0; }

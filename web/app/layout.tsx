@@ -3,8 +3,6 @@ import "./globals.css";
 import type { Metadata } from "next";
 import { Inter, Space_Grotesk, Space_Mono } from "next/font/google";
 
-import Sidebar from "@/components/Sidebar";
-
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 const grotesk = Space_Grotesk({
   subsets: ["latin"], weight: ["500", "600", "700"], variable: "--font-space-grotesk",
@@ -24,10 +22,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" className={`${inter.variable} ${grotesk.variable} ${mono.variable}`}>
       <body>
         <div className="glow-bg" />
-        <div className="app">
-          <Sidebar />
-          <div className="content">{children}</div>
-        </div>
+        {/* No app shell here — the sidebar/grid live in app/(app)/layout.tsx (gated pages).
+            Public pages (landing, login, setup) render bare on top of the ambient glow. */}
+        {children}
       </body>
     </html>
   );
