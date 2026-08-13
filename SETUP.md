@@ -1,4 +1,4 @@
-# ATS Resumaker — Setup Guide
+# ATS Resumaker, Setup Guide
 
 Two ways to run it: **(A) Local (Docker)** on your own machine, or **(B) Self-hosting (cloud)** on
 Google Cloud Run + Turso + Vercel within their free tiers. Start with **Local** to try it; move to
@@ -6,7 +6,7 @@ Google Cloud Run + Turso + Vercel within their free tiers. Start with **Local** 
 extension and the email digest).
 
 > This same guide is rendered in-app at **`/setup`**. There's also a **`SETUP_SKILL.md`** you can
-> paste into Claude (or any CLI agent) to have it walk you through — and run — these steps.
+> paste into Claude (or any CLI agent) to have it walk you through, and run, these steps.
 
 ---
 
@@ -22,26 +22,26 @@ extension and the email digest).
 | **Node 20+** | the web dashboard | https://nodejs.org |
 | **Claude CLI** | the default LLM engine (subscription) | https://docs.claude.com/claude-code |
 | *(cloud only)* **gcloud CLI** | GCP | https://cloud.google.com/sdk/docs/install |
-| *(cloud only)* **Terraform ≥ 1.6** | provisioning | https://developer.hashicorp.com/terraform |
+| *(cloud only)* **Terraform >= 1.6** | provisioning | https://developer.hashicorp.com/terraform |
 | *(cloud only)* **Turso CLI** | the database | https://docs.turso.tech/cli |
 
 ### 0.2 Your profile is the source of truth (required before onboarding)
 
-Everything the system generates traces to **`data/profile/profile.json`** — your real employers,
+Everything the system generates traces to **`data/profile/profile.json`**, your real employers,
 titles, metrics, and skills. **Create it before you tail or generate anything.** Two ways:
 
 - **Hand-write it** from the schema (see `RESUME_SYSTEM_BLUEPRINT.md`), or
-- **Use the in-app Profile chat agent** (Profile page) — it interviews you and proposes structured
+- **Use the in-app Profile chat agent** (Profile page), it interviews you and proposes structured
   entries you approve. This is the easiest way for a new user to bootstrap a profile.
 
-`data/` is gitignored and holds PII — it never leaves your machine / your bucket.
+`data/` is gitignored and holds PII, it never leaves your machine / your bucket.
 
 ### 0.3 Disclaimers (read these)
 
-- **Cost:** the cloud path is designed to fit **free tiers** — Cloud Run (240k vCPU-sec / 450k
+- **Cost:** the cloud path is designed to fit **free tiers**, Cloud Run (240k vCPU-sec / 450k
   GiB-sec / month), Turso (3 GB syncs), GCS (5 GB, us-central1), Cloud Scheduler (3 free jobs),
   GitHub Actions (2000 min/mo), Vercel (hobby). Real single-user usage stays well inside these. You
-  still attach a billing account to GCP — set a **$1 budget alert** so there are no surprises.
+  still attach a billing account to GCP, set a **$1 budget alert** so there are no surprises.
 - **Claude CLI via OAuth is for PERSONAL use only.** `claude setup-token` gives a token for *your*
   subscription. Running a personal subscription on a shared/hosted server may violate Anthropic's
   ToS and hit rate limits. For a "real" hosted instance, use the **metered Anthropic API**
@@ -58,14 +58,14 @@ RESUMAKER_MODEL_STANDARD=claude-sonnet-4-5   # structuring / analysis / match
 RESUMAKER_MODEL_QUALITY=claude-opus-4-8      # tailoring / fact-critical
 ```
 
-Lower-usage plan? A **budget preset** — Sonnet for standard+quality, Haiku for fast — keeps quality
+Lower-usage plan? A **budget preset**, Sonnet for standard+quality, Haiku for fast, keeps quality
 high at lower cost. (Defaults above are the recommended balance.)
 
 ---
 
 ## A. Local (Docker)
 
-The whole stack runs on your machine — SQLite (a local file), the in-process scheduler/worker, and
+The whole stack runs on your machine, SQLite (a local file), the in-process scheduler/worker, and
 local artifact storage. No GCP/Turso/Vercel needed. **Docker is required.**
 
 ```bash
@@ -82,7 +82,7 @@ cp .env.example .env
 
 # 4) Bring it up (api + worker; LibreOffice + Claude CLI are baked into the worker image)
 ./scripts/run-local.sh          # wraps: docker compose -f deploy/docker-compose.split.yml up --build
-#    API → http://localhost:8000
+#    API -> http://localhost:8000
 
 # 5) The dashboard (separate terminal)
 cd web
@@ -106,21 +106,21 @@ uv run python -m apps.cli run <jd-url>          # full pipeline on one posting
 
 ## B. Self-hosting (cloud, GCP + Turso + Vercel)
 
-Serverless, scale-to-zero, free-tier. **Do the account setup in this order** — a couple of small
+Serverless, scale-to-zero, free-tier. **Do the account setup in this order**, a couple of small
 details matter and are called out.
 
 ### B.1 Accounts (in order)
 
-1. **Google Cloud** — create a project, **enable billing**, set a **$1 budget alert**. Region
+1. **Google Cloud**, create a project, **enable billing**, set a **$1 budget alert**. Region
    **`us-central1`** (keeps GCS free).
-2. **Turso** — sign up, create a database, grab its **URL** (`libsql://…`) and an **auth token**.
-3. **Resend** — sign up **with the SAME email address you want the job digest delivered to** (on the
+2. **Turso**, sign up, create a database, grab its **URL** (`libsql://...`) and an **auth token**.
+3. **Resend**, sign up **with the SAME email address you want the job digest delivered to** (on the
    free tier Resend only sends to your own verified address). Create an API key. This is easy to get
-   wrong — the digest silently won't arrive if the recipient isn't your Resend account email.
-4. **Vercel** — sign up (GitHub login is easiest); you'll deploy the `web/` app here.
-5. **GitHub** — fork/clone the repo; Actions will build + deploy on push to `main`.
+   wrong, the digest silently won't arrive if the recipient isn't your Resend account email.
+4. **Vercel**, sign up (GitHub login is easiest); you'll deploy the `web/` app here.
+5. **GitHub**, fork/clone the repo; Actions will build + deploy on push to `main`.
 
-### B.2 Auth (interactive — can't be scripted away)
+### B.2 Auth (interactive, can't be scripted away)
 
 ```bash
 gcloud auth login
@@ -139,9 +139,9 @@ cp deploy/terraform/terraform.tfvars.example deploy/terraform/terraform.tfvars  
 ./scripts/bootstrap.sh
 ```
 
-`bootstrap.sh` will: check prerequisites → enable the required GCP APIs → push your secrets into
-**Secret Manager** → `terraform apply` (Artifact Registry, 2 Cloud Run services, Cloud Tasks, Cloud
-Scheduler crons, GCS bucket, IAM) → build + push the `amd64` images → provision the Turso schema →
+`bootstrap.sh` will: check prerequisites -> enable the required GCP APIs -> push your secrets into
+**Secret Manager** -> `terraform apply` (Artifact Registry, 2 Cloud Run services, Cloud Tasks, Cloud
+Scheduler crons, GCS bucket, IAM) -> build + push the `amd64` images -> provision the Turso schema ->
 print the API URL. It prompts you for any interactive auth it still needs.
 
 <details><summary>Prefer to run it by hand? (what the script does)</summary>
@@ -149,9 +149,9 @@ print the API URL. It prompts you for any interactive auth it still needs.
 ```bash
 cd deploy/terraform
 export TF_VAR_api_token="$(openssl rand -hex 24)"
-export TF_VAR_turso_database_url="libsql://…"  TF_VAR_turso_auth_token="…"
+export TF_VAR_turso_database_url="libsql://..."  TF_VAR_turso_auth_token="..."
 export TF_VAR_claude_code_oauth_token="$CLAUDE_CODE_OAUTH_TOKEN"
-export TF_VAR_resend_api_key="…"  TF_VAR_notify_to="you@example.com"  TF_VAR_notify_from="you@example.com"
+export TF_VAR_resend_api_key="..."  TF_VAR_notify_to="you@example.com"  TF_VAR_notify_from="you@example.com"
 
 terraform init
 terraform apply -target=google_artifact_registry_repository.repo      # registry first
@@ -163,14 +163,14 @@ docker build --platform linux/amd64 -f ../Dockerfile.worker -t "$REPO/worker:lat
 docker push "$REPO/api:latest" && docker push "$REPO/worker:latest"
 
 terraform apply                                                       # the rest
-terraform output api_url                                              # → Vercel API_ORIGIN
+terraform output api_url                                              # -> Vercel API_ORIGIN
 ```
 </details>
 
 ### B.4 The web app on Vercel
 
 Import the repo into Vercel, set the **root directory to `web/`**, and set these **server-only** env
-vars (never `NEXT_PUBLIC_*` — the BFF keeps the token off the browser):
+vars (never `NEXT_PUBLIC_*`, the BFF keeps the token off the browser):
 
 | Var | Value |
 |-----|-------|
@@ -180,12 +180,12 @@ vars (never `NEXT_PUBLIC_*` — the BFF keeps the token off the browser):
 | `LOGIN_PASSWORD` | your login password |
 | `SESSION_SECRET` | `openssl rand -hex 32` |
 
-> ⚠️ The login gate **fails closed** — if `LOGIN_USERNAME` / `LOGIN_PASSWORD` / `SESSION_SECRET`
+> ⚠️ The login gate **fails closed**, if `LOGIN_USERNAME` / `LOGIN_PASSWORD` / `SESSION_SECRET`
 > aren't set on Vercel, the deployed app locks everyone out. Set all three.
 
 ### B.5 The browser extension (optional)
 
-Load `extension/` unpacked (`chrome://extensions` → Developer mode → Load unpacked). In its Options,
+Load `extension/` unpacked (`chrome://extensions` -> Developer mode -> Load unpacked). In its Options,
 set the **API base URL** to your Cloud Run api URL and the **API token** to `RESUMAKER_API_TOKEN`.
 The extension talks to the backend directly (not through the web app), so it's independent of login.
 
@@ -197,10 +197,10 @@ The extension talks to the backend directly (not through the web app), so it's i
 
 ## Troubleshooting
 
-- **Digest email never arrives** → on Resend's free tier the recipient must be your Resend
+- **Digest email never arrives** -> on Resend's free tier the recipient must be your Resend
   account/verified email (§B.1.3).
-- **`libsql` build fails** → build images with `--platform linux/amd64` (no arm64 wheel).
-- **App locked out after deploy** → set `LOGIN_USERNAME` / `LOGIN_PASSWORD` / `SESSION_SECRET` on
+- **`libsql` build fails** -> build images with `--platform linux/amd64` (no arm64 wheel).
+- **App locked out after deploy** -> set `LOGIN_USERNAME` / `LOGIN_PASSWORD` / `SESSION_SECRET` on
   Vercel (§B.4).
-- **LLM auth on the server** → `claude setup-token` is personal-use; for a hosted instance prefer
+- **LLM auth on the server** -> `claude setup-token` is personal-use; for a hosted instance prefer
   `RESUMAKER_DEFAULT_PROVIDER=anthropic` + `ANTHROPIC_API_KEY`.
