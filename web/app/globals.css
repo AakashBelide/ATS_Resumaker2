@@ -688,10 +688,16 @@ button, input, select, textarea { font-family: inherit; }
     margin: 0 auto; padding: 22px 24px; }
 .lp-brand { display: flex; align-items: center; gap: 10px; }
 .lp-brand .rail-hex { width: 26px; height: 26px; color: var(--electric); }
-.lp-brand b { font-family: var(--font-display); font-size: 16px; font-weight: 700; letter-spacing: .2px; }
+.lp-brand b { font-family: var(--font-display); font-size: 16px; font-weight: 700; letter-spacing: .2px; white-space: nowrap; }
 .lp-nav-links { display: flex; align-items: center; gap: 16px; }
 .lp-navlink { color: var(--muted); font-size: 14px; }
 .lp-navlink:hover { color: var(--text); }
+/* below 760px the top nav collapses to brand + primary CTA */
+@media (max-width: 760px) {
+  .lp-nav { padding: 16px 18px; }
+  .lp-nav-links { gap: 10px; }
+  .lp-nav-links .lp-navlink { display: none; }
+}
 
 .lp-hero { max-width: 1120px; margin: 0 auto; padding: 74px 24px 20px; display: grid;
     grid-template-columns: 1.1fr 0.9fr; gap: 44px; align-items: end; }
@@ -1138,6 +1144,7 @@ button, input, select, textarea { font-family: inherit; }
     border: 1px solid var(--line-2); border-radius: 999px; padding: 6px 13px; cursor: pointer; transition: background .2s, color .2s; }
 .dc-tourbadge:hover, .dc-replay:hover { color: #fff; background: rgba(59,116,255,.2); }
 .dc-replay svg { width: 14px; height: 14px; }
+.dc-tb-min { display: none; }
 .dc-live { width: 7px; height: 7px; border-radius: 50%; background: var(--good); box-shadow: 0 0 0 0 rgba(52,232,158,.6);
     animation: dc-pulse 1.6s infinite; flex-shrink: 0; }
 @keyframes dc-pulse { 0% { box-shadow: 0 0 0 0 rgba(52,232,158,.5); } 70% { box-shadow: 0 0 0 7px rgba(52,232,158,0); } 100% { box-shadow: 0 0 0 0 rgba(52,232,158,0); } }
@@ -1378,4 +1385,15 @@ button, input, select, textarea { font-family: inherit; }
   .dc-rep-right { position: static; }
   .dc-thead, .dc-trow { grid-template-columns: 1.4fr 1fr 0.6fr 0.8fr; }
   .dc-thead span:nth-child(4), .dc-trow > span:nth-child(4) { display: none; }
+}
+@media (max-width: 560px) {
+  /* keep the window title bar from overflowing on phones */
+  .dc-bar { padding: 10px 12px; gap: 6px; }
+  .dc-bar em { display: none; }
+  .dc-tb-full { display: none; } .dc-tb-min { display: inline; }
+  .dc-tourbadge, .dc-replay { padding: 6px 10px; font-size: 10.5px; }
+  .dc-docswitch { flex-wrap: wrap; }
+  .dc-quiet { flex-wrap: wrap; }
+  .dc-thead, .dc-trow { grid-template-columns: 1.5fr 0.6fr 0.9fr; }
+  .dc-thead span:nth-child(2), .dc-trow > span:nth-child(2) { display: none; }
 }

@@ -235,8 +235,8 @@ export default function DemoConsole() {
         <em className="mono">ats-resumaker</em>
         <div className="dc-bar-right">
           {auto
-            ? <button className="dc-tourbadge" onClick={takeControl}><span className="dc-live" />Auto tour playing, click to take control</button>
-            : <button className="dc-replay" onClick={runTour}>{ic.spark}Replay tour</button>}
+            ? <button className="dc-tourbadge" onClick={takeControl}><span className="dc-live" /><span className="dc-tb-full">Auto tour playing, click to take control</span><span className="dc-tb-min">Auto tour</span></button>
+            : <button className="dc-replay" onClick={runTour}>{ic.spark}<span className="dc-tb-full">Replay tour</span><span className="dc-tb-min">Replay</span></button>}
         </div>
       </div>
 
