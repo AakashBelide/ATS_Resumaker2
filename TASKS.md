@@ -477,6 +477,11 @@ cold starts) — same Docker Compose, so serverless↔VPS is a redeploy, not a r
 >
 > Order: RB.1 → RB.2 → RB.3 → RB.4 → RB.5 (profile agent last, POC-first). Work in a new branch off
 > `main`; commit per task; merge → `main` (triggers deploy) when validated.
+>
+> ⚠️ **BEFORE MERGING THIS BRANCH TO MAIN:** set **`LOGIN_USERNAME`, `LOGIN_PASSWORD`, and
+> `SESSION_SECRET`** (`openssl rand -hex 32`) in **Vercel's env** — the login gate fails **closed**,
+> so without them the deployed app locks everyone out. (The current prod deploy has no gate yet;
+> this only bites when RB merges.) **Remind the owner at merge time.**
 
 | # | Task | Status | Deps | Notes |
 |---|------|--------|------|-------|
