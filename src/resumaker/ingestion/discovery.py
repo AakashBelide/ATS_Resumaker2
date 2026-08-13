@@ -74,6 +74,22 @@ def _apply(rows: list[JobRecord], *, keyword: str | None, company: list[str] | N
     return out
 
 
+def _dedupe(rows: list[JobRecord]) -> list[JobRecord]:
+    """Collapse repeated postings the feed would otherwise show twice - the same role re-ingested
+    across boards / ticks (different source+external_id, so the DB never merged them). Keyed on
+    normalized company+title+location; the first occurrence wins (rows arrive already ordered, so
+    that's the most-recent under 'recent'). Distinct cities stay distinct (location is in the key)."""
+    seen: set[tuple[str, str, str]] = set()
+    out: list[JobRecord] = []
+    for r in rows:
+        key = (r.company.strip().lower(), r.title.strip().lower(), (r.location or "").strip().lower())
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append(r)
+    return out
+
+
 def _state_counter(rows: list[JobRecord]) -> Counter:
     c: Counter = Counter()
     for r in rows:
@@ -95,9 +111,9 @@ def discover(f: DiscoveryFilters) -> DiscoveryResult:
                          order=f.order, limit=100_000, offset=0)
 
     ti, tx = f.title_include, f.title_exclude
-    filtered = _apply(base, keyword=f.keyword, company=f.company, source=f.source,
-                      on_target=f.on_target, level=f.level, state=f.state,
-                      title_include=ti, title_exclude=tx)
+    filtered = _dedupe(_apply(base, keyword=f.keyword, company=f.company, source=f.source,
+                              on_target=f.on_target, level=f.level, state=f.state,
+                              title_include=ti, title_exclude=tx))
     total = len(filtered)
     page = filtered[f.offset:f.offset + f.limit]
 

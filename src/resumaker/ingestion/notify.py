@@ -231,7 +231,7 @@ def _brand_header(n: int, total: int | None = None) -> str:
     total = n if total is None else total
     capped = total > n
     plural = "" if n == 1 else "s"
-    headline = f"{n} of {total} new on-target postings" if capped else f"{n} new on-target posting{plural}"
+    headline = f"{n} of {total} new postings" if capped else f"{n} new posting{plural}"
     subline = (f"showing the top {n} of {total} — see the rest in Discovery" if capped
                else "from your ATS Resumaker watchlist")
     return (
@@ -244,14 +244,10 @@ def _brand_header(n: int, total: int | None = None) -> str:
         "<td style=\"padding-left:12px;vertical-align:middle\">"
         f"<div style=\"font-family:{_F_DISPLAY};font-size:19px;font-weight:700;color:{_TEXT};"
         "letter-spacing:0.2px;line-height:1.1\">ATS Resumaker</div>"
-        f"<div style=\"font-family:{_F_MONO};font-size:8.5px;letter-spacing:2px;"
-        f"text-transform:uppercase;color:{_MUTED};margin-top:3px\">watchlist &middot; discovery</div>"
         "</td></tr></table></td></tr>"
         f"<tr><td style=\"padding:0 0 24px\"><div style=\"height:3px;border-radius:3px;"
         f"background:{_ACCENT}\"></div></td></tr>"
         "<tr><td style=\"padding:0 0 22px\">"
-        f"<div style=\"font-family:{_F_MONO};font-size:11px;letter-spacing:2px;"
-        f"text-transform:uppercase;color:{_SKY};margin:0 0 8px\">&mdash; new on-target</div>"
         f"<div style=\"font-family:{_F_DISPLAY};font-size:24px;font-weight:700;color:{_TEXT};"
         f"letter-spacing:-0.4px;line-height:1.2\">{html_lib.escape(headline)}</div>"
         f"<div style=\"color:{_MUTED};font-size:13px;margin-top:6px\">"
@@ -304,8 +300,8 @@ def build_digest(jobs: list[JobRecord], *, total: int | None = None,
     tz = tz or _DEFAULT_TZ
     n = len(jobs)
     total = n if total is None else total
-    subject = (f"ATS Resumaker — {n} of {total} new on-target postings" if total > n
-               else f"ATS Resumaker — {n} new on-target posting{'' if n == 1 else 's'}")
+    subject = (f"ATS Resumaker — {n} of {total} new postings" if total > n
+               else f"ATS Resumaker — {n} new posting{'' if n == 1 else 's'}")
     ordered = sorted(jobs, key=lambda j: (j.company.lower(), j.title.lower()))
 
     cards_html, rows_text = [], []
@@ -328,12 +324,9 @@ def build_digest(jobs: list[JobRecord], *, total: int | None = None,
         "style=\"max-width:600px;width:100%\">"
         + _brand_header(n, total)
         + "".join(cards_html)
-        + f"<tr><td style=\"padding:20px 2px 0\"><div style=\"font-family:{_F_MONO};font-size:10px;"
-        f"letter-spacing:1px;color:{_MUTED};border-top:1px solid {_LINE};padding-top:14px\">"
-        "ATS RESUMAKER &middot; v0.1 &middot; SELF-HOSTED</div></td></tr>"
-        "</table></td></tr></table></body></html>")
-    text_head = (f"{n} of {total} new on-target postings (see the rest in Discovery)" if total > n
-                 else f"{n} new on-target posting{'' if n == 1 else 's'} from your ATS Resumaker watchlist")
+        + "</table></td></tr></table></body></html>")
+    text_head = (f"{n} of {total} new postings (see the rest in Discovery)" if total > n
+                 else f"{n} new posting{'' if n == 1 else 's'} from your ATS Resumaker watchlist")
     text_body = f"{text_head}:\n\n" + "\n\n".join(rows_text)
     return subject, html_body, text_body
 

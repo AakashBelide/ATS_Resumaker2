@@ -174,12 +174,20 @@ _ARTIFACTS = {"report.json", "cover_letter.txt", "content.json", "JD.txt",
               "resume_extracted_text.txt", "status.json", "screenshot.png", "screenshot.jpg"}
 
 
+# Content types for a direct (attachment) download, so the browser saves the real file instead of
+# following a signed-URL redirect. Keyed by suffix.
+_DL_MEDIA = {".pdf": "application/pdf", ".docx":
+             "application/vnd.openxmlformats-officedocument.wordprocessingml.document"}
+
+
 @router.get("/{run_id}/artifacts/{name}")
-def get_artifact(run_id: str, name: str):
-    """Serve an artifact via the config-selected store: local disk streams inline; GCS redirects
-    to a short-lived signed URL. Role-slug filenames (resume.pdf/docx) resolve by suffix within
-    the run dir."""
-    from fastapi.responses import FileResponse, RedirectResponse
+def get_artifact(run_id: str, name: str, download: bool = False):
+    """Serve an artifact via the config-selected store. Default: local disk streams inline; GCS
+    redirects to a short-lived signed URL (used for the inline PDF preview). With `?download=1` the
+    bytes are streamed THROUGH the API with a Content-Disposition attachment header (works on both
+    backends, no redirect) so the PDF/DOCX save directly. Role-slug filenames (resume.pdf/docx)
+    resolve by suffix within the run dir."""
+    from fastapi.responses import FileResponse, RedirectResponse, Response
 
     from resumaker.persistence.artifacts import get_artifact_store
     store = get_artifact_store()
@@ -195,6 +203,18 @@ def get_artifact(run_id: str, name: str):
         resolved = resolved_name
     elif name not in _ARTIFACTS:
         raise HTTPException(400, "unknown artifact")
+
+    if download:
+        # Stream the bytes with an attachment disposition so it downloads directly (no signed-URL
+        # hop). store.open() reads from the bucket in cloud / local disk otherwise.
+        data = store.open(run_id, resolved)
+        if data is None:
+            raise HTTPException(404, "artifact not found")
+        suffix = Path(resolved).suffix.lower()
+        media = _DL_MEDIA.get(suffix, "application/octet-stream")
+        return Response(content=data, media_type=media,
+                        headers={"Content-Disposition": f'attachment; filename="{name}"'})
+
     signed = store.url(run_id, resolved)         # non-None only for the GCS backend
     if signed:
         return RedirectResponse(signed)

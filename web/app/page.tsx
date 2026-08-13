@@ -15,7 +15,10 @@ import { titleLevel, workModel } from "@/lib/logo";
 const LEVEL_ORDER = ["intern", "junior", "mid", "senior", "staff", "manager"];
 const PAGE_SIZES = [24, 48, 96];
 const STORE_KEY = "discovery.q";
-const DEFAULT_Q: DiscoveryQuery = { on_target: true, order: "recent", limit: 24, offset: 0, since_days: 1 };
+// Defaults applied on EVERY load (not persisted): recent postings from the last day, junior/mid
+// level. These two are re-forced on mount even if a prior session's filters were saved.
+const DEFAULT_LEVELS = ["junior", "mid"];
+const DEFAULT_Q: DiscoveryQuery = { on_target: true, order: "recent", limit: 24, offset: 0, since_days: 1, level: DEFAULT_LEVELS };
 
 // Exact local date-time we first fetched the posting (replaces the vague "today / Nd ago").
 function fmtSeen(iso: string | null): string {
@@ -78,7 +81,10 @@ export default function DiscoveryPage() {
       const s = sessionStorage.getItem(STORE_KEY);
       if (s) {
         const parsed = JSON.parse(s) as DiscoveryQuery;
-        setQ(parsed); setKw(parsed.keyword ?? "");
+        // Restore prior filters, but always re-force the day + level defaults (per request they
+        // should reset to "last 1 day" and "junior/mid" every time the page loads).
+        setQ({ ...parsed, since_days: 1, level: DEFAULT_LEVELS, offset: 0 });
+        setKw(parsed.keyword ?? "");
         setTitleInc((parsed.title_include ?? []).join(", "));
         setTitleExc((parsed.title_exclude ?? []).join(", "));
       }
@@ -239,6 +245,13 @@ export default function DiscoveryPage() {
                 </select>
                 <button className="btn btn-sm" disabled={page <= 0} onClick={() => goPage(page - 1)}>‹ prev</button>
                 <span className="mono">{page + 1} / {pages}</span>
+                {/* jump straight to a page number (clamped to 1..pages) */}
+                <input className="page-jump" type="number" min={1} max={pages} placeholder="go"
+                       title="go to page" onKeyDown={(e) => {
+                         if (e.key !== "Enter") return;
+                         const v = Number((e.target as HTMLInputElement).value);
+                         if (Number.isFinite(v) && v >= 1) { goPage(Math.min(v, pages) - 1); (e.target as HTMLInputElement).value = ""; }
+                       }} />
                 <button className="btn btn-sm" disabled={page + 1 >= pages} onClick={() => goPage(page + 1)}>next ›</button>
               </div>
             </div>

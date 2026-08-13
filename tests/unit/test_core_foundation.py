@@ -232,6 +232,22 @@ def test_ensure_column_tolerates_stale_duplicate(tmp_settings):
                           "jobs", "posted_at", "posted_at TEXT")
 
 
+def test_discovery_dedupe_collapses_repeats():
+    """Discovery._dedupe drops repeated postings (same company+title+location, re-ingested across
+    boards with different source/external_id) but keeps distinct cities."""
+    from resumaker.ingestion.discovery import _dedupe
+
+    rows = [
+        JobRecord(source="greenhouse", external_id="1", company="Apple", title="AI Engineer", location="Cupertino, CA"),
+        JobRecord(source="linkedin", external_id="2", company="apple ", title=" ai engineer", location="Cupertino, CA"),  # dup (case/space)
+        JobRecord(source="lever", external_id="3", company="Apple", title="AI Engineer", location="Seattle, WA"),          # distinct city
+    ]
+    out = _dedupe(rows)
+    assert len(out) == 2
+    assert {r.location for r in out} == {"Cupertino, CA", "Seattle, WA"}
+    assert out[0].external_id == "1"   # first occurrence wins (rows arrive most-recent-first)
+
+
 def test_db_job_dedupe(tmp_settings):
     db.init_db()
     job = JobRecord(source="greenhouse", external_id="123", title="MLE", content_hash="h1")

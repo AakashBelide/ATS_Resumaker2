@@ -51,7 +51,6 @@ export default function Sidebar() {
           </span>
           <div className="rail-brand-txt">
             <b>ATS Resumaker</b>
-            <span>watchlist · discovery</span>
           </div>
           <button className="rail-collapse" aria-label="collapse sidebar" title="collapse / expand"
                   onClick={() => setCollapsed((c) => !c)}>
@@ -76,8 +75,6 @@ export default function Sidebar() {
             </Link>
           );
         })}
-
-        <div className="rail-foot">v0.1 · self-hosted</div>
       </nav>
     </>
   );

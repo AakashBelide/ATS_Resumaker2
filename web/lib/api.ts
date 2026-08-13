@@ -55,6 +55,11 @@ export async function getProgress(runId: string): Promise<RunProgress> {
 export function artifactUrl(runId: string, name: string): string {
   return `${BASE}/v1/runs/${runId}/artifacts/${name}`;
 }
+// Force a direct download (Content-Disposition attachment, streamed through the proxy) instead of
+// the inline/signed-URL view - used for the resume PDF/DOCX buttons so they save straight away.
+export function artifactDownloadUrl(runId: string, name: string): string {
+  return `${artifactUrl(runId, name)}?download=1`;
+}
 // Fetch a text artifact's contents (e.g. cover_letter.txt) to render inline. Goes through the
 // same-origin proxy, which attaches the token, so no auth header is needed here.
 export async function fetchArtifactText(runId: string, name: string): Promise<string> {
@@ -111,7 +116,7 @@ export function discovery(q: DiscoveryQuery = {}): Promise<Discovery> {
 export type TrackerEntry = {
   id: number | null; job_id: number | null; url: string; company: string; title: string;
   stage: string; run_id: string; fit_0_100: number | null; recommend_apply: boolean | null;
-  sponsorship: string; match_error: string | null;
+  sponsorship: string; match_error: string | null; location: string; salary: string;
   notes: string; created_at: string | null; updated_at: string | null;
 };
 export function listTracker(stage?: string): Promise<TrackerEntry[]> {

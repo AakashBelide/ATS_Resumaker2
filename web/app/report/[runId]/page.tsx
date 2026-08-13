@@ -8,7 +8,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Spinner from "@/components/Spinner";
 
 import CompanyLogo from "@/components/CompanyLogo";
-import { artifactUrl, fetchArtifactText, getProgress, getReport, getReportOrNull, getRun, getTrackerByRun, startRun, uploadResume, type Report, type TrackerEntry } from "@/lib/api";
+import { artifactDownloadUrl, artifactUrl, fetchArtifactText, getProgress, getReport, getReportOrNull, getRun, getTrackerByRun, startRun, uploadResume, type Report, type TrackerEntry } from "@/lib/api";
 
 function scoreColor(v: number) { return v >= 65 ? "hi" : v >= 45 ? "mid" : "lo"; }
 function pct(v: number) { return Math.round(v <= 1 ? v * 100 : v); }
@@ -379,19 +379,18 @@ export default function ReportPage() {
                       <span className="doc-actions">
                         {r.resume != null && docTab === "resume" && (
                           <>
-                            <a className="btn btn-sm" href={artifactUrl(runId, "resume.pdf")} target="_blank" rel="noreferrer">PDF ↗</a>
+                            {/* direct downloads (attachment, no signed-URL redirect) */}
+                            <a className="btn btn-sm" href={artifactDownloadUrl(runId, "resume.pdf")} download>PDF ↓</a>
                             {/* DOCX exists only for a GENERATED resume; an uploaded PDF has none. */}
                             {uploaded
                               ? <span className="doc-na" title="only a PDF was uploaded">DOCX · unavailable</span>
-                              : <a className="btn btn-sm" href={artifactUrl(runId, "resume.docx")} target="_blank" rel="noreferrer">DOCX ↗</a>}
+                              : <a className="btn btn-sm" href={artifactDownloadUrl(runId, "resume.docx")} download>DOCX ↓</a>}
                             <button className="btn btn-sm" onClick={pickPdf} disabled={uploading}>{uploading ? "uploading…" : "replace PDF"}</button>
                           </>
                         )}
+                        {/* cover letter: copy only - no open/redirect (the body renders inline below) */}
                         {r.cover_letter != null && docTab === "cover" && (
-                          <>
-                            <button className="btn btn-sm" onClick={copyCover} disabled={!coverText}>{copied ? "copied ✓" : "copy"}</button>
-                            <a className="btn btn-sm" href={artifactUrl(runId, "cover_letter.txt")} target="_blank" rel="noreferrer">open ↗</a>
-                          </>
+                          <button className="btn btn-sm" onClick={copyCover} disabled={!coverText}>{copied ? "copied ✓" : "copy ⧉"}</button>
                         )}
                       </span>
                     </div>

@@ -68,6 +68,10 @@ def _apply_match(entry: TrackerEntry) -> None:
         # III" would otherwise overwrite the real posting title "AI Engineer").
         entry.company = entry.company or res.job.company or ""
         entry.title = entry.title or res.job.title or ""
+        # Location + salary for the tracker table. Prefer a value we already have (watchlist), else
+        # take the structured JD's - salary is only present when the posting actually discloses it.
+        entry.location = entry.location or getattr(res.job, "location", "") or ""
+        entry.salary = entry.salary or getattr(res.job, "salary_range", "") or ""
     if res.error:
         _log.warning("tracker match failed", extra={"url": entry.url, "error": res.error})
         entry.match_error = res.error

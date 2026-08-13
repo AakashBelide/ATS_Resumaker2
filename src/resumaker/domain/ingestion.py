@@ -129,6 +129,8 @@ class TrackerEntry(BaseModel):
     sponsorship: str = ""              # resolved verdict, e.g. "likely" / "not_eligible"
     match_error: str | None = None     # set when the match failed; lets the UI show "failed"
                                        # (not an eternal "matching…") and offer a retry
+    location: str = ""                 # posting location (from the watchlist or structured JD)
+    salary: str = ""                   # stated pay range when the posting/JD discloses it
     notes: str = ""
     # Raw JD text captured by the browser extension (the page's visible text). When present the
     # match SKIPS the server-side scrape and structures THIS text instead (the extension already

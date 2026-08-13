@@ -89,6 +89,8 @@ CREATE TABLE IF NOT EXISTS tracker (
     match_error      TEXT,
     notes            TEXT NOT NULL DEFAULT '',
     captured_jd      TEXT NOT NULL DEFAULT '',
+    location         TEXT NOT NULL DEFAULT '',
+    salary           TEXT NOT NULL DEFAULT '',
     created_at       TEXT NOT NULL,
     updated_at       TEXT NOT NULL,
     UNIQUE (url)
@@ -254,6 +256,8 @@ def _migrate(conn: sqlite3.Connection) -> None:
     # Extension-capture (RA.2): the raw JD text the browser grabbed, stored so the match can skip
     # scraping. Additive + NOT NULL DEFAULT '' so ALTER works on both sqlite and libSQL/Turso.
     _ensure_column(conn, "tracker", "captured_jd", "captured_jd TEXT NOT NULL DEFAULT ''")
+    _ensure_column(conn, "tracker", "location", "location TEXT NOT NULL DEFAULT ''")
+    _ensure_column(conn, "tracker", "salary", "salary TEXT NOT NULL DEFAULT ''")
 
 
 # ------------------------------------------------------------------ runs
@@ -660,14 +664,17 @@ def upsert_tracker(entry: TrackerEntry) -> int:
     with connect(durable=True) as conn:
         cur = conn.execute(
             """INSERT INTO tracker (job_id, url, company, title, stage, run_id, fit_0_100,
-                   recommend_apply, sponsorship, match_error, notes, captured_jd,
+                   recommend_apply, sponsorship, match_error, notes, captured_jd, location, salary,
                    created_at, updated_at)
-               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
                ON CONFLICT(url) DO UPDATE SET
                    job_id=excluded.job_id, company=excluded.company, title=excluded.title,
                    run_id=excluded.run_id, fit_0_100=excluded.fit_0_100,
                    recommend_apply=excluded.recommend_apply, sponsorship=excluded.sponsorship,
                    match_error=excluded.match_error, updated_at=excluded.updated_at,
+                   -- keep a non-empty location/salary; don't let a re-track blank out a good value.
+                   location=CASE WHEN excluded.location != '' THEN excluded.location ELSE tracker.location END,
+                   salary=CASE WHEN excluded.salary != '' THEN excluded.salary ELSE tracker.salary END,
                    -- only overwrite the captured JD when this write actually carries one, so a
                    -- plain re-track (empty captured_jd) never wipes a prior extension capture.
                    captured_jd=CASE WHEN excluded.captured_jd != ''
@@ -675,7 +682,7 @@ def upsert_tracker(entry: TrackerEntry) -> int:
                RETURNING id""",
             (entry.job_id, entry.url, entry.company, entry.title, entry.stage, entry.run_id,
              entry.fit_0_100, _b(entry.recommend_apply), entry.sponsorship, entry.match_error,
-             entry.notes, entry.captured_jd, now, now))
+             entry.notes, entry.captured_jd, entry.location, entry.salary, now, now))
         row = cur.fetchone()
         assert row is not None
         return int(row["id"])
@@ -801,6 +808,7 @@ def _tracker_from_row(r: sqlite3.Row) -> TrackerEntry:
         recommend_apply=None if r["recommend_apply"] is None else bool(r["recommend_apply"]),
         sponsorship=r["sponsorship"], match_error=r["match_error"], notes=r["notes"],
         captured_jd=_col(r, "captured_jd"),
+        location=_col(r, "location"), salary=_col(r, "salary"),
         created_at=_dt(r["created_at"]), updated_at=_dt(r["updated_at"]))
 
 

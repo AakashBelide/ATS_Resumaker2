@@ -128,8 +128,9 @@ export default function TrackerPage() {
             <table className="dtable">
               <thead>
                 <tr>
-                  <th>Company</th><th>Role</th><th className="c">Fit</th><th className="c">Decision</th>
-                  <th className="c">Sponsorship</th><th>Stage</th><th className="c">Added</th><th className="c">Report</th>
+                  <th>Company</th><th>Role</th><th>Location</th><th className="c">Salary</th>
+                  <th className="c">Fit</th><th className="c">Decision</th>
+                  <th className="c">Sponsorship</th><th>Stage</th><th className="c">Added</th><th className="c">Links</th>
                 </tr>
               </thead>
               <tbody>
@@ -153,10 +154,17 @@ export default function TrackerPage() {
                       )}
                     </td>
                     <td>
-                      <a className="rolelink" href={e.url} target="_blank" rel="noreferrer" title={e.title}>
-                        {e.title || "(untitled)"}
-                      </a>
+                      {/* the role opens the match REPORT (the posting link lives in the Links column) */}
+                      {e.run_id ? (
+                        <Link className="rolelink" href={`/report/${encodeURIComponent(e.run_id)}`} title={e.title}>
+                          {e.title || "(untitled)"}
+                        </Link>
+                      ) : (
+                        <span className="rolelink is-plain" title={e.title}>{e.title || "(untitled)"}</span>
+                      )}
                     </td>
+                    <td className="mono muted" title={e.location}>{e.location || "—"}</td>
+                    <td className="c mono">{e.salary ? <span className="jc-pay">{e.salary}</span> : <span className="muted">—</span>}</td>
                     <td className="c">
                       {e.fit_0_100 != null
                         ? <span className={`fit ${fitClass(e.fit_0_100)}`}>{Math.round(e.fit_0_100)}</span>
@@ -182,9 +190,8 @@ export default function TrackerPage() {
                     <td className="c mono muted">{fmtDate(e.created_at)}</td>
                     <td className="c">
                       <div className="row-actions">
-                        {e.run_id
-                          ? <Link className="btn btn-sm" href={`/report/${encodeURIComponent(e.run_id)}`}>open ↗</Link>
-                          : <span className="muted">—</span>}
+                        {/* "open" now goes to the actual job listing; the report opens from the role */}
+                        <a className="btn btn-sm" href={e.url} target="_blank" rel="noreferrer" title="open the job posting">posting ↗</a>
                         {!pending && (
                           <button className="btn btn-sm" title="re-run the match"
                                   onClick={() => e.id != null && onRematch(e.id)}>re-match</button>
@@ -211,6 +218,12 @@ export default function TrackerPage() {
                 </select>
                 <button className="btn btn-sm" disabled={page <= 0} onClick={() => setPage(page - 1)}>‹ prev</button>
                 <span className="mono">{page + 1} / {pages}</span>
+                <input className="page-jump" type="number" min={1} max={pages} placeholder="go"
+                       title="go to page" onKeyDown={(ev) => {
+                         if (ev.key !== "Enter") return;
+                         const v = Number((ev.target as HTMLInputElement).value);
+                         if (Number.isFinite(v) && v >= 1) { setPage(Math.min(v, pages) - 1); (ev.target as HTMLInputElement).value = ""; }
+                       }} />
                 <button className="btn btn-sm" disabled={page + 1 >= pages} onClick={() => setPage(page + 1)}>next ›</button>
               </div>
             </div>
