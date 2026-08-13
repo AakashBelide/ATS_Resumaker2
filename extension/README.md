@@ -1,7 +1,8 @@
 # ATS Resumaker — browser extension (MV3)
 
-From any job posting, click the floating **⬡ Track** pill (bottom-right) — or the toolbar button —
-and the extension **captures the page** (its visible text + a screenshot + the URL) and posts it to
+From any job posting, click the floating **⬡ Track** button (a draggable square docked to the right
+edge) — or the toolbar button — and the extension **captures the page** (its visible text + a full-page
+screenshot + the URL) and posts it to
 your ATS Resumaker backend. The backend structures the JD with the LLM and runs the match
 (fit / gap / sponsorship / keywords); the tailored résumé/cover stay a manual, on-demand trigger.
 

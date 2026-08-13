@@ -74,7 +74,7 @@ Project plan + task tracker. Companion to [RESUME_SYSTEM_BLUEPRINT.md](RESUME_SY
 | 2.1 | **Orchestrator** — chain all stages into one call. | ✅ Done | Phase 1 | main | `orchestrator.py` `run_pipeline(url, ...)` → `PipelineResult`. scrape→structure, then a **parallel fan-out** (ThreadPoolExecutor) of keywords\|gap\|sponsorship, then fit→sponsorship-resolve→apply→resume(gen+fact-gate+ATS-verify+ATS-score)→cover-letter. **Progress callback** `(stage,status,detail)` (SSE-ready). Options: `gate` (skip gen on a hard no), `parallel`, `make_cover_letter`, `semantic_method`, `out_dir`, `job=` (skip scrape for tests). Saves JD.txt/content.json/resume_extracted_text.txt/cover_letter.txt/report.json. Deterministic mechanics in code; cognitive steps are the POC modules. (Claude Agent SDK fan-out can slot behind the same interface later.) |
 | 2.2 | **CLI runner** — `python -m cli run <url>` → artifacts in `outputs/<company-role>/`. SSE-ready progress events. | ✅ Done | 2.1 | main | `cli.py`: `run <url> [--out --pages --gate --no-parallel --no-cover --semantic lexical\|gemini --json]` + `costs`. Live per-stage progress printer + decision/resume/ATS/cover summary. `run_pipeline.py` kept as a thin back-compat wrapper. |
 | 2.3 | **Quality eval** — run on 10 real JDs; measure fact-gate %, ATS score, re-draft count. | ✅ Done | 2.2 | main | `evals/quality_2_3.py`. Ran on **10 live roles** (Databricks/Anthropic/GitLab/Samsara/Discord/Coinbase/Dropbox/Pinterest/Robinhood/Cloudflare; AI/ML/DS/DE). **10/10 ran, 0 errors. fact-gate 90%, ATS-verify 90%, 1-page 100%, cover-grounded 100%, avg ATS 75.2, avg fit 43.9.** Re-drafts 2/10 → **1/10 after fixes**: (a) Anthropic ATS-verify FALSE-POSITIVE - spelling gate flagged tech terms `async/auth/deduplicating` → **fixed** (expanded tech allowlist; regression still catches real typo `managd`); (b) Pinterest = TRUE catch - tailor wrote `4+ years` (profile=3+), fact-gate correctly blocked before shipping → added `years-grounded` house-rule. Avg fit low because the discovered set skewed senior/specialized (Applied-AI/Senior-DS) for a ~3-yr candidate - the fit-gate correctly gated most (only GitLab 52.8 + Coinbase 68.3 = APPLY), proving discrimination. Report: outputs/_quality_2_3/quality_report.json. |
-| 2.4 | **CLI vs API comparison** — cost/quality/latency of Claude-CLI path vs Gemini-API path; pick default. | ⬜ Todo | 2.3 | — | Stay under $5 Gemini during this. |
+| 2.4 | **CLI vs API comparison** — cost/quality/latency of Claude-CLI path vs Gemini-API path; pick default. | ⏸️ Deferred (superseded) | 2.3 | — | Answered in practice: the shipped default is **CLI-first + auto-fallback** (D.8), and the 10-JD **Opus/Sonnet bench** (post-deploy log) covered cost/quality/latency. A separate formal writeup adds little. |
 | 2.5 | **Live progress tracking (visual)** — make long/background runs observable. | ✅ Done (a,b) | 2.1 | main | `core/progress.py` `ProgressReporter` = one event sink → (a) forwards to the CLI callback AND (b) persists **`status.json`** (snapshot) + **`progress.jsonl`** (append log) in the run's out-dir (resolved early). CLI: `run` shows a **rich Live per-stage table** (`--plain` fallback / non-tty safe); **`watch <dir>`** renders the same table by polling status.json → a detached/background run is now watchable from another terminal. Eval **4/4** (`evals/progress_eval`). (c) Same event stream feeds the Phase-4 **SSE** endpoint (4.3) + Phase-5 web dashboard later — emitter built once. |
 
 ---
@@ -88,8 +88,8 @@ Project plan + task tracker. Companion to [RESUME_SYSTEM_BLUEPRINT.md](RESUME_SY
 | 3.3 | **Automated ATS+recruiter simulation** (parse fidelity + Boolean surfacing + BM25 ranking vs decoys). | ✅ Done | 1.8 | main | `pocs/ats_sim/`. Deterministic $0 CI layer. **Parse card** extracts the fields an ATS captures (name/email/phone/location/links/sections/experience/skills/education) → State Street resume **100% completeness**. **Boolean surfacing**: contains all 6 recruiter must-haves. **BM25 ranking** vs 6 realistic decoys → **rank #1, margin 16.5 over 2nd**. Eval 3/3. (Simulation, not a real ATS - see 3.1/3.4 for real proxies.) NOTE: offline validation harness, NOT in the per-JD pipeline. |
 | 3.4 | **Independent industry parser (Affinda free tier)** — real Textkernel-class parse oracle. | ✅ Done (validated) | 3.3 | main | `pocs/ats_sim/affinda.py`: sends the PDF to Affinda, returns a real parse card. Config via `.env`: `AFFINDA_API_KEY`, `AFFINDA_WORKSPACE`, `AFFINDA_DOCUMENT_TYPE` (Resume Parser id), `AFFINDA_BASE_URL` (region: APAC/US1/EU1 - Affinda is region-scoped, was the 401 cause). **RAN LIVE on the State Street resume -> PARSE_OK: name/email/phone/location(Boston, MA, USA)/2 experience blocks/2 education/2 projects/130 skills; `totalYearsExperience=3.1` = independent confirmation of NO tenure inflation.** Most credible parse-fidelity oracle; corroborates the ats_sim result. |
 | 3.1 | **OpenCATS (Docker) — real ATS recruiter UI** for a manual test. | ✅ Done (running) | 2.2 | main | `validation/opencats/` (Dockerfile PHP7.4+Apache + compose w/ **MariaDB 10.6** for arm64). **Up + serving the OpenCATS install wizard at http://localhost:8090/** (moved off 8080 - occupied). `make_candidates.py` renders our resume + 6 decoys to PDFs (candidates/, gitignored - PII). README = full manual test protocol (install wizard → add job → upload candidates → recruiter Boolean search → ranking). Real ATS UI; parser is old/unrepresentative (use Affinda 3.4 for parse fidelity). **Manual/offline - NOT in the pipeline.** |
-| 3.4 | **Recruiter-filter simulation** — script a hiring-manager filter (knockouts + keyword search + rank) and confirm our resume advances; iterate on misses. | ⬜ Todo | 3.3 | — | Closes the loop on "gets seen." |
-| 3.5 | **Browser-extension → local-ATS assisted-apply** (optional) — extension captures JD, backend runs pipeline, autofills the *local test* application, **stops before submit** (human-in-loop). NOT real external companies. | ⬜ Todo | 3.4 | — | Assisted-apply only (blueprint §21). Validates the extension↔CLI bridge end-to-end safely. |
+| 3.4 | **Recruiter-filter simulation** — script a hiring-manager filter (knockouts + keyword search + rank) and confirm our resume advances; iterate on misses. | ⏸️ Deferred (superseded) | 3.3 | — | 3.3 ats_sim already does Boolean surfacing + **BM25 ranking vs decoys** (#1, margin 16.5) and Affinda (3.4) is the independent parse oracle — the "gets seen" loop is covered offline. |
+| 3.5 | **Browser-extension → local-ATS assisted-apply** (optional) — extension captures JD, backend runs pipeline, autofills the *local test* application, **stops before submit** (human-in-loop). NOT real external companies. | ⏸️ Deferred | 3.4 | — | The extension now does the useful bridge (real capture → track → match). Autofill-into-a-local-ATS was always an optional sandbox demo; parked. |
 
 ---
 
@@ -337,9 +337,10 @@ cold starts) — same Docker Compose, so serverless↔VPS is a redeploy, not a r
     (run/watch/ingest/costs/serve) · **R7** web (Next.js) + extension (MV3) scaffolds ·
     **R8** deploy (Docker image builds 971 MB, container serves /health with auth; Caddy;
     systemd). 32 tests green; Gemini spend $0.0002/$5.
-  - **R9 (remaining):** optional 3-JD live regression; retire `legacy/` (recoverable via
-    tag); refresh README/docs. Held for owner sign-off (regression LLM time + deleting the
-    POC tree).
+  - **R9 — DONE (2026-08-13):** `legacy/` retired (recoverable via tag `poc-complete` /
+    branch `legacy-pocs`); README + docs refreshed; suite green after removal. The live
+    regression was skipped as redundant — parity was long-settled by the new tree running
+    in production. (See the post-deploy log below.)
 - **2026-08-09 — Watchlist coverage → 77 companies (RI.1 expanded) + platform direction set.**
   Extended ingestion from the original 4 families to **24 adapters** via a live deep-research
   pass (per-company endpoint verification), correcting several wrong assumptions before coding
@@ -427,14 +428,15 @@ cold starts) — same Docker Compose, so serverless↔VPS is a redeploy, not a r
 
 ## GENUINELY PENDING (as of 2026-08-13)
 
-- **R9 cutover** — `legacy/` tree still on disk; run a 3-JD regression, then delete it and refresh
-  README/docs. (Tag `poc-complete` makes it recoverable.)
-- **2.4 CLI vs API comparison** — formal cost/quality/latency doc of the Claude-CLI vs Gemini-API
-  path (superseded in practice by the Opus/Sonnet bench + CLI-first-with-fallback default).
-- **3.4 recruiter-filter simulation** / **3.5 extension→local-ATS assisted-apply** — offline
-  validation extensions; not on the critical path.
-- **Backlog / futures (open):** CLI-agnostic LLM provider (Codex/Gemini-CLI via env); Google-Alerts
+- ✅ **R9 cutover — DONE (2026-08-13).** `legacy/` retired (recoverable via tag `poc-complete` /
+  branch `legacy-pocs`); README + `docs/PROJECT_DOCUMENTATION.md` + web/extension READMEs refreshed;
+  full test suite green after removal. The migration parity was long-settled (the new tree runs in
+  production), so no fresh live regression was spent.
+- ⏸️ **2.4 / 3.4 / 3.5 — Deferred (superseded).** See their rows above (CLI-vs-API answered by the
+  CLI-first default + Opus/Sonnet bench; recruiter-surfacing covered by 3.3 ats_sim + Affinda; the
+  extension already does the useful capture→track bridge).
+- **Backlog / futures (parked):** CLI-agnostic LLM provider (Codex/Gemini-CLI via env); Google-Alerts
   RSS long-tail discovery page; cold-outreach contact finder; extension autofill; interview-prep
   section; open resume-presentation decisions (two-GitHubs link, A4 toggle, extra templates).
-- **Not yet verified end-to-end in cloud:** captured-JD re-match no-rescrape path and the
-  report.json-reuse generation on a *captured* (not scraped) entry — unit-tested, pending a live run.
+- **Parked (owner):** captured-JD no-rescrape re-match + report.json-reuse generation on a *captured*
+  entry — unit-tested; a live end-to-end verification is parked for later.

@@ -1,21 +1,64 @@
-# ATS Resumaker 2 — Project Documentation (Phases 1–3)
+# ATS Resumaker — Project Documentation
 
-> A from-scratch, accuracy-first system that turns a **job-description URL** into a
+> A from-scratch, accuracy-first system that turns a **job posting** into a
 > grounded, ATS-optimized, recruiter-ready **résumé + cover letter** plus an
 > **apply / no-apply decision** — with a mechanical anti-fabrication gate so nothing
-> ships that the candidate cannot defend.
+> ships that the candidate cannot defend. Around that pipeline sits a full
+> **job-application platform** (watchlist ingestion, discovery, tracker, browser
+> extension, web dashboard), deployed serverless on Cloud Run.
 
 This document explains **what** was built, **why** (the design rationale, decisions,
-and tradeoffs), and **how** (the mechanics), grounded in the actual code under
-`resumaker/`, the project's own records (`RESUME_SYSTEM_BLUEPRINT.md`, `TASKS.md`,
-git history), and the Phase-3 validation harness under `validation/`.
+and tradeoffs), and **how** (the mechanics). §§1–7 below detail the per-JD pipeline
+(originally Phases 1–3); the logic is unchanged but the code now lives under
+`src/resumaker/` (see "Production system" next). Grounded in the actual code, the
+project's records (`RESUME_SYSTEM_BLUEPRINT.md`, `TASKS.md`, git history), and the
+validation harness under `validation/`.
 
-Repo root: `/Users/aakashbelide/Aakash/Projects/ATS_Resumaker_2`.
+---
+
+## 0. Production system (rebuild + platform + deploy)
+
+The Phase-1–3 POCs were reorganized into a **production monorepo** (migrated verbatim
+behind clean interfaces — no capability rewritten) and extended into an application
+platform, now **live on Cloud Run**.
+
+**Module layout.** Core library `src/resumaker/` (`config` · `domain` · `observability`
+· `persistence` · `providers/{llm,scrape,sources}` · `stages` · `ats` · `pipeline` ·
+`enrichment` · `ingestion`); services `apps/api/` (FastAPI) + `apps/cli/` (Typer);
+`web/` (Next.js dashboard) + `extension/` (MV3); `deploy/` (Docker + Terraform).
+
+**Application platform (Phase RA).** *Discovery* — deterministic, LLM-free, resume-
+independent feed over the ingested `jobs` (empirically chosen over resume-fit ranking,
+which misranks and degrades on a thin profile). *Tracker* — add-to-tracker runs the
+match (fit/gap/sponsorship/keywords) only; résumé + cover stay an on-demand manual
+trigger; application lifecycle. *Onboarding* — name (+ careers URL) → agent resolves the
+ATS board (sandboxed). *Profile / Dashboard / Metrics*. Watchlist **ingestion**: 24
+board-listing adapters (~77 companies), dedupe on `(source, external_id)` + content
+hash, scheduler tick → ingest → dedupe → filter → notify (email digest).
+
+**Browser extension (MV3).** A draggable capture button grabs the posting's visible text
++ a **full-page screenshot** (CDP `captureBeyondViewport`, with a layout-viewport stretch
+for sites like LinkedIn that scroll the JD inside a nested container) and POSTs to a
+token-gated `/v1/tracker/capture`; the match then skips the server-side scrape. Users can
+also upload their own résumé PDF for a run (stored in the artifact bucket).
+
+**Dual-mode seams (local default ↔ cloud adapter).** DB: SQLite `file:` ↔ Turso/libSQL
+(remote-only). Job queue: in-process ThreadPool ↔ Cloud Tasks. Artifacts: local disk ↔
+GCS (signed URLs). Scheduler: APScheduler ↔ Cloud Scheduler. Onboarding runner: local
+Docker ↔ GitHub Actions. The same code runs fully locally (`docker compose up`) or
+serverless (set cloud env) — **local stays first-class**.
+
+**Deployment.** 3 Cloud Run services (api · ingestor · worker) + Turso + Cloud Tasks +
+Cloud Scheduler + GCS + Secret Manager + Vercel + GitHub Actions (deploy on push to
+`main`), provisioned by `deploy/terraform/`. All within free tiers; a `$5/mo` VPS running
+the same Compose is the documented fallback. See `TASKS.md` (Deployment D.0–D.9 + the
+post-deploy product log) for details.
 
 ---
 
 ## Table of Contents
 
+0. [Production system (rebuild + platform + deploy)](#0-production-system-rebuild--platform--deploy)
 1. [Overview & goal](#1-overview--goal)
 2. [Grounding in research (the blueprint)](#2-grounding-in-research-the-blueprint)
 3. [Architecture & data flow](#3-architecture--data-flow)
@@ -106,6 +149,12 @@ research. Nearly every design choice in the code traces to a specific section:
 ---
 
 ## 3. Architecture & data flow
+
+> **Paths note.** The diagram/text below use the original POC paths (`pocs/*`, `core/*`,
+> `orchestrator.py`). In the production tree the same modules live under
+> `src/resumaker/`: `pocs/<x>` → `stages/<x>` (or `ats/<x>` for scorer/semantic/verify/
+> skills_rank/fact_gate/sim), `core/schemas.py` → `domain/`, `orchestrator.py` →
+> `pipeline/orchestrator.py`. Contracts and logic are unchanged.
 
 **Principle (blueprint §16/§19):** deterministic mechanics live in code (scraping,
 scoring, fact-gate, docx/PDF, page loop, verification); the four genuinely cognitive
