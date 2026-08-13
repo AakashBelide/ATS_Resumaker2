@@ -450,18 +450,38 @@ cold starts) — same Docker Compose, so serverless↔VPS is a redeploy, not a r
 > end-to-end, and a conversational profile-enrichment agent (the platform version of career-ops's
 > `update.md` mode; our `enrichment/manager.py` already has the persistence primitives).
 >
-> **Decisions (owner, 2026-08-13):** (1) Routing: **landing at `/`, app gated** — Discovery moves
-> to `/discovery`; verified this does NOT affect the extension or backend automation (they hit the
-> backend `/v1/*` directly with the API token, never the web `/api` BFF). (2) Session: **30-day**
-> signed httpOnly cookie (browser hard cap ~400d). (3) Self-host: **guide + `bootstrap.sh`** for the
-> automatable parts (accounts/auth stay manual). (4) Profile agent: **propose-then-approve** writes.
+> **Decisions (owner, 2026-08-13):**
+> 1. **Routing:** landing at `/`, app gated — Discovery moves to `/discovery`. Verified this does
+>    NOT affect the extension or backend automation (they hit the backend `/v1/*` directly with the
+>    API token, never the web `/api` BFF). Two independent protections: login gates the web/BFF; the
+>    backend has its own API token.
+> 2. **Session:** 30-day signed httpOnly cookie (browser hard cap ~400d). Env: `LOGIN_USERNAME`,
+>    `LOGIN_PASSWORD` (owner set these in `.env`), `SESSION_SECRET`.
+> 3. **Animations:** **framer-motion** (fine to add). Landing should leave a **slot for a demo
+>    video** (owner may supply one later).
+> 4. **Docs = two Anthropic/OpenAI-style doc pages**, both under `/setup`: **(A) Local (Docker)** and
+>    **(B) Self-hosting (cloud/GCP)**. Rich formatting: code blocks, links, resources, screenshots.
+>    List **prerequisites to install** and **every manual step IN ORDER** upfront, with the small
+>    but critical details explicit — e.g. **Resend: sign up with the SAME email you want the digest
+>    delivered to**; **Claude CLI OAuth = personal use only** (use the metered Anthropic API for a
+>    real hosted instance). Note the **`data/profile/profile.json` prerequisite** before onboarding.
+> 5. **Automate what's scriptable, both modes:** a **local** run path (Docker Compose) + a **cloud**
+>    `bootstrap.sh`; plus a **`SETUP_SKILL.md`** the user can feed to Claude / any CLI to guide+run
+>    their own infra+app setup (career-ops style, but for infra). Account creation + interactive
+>    auth (`gcloud auth login`, `claude setup-token`) stay manual — documented in order.
+> 6. **Claude model is user-selectable** (subscription tiers differ) — already env-driven
+>    (`RESUMAKER_MODEL_FAST/STANDARD/QUALITY`); expose + document it, add a simple preset (e.g.
+>    "budget" = Sonnet/Haiku everywhere).
+> 7. **Profile agent:** the agent **suggests**, the user can **correct**, then **approves** — nothing
+>    is written to `profile.json` until approved.
 >
-> Order: RB.1 → RB.2 → RB.3 → RB.4 (profile agent last, POC-first). Feature branch → merge to `main`
-> (triggers deploy) after each is validated.
+> Order: RB.1 → RB.2 → RB.3 → RB.4 → RB.5 (profile agent last, POC-first). Work in a new branch off
+> `main`; commit per task; merge → `main` (triggers deploy) when validated.
 
 | # | Task | Status | Deps | Notes |
 |---|------|--------|------|-------|
 | RB.1 | **Auth + routing restructure** — Next.js middleware gate over all app pages **and** the `/api/*` BFF (exempt `/`, `/login`, `/setup`, the login endpoint, static assets); a signed (HMAC via `SESSION_SECRET`) **httpOnly + Secure + SameSite** cookie, **30-day** Max-Age; `/login` page checks input against `LOGIN_USERNAME`/`LOGIN_PASSWORD` (server env) — no bypass when unauthenticated; **logout** button at the bottom of the left navbar. Move Discovery `/`→`/discovery` (Sidebar NAV entry + active-state — the only hardcoded root assumption). Extension/Cloud Tasks/Scheduler untouched. | ⬜ Todo | — | Frontend-only auth gate; backend API token unchanged. |
-| RB.2 | **Landing page (`/`)** — minimal/professional, YC-SaaS feel, in the existing dark-navy + electric/cyan theme + stroke-SVG icons. Sections: hero (headline + subhead + CTAs: Get started / Login / Self-host) · how-it-works (pipeline visual) · features grid · browser extension · "free + self-hostable" callout · footer. **CSS-first scroll-reveal** animations (IntersectionObserver; no heavy deps). | ⬜ Todo | RB.1 | Explains what the platform is. |
-| RB.3 | **Self-host guide (`/setup`) + `scripts/bootstrap.sh`** — `SETUP.md` covering account setup (GCP, Turso, Resend, Vercel) + auth steps (`gcloud auth login`, `claude setup-token` → `CLAUDE_CODE_OAUTH_TOKEN`) + the `.env` keys + the **`data/profile/profile.json` prerequisite** (RB.4 can bootstrap it) + **disclaimers** (free-tier limits; Claude CLI OAuth = **personal use only**, use the metered Anthropic API for a hosted instance). Rendered at `/setup`. `bootstrap.sh`: prereq check (gcloud/terraform/uv/node) → enable GCP APIs → push `.env` secrets to Secret Manager → `terraform apply` → provision Turso DB → first deploy. Prompts for interactive auth where required. | ⬜ Todo | RB.1 | Accounts/OAuth are inherently manual; the script automates the rest. |
-| RB.4 | **Profile chat-agent POC** — a chat panel on the Profile page + a backend **interviewer agent** (Claude on the worker) that actively probes for quantified specifics (projects, metrics, tech, tenure) and **proposes** structured `profile.json` edits for owner approval (written via `enrichment.update_profile_fact` + logged/reversible). Doubles as the new-user profile bootstrapper (RB.3). Streams the conversation; owner tests manually and gives feedback. | ⬜ Todo | RB.3, 1.13 | The platform version of career-ops's `update.md`. Biggest piece → last, POC-first. |
+| RB.2 | **Landing page (`/`)** — minimal/professional, YC-SaaS feel, existing dark-navy + electric/cyan theme + stroke-SVG icons. Sections: hero (headline + subhead + CTAs: Get started / Login / Self-host) · **demo-video slot** · how-it-works (pipeline visual) · features grid · browser extension · "free + self-hostable" callout · footer. **framer-motion** + scroll-reveal animations. | ⬜ Todo | RB.1 | Explains what the platform is. |
+| RB.3 | **Docs pages (`/setup`): Local + Self-hosting** — two Anthropic/OpenAI-style sections. **(A) Local (Docker):** prerequisites (Docker + Compose, uv, node; profile.json), step-by-step `docker compose up` local run, env, model selection. **(B) Self-hosting (cloud):** account setup IN ORDER (GCP, Turso, Resend **[same delivery email]**, Vercel) + auth (`gcloud auth login`, `claude setup-token`→`CLAUDE_CODE_OAUTH_TOKEN`) + `.env` keys + **disclaimers** (free-tier limits; Claude OAuth personal-use-only). Code blocks, links, screenshots. Source `SETUP.md` rendered at `/setup`. | ⬜ Todo | RB.1 | Small details explicit upfront (Resend same-email, personal-use Claude). |
+| RB.4 | **Setup automation + setup skill** — `scripts/run-local.sh` (Docker Compose local bring-up) + `scripts/bootstrap.sh` (cloud: prereq check → prompt `gcloud auth` → enable GCP APIs → push `.env` secrets to Secret Manager → `terraform apply` → provision Turso → first deploy). `SETUP_SKILL.md` = a paste-into-any-CLI skill that walks a user through their infra+app setup and can run the scripts. `.env.example` updated (login/session/model/keys). Expose the Claude model preset. | ⬜ Todo | RB.3 | Automate the scriptable parts; accounts/auth stay manual (documented). |
+| RB.5 | **Profile chat-agent POC** — a chat panel on the Profile page + a backend **interviewer agent** (Claude on the worker) that actively probes for quantified specifics (projects, metrics, tech, tenure) and **suggests** structured `profile.json` edits; the owner can **correct** them, then **approve** (written via `enrichment.update_profile_fact` + logged/reversible). Doubles as the new-user profile bootstrapper (RB.3/RB.4). Streams the conversation; owner tests manually and gives feedback. | ⬜ Todo | RB.4, 1.13 | The platform version of career-ops's `update.md`. Biggest piece → last, POC-first. |
