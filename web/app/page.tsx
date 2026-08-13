@@ -1,7 +1,8 @@
 "use client";
-// Landing page (public `/`, RB.2 redesign). Supabase-inspired structure, left-aligned hero with a
-// gradient second line, feature cards with inner mocks, a tabbed product preview, how-it-works, an
-// open-source/self-host band, and a final CTA, all in the app's dark-navy + electric/cyan theme.
+// Landing page (public `/`, RB.2). Supabase-inspired, in the app's dark-navy + electric/cyan theme.
+// Sections: nav, hero, demo slot, feature cards (with inner mocks), a mini app-shell preview whose
+// left nav swaps the right panel like the real platform, an animated how-it-works flow, an
+// open/self-host band, and a final CTA. No AI-tell punctuation in the copy.
 import { AnimatePresence, motion, type Variants } from "framer-motion";
 import Link from "next/link";
 import { type ReactNode, useState } from "react";
@@ -32,10 +33,15 @@ const icons = {
   globe: I(<><circle cx="12" cy="12" r="9" /><path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18" /></>),
   lock: I(<><rect x="4" y="10" width="16" height="11" rx="2" /><path d="M8 10V7a4 4 0 0 1 8 0v3" /></>),
   columns: I(<><rect x="3" y="4" width="7" height="16" rx="1" /><rect x="14" y="4" width="7" height="10" rx="1" /></>),
+  link: I(<><path d="M9 15l6-6M10 5l1-1a4 4 0 0 1 6 6l-1 1M14 19l-1 1a4 4 0 0 1-6-6l1-1" /></>),
+  user: I(<><circle cx="12" cy="8" r="4" /><path d="M4.5 21c0-4 3.6-6 7.5-6s7.5 2 7.5 6" /></>),
+  wand: I(<><path d="M15 4V2M15 10V8M11 6H9M19 6h-2" /><path d="M4 20l10-10 2 2L6 22z" /></>),
+  check: I(<path d="M20 6L9 17l-5-5" />),
+  spark: I(<path d="M12 3l1.7 5.1L19 10l-5.3 1.9L12 17l-1.7-5.1L5 10l5.3-1.9L12 3z" />),
   github: I(<path d="M9 19c-4 1.5-4-2-5-2.5M15 21v-3.5c0-1 .1-1.4-.5-2 2.8-.3 5.5-1.4 5.5-6a4.6 4.6 0 0 0-1.3-3.2 4.3 4.3 0 0 0-.1-3.2s-1-.3-3.5 1.3a12 12 0 0 0-6.2 0C6.9 2.1 5.9 2.4 5.9 2.4a4.3 4.3 0 0 0-.1 3.2A4.6 4.6 0 0 0 4.5 8.8c0 4.6 2.7 5.7 5.5 6-.6.6-.6 1.2-.5 2V21" />),
 };
 
-// ---- small inner "mock" visuals for the feature cards ----------------------
+// ---- inner "mock" visuals for the feature cards ----------------------------
 const MockDiscovery = () => (
   <div className="lp-mock">
     {[72, 60, 66].map((w, i) => (
@@ -59,9 +65,9 @@ const MockMatch = () => (
 );
 const MockGate = () => (
   <div className="lp-mock">
-    <div className="lp-gate ok">✓ $6M fraud prevented <span>traced to profile</span></div>
-    <div className="lp-gate ok">✓ 3 yrs experience <span>verified</span></div>
-    <div className="lp-gate bad">✗ 5+ yrs experience <span>blocked</span></div>
+    <div className="lp-gate ok">$6M fraud prevented <span>traced to profile</span></div>
+    <div className="lp-gate ok">3 yrs experience <span>verified</span></div>
+    <div className="lp-gate bad">5+ yrs experience <span>blocked</span></div>
   </div>
 );
 
@@ -71,26 +77,84 @@ const PRIMARY = [
   { icon: icons.shield, t: "Anti-fabrication gate", d: "Every metric, employer, and title must trace to your profile. A mechanical gate blocks anything you cannot defend.", mock: <MockGate /> },
 ];
 const SECONDARY = [
-  { icon: icons.puzzle, t: "One-click capture", d: "A browser extension grabs any posting (text + full-page screenshot) into your tracker." },
-  { icon: icons.globe, t: "Sponsorship-aware", d: "USCIS H-1B history + the JD's stance drive the apply/no-apply call." },
-  { icon: icons.columns, t: "Application tracker", d: "A lifecycle board: interested -> applied -> interview -> offer." },
-  { icon: icons.lock, t: "Self-hosted & free", d: "Runs on free tiers, or one small box. Your data stays yours." },
+  { icon: icons.spark, t: "Agentic onboarding", d: "Give a company name and Claude resolves its ATS board automatically. $0 beyond your Claude subscription, or bring your own API key." },
+  { icon: icons.puzzle, t: "One-click capture", d: "A browser extension grabs any posting (text plus a full-page screenshot) into your tracker." },
+  { icon: icons.globe, t: "Sponsorship-aware", d: "USCIS H-1B history and the posting's own stance drive the apply or skip call." },
+  { icon: icons.lock, t: "Self-hosted and free", d: "Runs on free tiers, or one small box. Your data stays yours." },
 ];
 
-const TABS = [
-  { k: "Discovery", render: <MockDiscovery /> },
-  { k: "Match report", render: <MockMatch /> },
-  { k: "Fact-gate", render: <MockGate /> },
+// ---- mini app-shell preview (mirrors the real platform after login) --------
+const PanelDiscovery = () => (
+  <div className="lp-panel">
+    <div className="lp-panel-filters">
+      <span className="lp-fpill on">AI Engineer</span>
+      <span className="lp-fpill">junior</span>
+      <span className="lp-fpill">last 1 day</span>
+      <span className="lp-fpill ghost">+ filter</span>
+    </div>
+    {[["Baselayer", 70], ["Ramp", 62], ["Databricks", 66]].map(([co, w]) => (
+      <div className="lp-jobrow" key={co as string}>
+        <span className="lp-jobrow-logo" />
+        <div className="lp-jobrow-txt">
+          <span className="lp-jobrow-t">{co} <i>AI Engineer</i></span>
+          <span className="lp-line" style={{ width: `${w}%` }} />
+        </div>
+        <span className="lp-app-pill">+ Track</span>
+      </div>
+    ))}
+  </div>
+);
+const PanelTracker = () => (
+  <div className="lp-panel">
+    <div className="lp-trow lp-thead"><span>Company</span><span>Role</span><span className="c">Fit</span><span>Stage</span></div>
+    {[["Baselayer", "Identity Graph", 46, "interested"], ["Morgan Stanley", "AI Engineer", 69, "applied"], ["Ramp", "ML Engineer", 58, "interview"]].map((r) => (
+      <div className="lp-trow" key={r[0] as string}>
+        <span className="lp-tco"><span className="lp-jobrow-logo sm" />{r[0]}</span>
+        <span className="dim">{r[1]}</span>
+        <span className="c"><b className={`lp-fit ${(r[2] as number) >= 65 ? "hi" : "mid"}`}>{r[2]}</b></span>
+        <span className="lp-stage">{r[3]}</span>
+      </div>
+    ))}
+  </div>
+);
+const PanelOnboard = () => (
+  <div className="lp-panel">
+    <div className="lp-onb-form">
+      <span className="lp-onb-input">Company name</span>
+      <span className="lp-app-pill solid">Onboard</span>
+    </div>
+    <div className="lp-onb-result">
+      <div className="lp-onb-line ok">{icons.check}<span>Greenhouse board resolved for Databricks</span></div>
+      <div className="lp-onb-agent">{icons.spark}<span>Agent resolved it via Claude CLI</span><em>$0 extra</em></div>
+    </div>
+  </div>
+);
+const PanelProfile = () => (
+  <div className="lp-panel">
+    <div className="lp-prof-stats"><div><b>3</b><span>yrs</span></div><div><b>7</b><span>employers</span></div><div><b>70</b><span>skills</span></div></div>
+    <div className="lp-prof-chips">
+      {["Python", "FastAPI", "RAG", "LangGraph", "GCP", "Airflow", "Snowflake", "Prompt Eng"].map((s) => <span key={s}>{s}</span>)}
+    </div>
+  </div>
+);
+const APP = [
+  { key: "discovery", label: "Discovery", icon: icons.radar, panel: <PanelDiscovery /> },
+  { key: "tracker", label: "Tracker", icon: icons.columns, panel: <PanelTracker /> },
+  { key: "onboard", label: "Onboarding", icon: icons.link, panel: <PanelOnboard /> },
+  { key: "profile", label: "Profile", icon: icons.user, panel: <PanelProfile /> },
 ];
-const STEPS = [
-  { t: "Ingest", d: "Auto-onboard companies; poll their ATS boards; dedupe new postings." },
-  { t: "Match", d: "Fit, gap, sponsorship, and keywords on the postings you track." },
-  { t: "Tailor", d: "A grounded resume and cover letter, tailored to the posting." },
-  { t: "Verify", d: "Fact-gate + ATS checks before anything ships." },
+
+// ---- how-it-works flow ------------------------------------------------------
+const FLOW = [
+  { icon: icons.spark, t: "Onboard", d: "Name to ATS board, agentically" },
+  { icon: icons.radar, t: "Ingest", d: "Poll boards, dedupe new roles" },
+  { icon: icons.columns, t: "Track", d: "Fit, gap, sponsorship" },
+  { icon: icons.wand, t: "Generate", d: "Resume and cover, grounded" },
+  { icon: icons.check, t: "Apply", d: "You decide, human in loop" },
 ];
 
 export default function LandingPage() {
-  const [tab, setTab] = useState(0);
+  const [sec, setSec] = useState(0);
   return (
     <div className="lp">
       <div className="lp-orb lp-orb-a" aria-hidden />
@@ -118,7 +182,7 @@ export default function LandingPage() {
         </nav>
       </header>
 
-      {/* hero, left aligned, gradient 2nd line */}
+      {/* hero */}
       <section className="lp-hero">
         <div className="lp-hero-l">
           <motion.h1 initial="hidden" animate="show" variants={fadeUp} custom={0} className="lp-h1">
@@ -148,7 +212,7 @@ export default function LandingPage() {
         </div>
       </Reveal>
 
-      {/* primary features with inner mocks */}
+      {/* features */}
       <section className="lp-section" id="features">
         <Reveal><h2 className="lp-h2"><span className="lp-h2-dim">A full application platform,</span> not just a resume bot.</h2></Reveal>
         <div className="lp-cards3">
@@ -172,42 +236,54 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* tabbed preview (Supabase dashboard-tabs pattern) */}
+      {/* mini app-shell preview */}
       <section className="lp-section">
-        <Reveal><h2 className="lp-h2"><span className="lp-h2-dim">See it in action,</span> from feed to fact-gate.</h2></Reveal>
+        <Reveal><h2 className="lp-h2"><span className="lp-h2-dim">See it in action,</span> the whole workflow in one place.</h2></Reveal>
         <Reveal i={1}>
-          <div className="lp-tabs">
-            {TABS.map((t, i) => (
-              <button key={t.k} className={`lp-tab ${tab === i ? "on" : ""}`} onClick={() => setTab(i)}>{t.k}</button>
-            ))}
-          </div>
-        </Reveal>
-        <Reveal i={2}>
-          <div className="lp-preview">
-            <div className="lp-preview-bar"><span /><span /><span /></div>
-            <div className="lp-preview-body">
-              <AnimatePresence mode="wait">
-                <motion.div key={tab} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.28 }} className="lp-preview-inner">
-                  {TABS[tab].render}
-                </motion.div>
-              </AnimatePresence>
+          <div className="lp-app">
+            <div className="lp-app-bar"><span /><span /><span /><em className="mono">ats-resumaker</em></div>
+            <div className="lp-app-body">
+              <nav className="lp-app-nav">
+                {APP.map((s, i) => (
+                  <button key={s.key} className={`lp-app-navitem ${sec === i ? "on" : ""}`} onClick={() => setSec(i)}>
+                    <span className="ico">{s.icon}</span><span>{s.label}</span>
+                  </button>
+                ))}
+              </nav>
+              <div className="lp-app-main">
+                <AnimatePresence mode="wait">
+                  <motion.div key={sec} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.25 }}>
+                    <div className="lp-app-title mono">{APP[sec].label}</div>
+                    {APP[sec].panel}
+                  </motion.div>
+                </AnimatePresence>
+              </div>
             </div>
           </div>
         </Reveal>
       </section>
 
-      {/* how it works */}
+      {/* how it works: animated flow */}
       <section className="lp-section" id="how">
         <Reveal><p className="lp-kicker mono">How it works</p></Reveal>
-        <Reveal i={1}><h2 className="lp-h2">From a posting to a defensible application.</h2></Reveal>
-        <div className="lp-steps">
-          {STEPS.map((s, i) => (
-            <Reveal key={s.t} i={i} className="lp-step">
-              <div className="lp-step-n mono">{String(i + 1).padStart(2, "0")}</div>
-              <div className="lp-step-t">{s.t}</div>
-              <div className="lp-step-d">{s.d}</div>
-            </Reveal>
+        <Reveal i={1}><h2 className="lp-h2">From a company name to a defensible application.</h2></Reveal>
+        <div className="lp-flow">
+          {FLOW.map((s, i) => (
+            <div className="lp-flow-cell" key={s.t}>
+              <Reveal i={i} className="lp-flow-box">
+                <span className="lp-flow-ico">{s.icon}</span>
+                <div className="lp-flow-t">{s.t}</div>
+                <div className="lp-flow-d">{s.d}</div>
+              </Reveal>
+              {i < FLOW.length - 1 && (
+                <motion.span className="lp-flow-arrow" aria-hidden
+                  initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }}
+                  transition={{ delay: i * 0.05 + 0.2 }}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="20" height="20"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+                </motion.span>
+              )}
+            </div>
           ))}
         </div>
       </section>
@@ -216,11 +292,12 @@ export default function LandingPage() {
       <section className="lp-section">
         <div className="lp-os">
           <Reveal className="lp-os-l">
-            <p className="lp-kicker mono">Open &amp; self-hosted</p>
+            <p className="lp-kicker mono">Open and self-hosted</p>
             <h2 className="lp-h2">Own the whole stack. Free.</h2>
             <p className="lp-sub" style={{ margin: "10px 0 18px" }}>
               Deploy your own instance on Cloud Run, Turso, and Vercel within their free tiers, or run
-              it locally with Docker. Read it, self-host it. You are never locked in.
+              it locally with Docker. The LLM runs on your Claude subscription at no extra cost, or your
+              own API key. Read it, self-host it. You are never locked in.
             </p>
             <div className="lp-cta">
               <a className="btn btn-primary" href={REPO} target="_blank" rel="noreferrer">View on GitHub</a>
@@ -230,8 +307,8 @@ export default function LandingPage() {
           <Reveal i={1} className="lp-os-r">
             <div className="lp-stat"><b>$0</b><span>free-tier hostable</span></div>
             <div className="lp-stat"><b>100%</b><span>grounded to your profile</span></div>
-            <div className="lp-stat"><b>1-click</b><span>capture + track</span></div>
-            <div className="lp-stat"><b>0</b><span>auto-applies (human-in-loop)</span></div>
+            <div className="lp-stat"><b>1-click</b><span>capture and track</span></div>
+            <div className="lp-stat"><b>0</b><span>auto-applies (human in loop)</span></div>
           </Reveal>
         </div>
       </section>
