@@ -13,7 +13,7 @@ to triage and tailor, and an email digest. It is **human-in-the-loop by design �
 drafts, it never auto-applies.**
 
 <p>
-  <img alt="License: all rights reserved" src="https://img.shields.io/badge/license-all%20rights%20reserved-lightgrey">
+  <img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-green">
   <img alt="Python 3.13" src="https://img.shields.io/badge/python-3.13-3776AB?logo=python&logoColor=white">
   <img alt="Next.js 15" src="https://img.shields.io/badge/Next.js-15-000000?logo=nextdotjs&logoColor=white">
   <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white">
@@ -335,10 +335,8 @@ Output quality is validated against real, independent tooling — not just self-
 - Optional headless/stealth scraping tier for bot-protected custom career sites (evaluated and
   intentionally deferred; see `docs/JOB_INGESTION_RESEARCH.md`).
 - Broaden ATS-board adapter coverage as new boards appear on the watchlist.
-- Add a `LICENSE` file (see below).
 
 ## 📄 License
 
-This repository does **not** currently include a `LICENSE` file, so it is **all rights reserved**
-by default. Before relying on or redistributing it, **add a `LICENSE`** that reflects your intent
-(e.g. MIT or Apache-2.0 for open source).
+Released under the [MIT License](LICENSE). You are free to use, modify, and self-host it; the
+software is provided as-is, without warranty.
