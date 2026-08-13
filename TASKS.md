@@ -440,3 +440,28 @@ cold starts) — same Docker Compose, so serverless↔VPS is a redeploy, not a r
   section; open resume-presentation decisions (two-GitHubs link, A4 toggle, extra templates).
 - **Parked (owner):** captured-JD no-rescrape re-match + report.json-reuse generation on a *captured*
   entry — unit-tested; a live end-to-end verification is parked for later.
+
+---
+
+# PHASE RB — Public surface, auth, self-host, profile agent (planned 2026-08-13)
+
+> **Context (owner direction, 2026-08-13).** Make the deployed app a real product: a public
+> landing page + a login gate in front of the dashboard, a self-host path a new person can follow
+> end-to-end, and a conversational profile-enrichment agent (the platform version of career-ops's
+> `update.md` mode; our `enrichment/manager.py` already has the persistence primitives).
+>
+> **Decisions (owner, 2026-08-13):** (1) Routing: **landing at `/`, app gated** — Discovery moves
+> to `/discovery`; verified this does NOT affect the extension or backend automation (they hit the
+> backend `/v1/*` directly with the API token, never the web `/api` BFF). (2) Session: **30-day**
+> signed httpOnly cookie (browser hard cap ~400d). (3) Self-host: **guide + `bootstrap.sh`** for the
+> automatable parts (accounts/auth stay manual). (4) Profile agent: **propose-then-approve** writes.
+>
+> Order: RB.1 → RB.2 → RB.3 → RB.4 (profile agent last, POC-first). Feature branch → merge to `main`
+> (triggers deploy) after each is validated.
+
+| # | Task | Status | Deps | Notes |
+|---|------|--------|------|-------|
+| RB.1 | **Auth + routing restructure** — Next.js middleware gate over all app pages **and** the `/api/*` BFF (exempt `/`, `/login`, `/setup`, the login endpoint, static assets); a signed (HMAC via `SESSION_SECRET`) **httpOnly + Secure + SameSite** cookie, **30-day** Max-Age; `/login` page checks input against `LOGIN_USERNAME`/`LOGIN_PASSWORD` (server env) — no bypass when unauthenticated; **logout** button at the bottom of the left navbar. Move Discovery `/`→`/discovery` (Sidebar NAV entry + active-state — the only hardcoded root assumption). Extension/Cloud Tasks/Scheduler untouched. | ⬜ Todo | — | Frontend-only auth gate; backend API token unchanged. |
+| RB.2 | **Landing page (`/`)** — minimal/professional, YC-SaaS feel, in the existing dark-navy + electric/cyan theme + stroke-SVG icons. Sections: hero (headline + subhead + CTAs: Get started / Login / Self-host) · how-it-works (pipeline visual) · features grid · browser extension · "free + self-hostable" callout · footer. **CSS-first scroll-reveal** animations (IntersectionObserver; no heavy deps). | ⬜ Todo | RB.1 | Explains what the platform is. |
+| RB.3 | **Self-host guide (`/setup`) + `scripts/bootstrap.sh`** — `SETUP.md` covering account setup (GCP, Turso, Resend, Vercel) + auth steps (`gcloud auth login`, `claude setup-token` → `CLAUDE_CODE_OAUTH_TOKEN`) + the `.env` keys + the **`data/profile/profile.json` prerequisite** (RB.4 can bootstrap it) + **disclaimers** (free-tier limits; Claude CLI OAuth = **personal use only**, use the metered Anthropic API for a hosted instance). Rendered at `/setup`. `bootstrap.sh`: prereq check (gcloud/terraform/uv/node) → enable GCP APIs → push `.env` secrets to Secret Manager → `terraform apply` → provision Turso DB → first deploy. Prompts for interactive auth where required. | ⬜ Todo | RB.1 | Accounts/OAuth are inherently manual; the script automates the rest. |
+| RB.4 | **Profile chat-agent POC** — a chat panel on the Profile page + a backend **interviewer agent** (Claude on the worker) that actively probes for quantified specifics (projects, metrics, tech, tenure) and **proposes** structured `profile.json` edits for owner approval (written via `enrichment.update_profile_fact` + logged/reversible). Doubles as the new-user profile bootstrapper (RB.3). Streams the conversation; owner tests manually and gives feedback. | ⬜ Todo | RB.3, 1.13 | The platform version of career-ops's `update.md`. Biggest piece → last, POC-first. |
