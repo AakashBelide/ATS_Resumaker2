@@ -258,6 +258,7 @@ export default function LandingPage() {
           {FLOW.map((s, i) => (
             <div className="lp-flow-cell" key={s.t}>
               <Reveal i={i} className="lp-flow-box">
+                <span className="lp-flow-n mono">{String(i + 1).padStart(2, "0")}</span>
                 <span className="lp-flow-ico">{s.icon}</span>
                 <div className="lp-flow-t">{s.t}</div>
                 <div className="lp-flow-d">{s.d}</div>
