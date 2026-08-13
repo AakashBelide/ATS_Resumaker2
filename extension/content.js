@@ -141,9 +141,31 @@
     return text;
   }
 
+  // Reveal collapsed content before we read text + screenshot. Many postings truncate the JD behind
+  // a "see more"/"…more" button (LinkedIn especially), so the visible page is short and the full-page
+  // screenshot stops early. Click those expanders first. Conservative: only buttons/links whose short
+  // label reads like "more"/"see more"/"show more"/"expand", plus LinkedIn's known JD toggle classes,
+  // so we never fire unrelated UI. A couple of passes handle nested/newly-revealed expanders.
+  async function expandCollapsibles() {
+    const looksLikeMore = (elm) => {
+      const t = ((elm.textContent || "") + " " + (elm.getAttribute("aria-label") || "")).toLowerCase();
+      return t.length < 40 && /(see|show|read)\s+more|…\s*more|\bmore\b|expand/.test(t);
+    };
+    const KNOWN = "button.jobs-description__footer-button, button.show-more-less-html__button";
+    for (let pass = 0; pass < 2; pass++) {
+      document.querySelectorAll(KNOWN).forEach((b) => { try { b.click(); } catch { /* ignore */ } });
+      document.querySelectorAll('button, a[role="button"], [aria-expanded="false"]').forEach((b) => {
+        if (looksLikeMore(b)) { try { b.click(); } catch { /* ignore */ } }
+      });
+      await new Promise((r) => setTimeout(r, 300));   // let the revealed content render
+    }
+  }
+
   // Gather text -> hand off to the service worker (screenshot + POST). Returns {ok} / {ok,error}.
   async function doCapture() {
     busy = true;
+    showToast("expanding…", "muted");
+    await expandCollapsibles();                   // reveal the full JD before text + screenshot
     if (pill) pill.style.opacity = "0";           // hide the pill so it's not in the screenshot
     showToast("capturing…", "muted");
     const url = location.href;
