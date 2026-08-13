@@ -40,6 +40,11 @@ export default function ReportPage() {
   const [docTab, setDocTab] = useState<"resume" | "cover">("resume"); // which document is previewed
   const [coverText, setCoverText] = useState<string | null>(null);    // cover letter body, fetched inline
   const [copied, setCopied] = useState(false);                        // cover-letter copy feedback
+  // Extension capture screenshot: a full-page PNG or (for tall pages) JPEG. Try each in turn and
+  // hide the block if neither exists (most runs have no capture). `shotIdx` walks the candidates.
+  const shotCandidates = ["screenshot.png", "screenshot.jpg"];
+  const [shotIdx, setShotIdx] = useState(0);
+  const shotUrl = shotIdx < shotCandidates.length ? artifactUrl(runId, shotCandidates[shotIdx]) : "";
 
   async function copyCover() {
     if (!coverText) return;
@@ -231,6 +236,25 @@ export default function ReportPage() {
                   </div>
                 </div>
               </div>
+
+              {/* captured posting (browser-extension screenshot) — only when one exists.
+                  We render it optimistically and hide the whole block if the image 404s (the
+                  graceful existence check: no run has a screenshot unless it came via capture). */}
+              {shotUrl && (
+                <div className="block">
+                  <div className="block-head"><h2>Captured posting</h2></div>
+                  <div className="panel">
+                    <a href={shotUrl} target="_blank" rel="noreferrer" title="open full screenshot">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img className="shot-thumb" src={shotUrl} alt="captured job posting"
+                           onError={() => setShotIdx((i) => i + 1)} />
+                    </a>
+                    <p className="mono muted" style={{ fontSize: 11.5, marginTop: 10 }}>
+                      full-page capture by the browser extension · click to open full size ↗
+                    </p>
+                  </div>
+                </div>
+              )}
 
               {/* job description (left, below the analysis) */}
               <div className="block">

@@ -130,5 +130,10 @@ class TrackerEntry(BaseModel):
     match_error: str | None = None     # set when the match failed; lets the UI show "failed"
                                        # (not an eternal "matching…") and offer a retry
     notes: str = ""
+    # Raw JD text captured by the browser extension (the page's visible text). When present the
+    # match SKIPS the server-side scrape and structures THIS text instead (the extension already
+    # had the page loaded). Kept server-side only: `exclude=True` drops it from every API response
+    # so the (up to ~200 KB) blob never rides along on the tracker list / add / capture payloads.
+    captured_jd: str = Field(default="", exclude=True)
     created_at: datetime | None = None
     updated_at: datetime | None = None

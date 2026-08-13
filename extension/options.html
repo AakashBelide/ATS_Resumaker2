@@ -28,8 +28,9 @@
   <body>
     <div class="wrap">
       <h1>ATS Resumaker — extension settings</h1>
-      <p class="sub">The extension is a thin client — it just posts the job URL to your backend.
-        Point it at a backend hosted anywhere just by changing these values.</p>
+      <p class="sub">The extension captures the current posting (visible text + screenshot) and posts
+        it to your backend, which structures the JD and runs the match. Point it at a backend hosted
+        anywhere just by changing these values.</p>
 
       <label>API base URL</label>
       <input id="apiBase" placeholder="http://localhost:8000" />
@@ -41,12 +42,6 @@
 
       <label>Web app URL (for the “open tracker” link)</label>
       <input id="webBase" placeholder="http://localhost:3002" />
-
-      <div class="check">
-        <input type="checkbox" id="runMatch" />
-        <label style="margin:0;text-transform:none;letter-spacing:0;color:var(--text);font-size:13.5px">
-          Run the match on add (fit / gap / sponsorship) — off = just track</label>
-      </div>
 
       <div><button id="save">Save</button><span id="status"></span></div>
     </div>

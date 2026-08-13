@@ -7,7 +7,6 @@ const DEFAULTS = {
   apiBase: "http://localhost:8000",
   apiToken: "",
   webBase: "http://localhost:3002",
-  runMatch: true,
 };
 
 (async function load() {
@@ -15,7 +14,6 @@ const DEFAULTS = {
   $("apiBase").value = c.apiBase;
   $("apiToken").value = c.apiToken;
   $("webBase").value = c.webBase;
-  $("runMatch").checked = c.runMatch !== false;
 })();
 
 $("save").addEventListener("click", async () => {
@@ -23,7 +21,6 @@ $("save").addEventListener("click", async () => {
     apiBase: $("apiBase").value.trim() || DEFAULTS.apiBase,
     apiToken: $("apiToken").value,
     webBase: $("webBase").value.trim() || DEFAULTS.webBase,
-    runMatch: $("runMatch").checked,
   });
   const s = $("status");
   s.textContent = "saved ✓";

@@ -33,7 +33,18 @@ def _apply_match(entry: TrackerEntry) -> None:
         # lands in the SAME run folder even if the refreshed title would derive a different slug -
         # entry.run_id is the one durable id for this tracked job (match report + on-demand resume
         # + cover all live under it). A first add has no id yet -> the pipeline derives one.
-        res = run_pipeline(url=entry.url, match_only=True, run_id=entry.run_id or None)
+        if entry.captured_jd:
+            # Extension-capture path: the browser already grabbed the page's visible JD text, so
+            # SKIP the scrape entirely - structure that captured text into a JobPosting and match
+            # against it. We still pass `url=` alongside `job=` so report.json keeps the posting
+            # URL (for "open posting" + on-demand generation) WITHOUT triggering a scrape - passing
+            # `job` is what makes run_pipeline bypass scrape+structure.
+            from resumaker.stages.structure import structure_jd
+            job = structure_jd(entry.captured_jd)
+            res = run_pipeline(url=entry.url, job=job, match_only=True,
+                               run_id=entry.run_id or None)
+        else:
+            res = run_pipeline(url=entry.url, match_only=True, run_id=entry.run_id or None)
     except Exception as e:  # noqa: BLE001 - surface any crash as a retryable failed state
         _log.warning("tracker match crashed", extra={"url": entry.url, "error": str(e)})
         entry.match_error = str(e)
@@ -95,6 +106,21 @@ def add(*, job_id: int | None = None, url: str | None = None,
     return db.get_tracker(entry.id) or entry
 
 
+def capture(*, url: str, raw_text: str, title: str = "", run_id: str = "") -> TrackerEntry:
+    """Add a job captured by the browser extension. The extension (with the page already loaded)
+    grabbed the visible JD `raw_text`, so the later match SKIPS the server-side scrape and structures
+    THIS text instead (see `_apply_match`). Creates the entry INSTANTLY with the captured JD stored;
+    the caller enqueues the match via the queue so the extension click never blocks. `run_id` is the
+    caller-computed stable slug (so the screenshot + match report share one folder). Company is left
+    empty here - the match fills it from the structured JD."""
+    if not url:
+        raise TrackerError("capture() needs a url")
+    entry = TrackerEntry(url=url, title=title, run_id=run_id, captured_jd=raw_text)
+    entry.id = db.upsert_tracker(entry)
+    _log.info("captured", extra={"url": url, "run_id": run_id})   # never log raw_text (PII/JD body)
+    return db.get_tracker(entry.id) or entry
+
+
 def run_match_for(entry_id: int) -> None:
     """(Re)run the match for an existing tracked entry and persist the result. Safe to call in
     a background task after an instant add; preserves stage/notes via upsert (keyed on url).
@@ -105,12 +131,23 @@ def run_match_for(entry_id: int) -> None:
     # A re-match starts clean: wipe the prior run's artifacts - the match report AND any tailored
     # resume/cover, which were built from the now-stale analysis - so nothing orphaned is left in
     # the folder. The match below reuses this same stable run_id, repopulating the folder fresh.
+    # The extension screenshot is a captured INPUT (not a stale analysis output), so preserve it
+    # across the wipe: read its bytes first, then re-write them after the match rebuilds the folder.
+    # It may be a PNG or a JPEG (JPEG for tall full-page shots), so probe both names.
+    shot: tuple[str, bytes] | None = None
     if entry.run_id:
         import contextlib
 
         from resumaker.persistence.artifacts import get_artifact_store
+        store = get_artifact_store()
+        for shot_name in ("screenshot.png", "screenshot.jpg"):
+            with contextlib.suppress(Exception):
+                data = store.open(entry.run_id, shot_name)
+                if data:
+                    shot = (shot_name, data)
+                    break
         with contextlib.suppress(Exception):
-            get_artifact_store().delete_run(entry.run_id)
+            store.delete_run(entry.run_id)
     # Refresh the posting title/company from the watchlist first, so a re-match *corrects* a
     # stale/wrong stored title (e.g. an old JD-derived "Software Engineering III") back to the
     # real ATS listing title. _apply_match then keeps this over the JD-extracted value.
@@ -120,6 +157,15 @@ def run_match_for(entry_id: int) -> None:
             entry.title = job.title or entry.title
             entry.company = job.company or entry.company
     _apply_match(entry)
+    if shot is not None and entry.run_id:
+        import contextlib
+
+        from resumaker.persistence.artifacts import get_artifact_store
+        shot_name, shot_bytes = shot
+        with contextlib.suppress(Exception):
+            store = get_artifact_store()
+            (store.local_run_dir(entry.run_id) / shot_name).write_bytes(shot_bytes)
+            store.publish(entry.run_id)   # no-op locally; re-uploads the screenshot to GCS in cloud
     db.upsert_tracker(entry)
 
 

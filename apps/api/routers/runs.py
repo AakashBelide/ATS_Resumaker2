@@ -112,8 +112,10 @@ def get_progress(run_id: str) -> RunProgress:
 
 
 # Only these artifact names are servable, mapped by suffix within the run dir.
+# `screenshot.png`/`screenshot.jpg` is the browser-extension capture (full-page shot, PNG or JPEG
+# for tall pages; served as a thumbnail on the report page; GCS redirects to a signed URL).
 _ARTIFACTS = {"report.json", "cover_letter.txt", "content.json", "JD.txt",
-              "resume_extracted_text.txt", "status.json"}
+              "resume_extracted_text.txt", "status.json", "screenshot.png", "screenshot.jpg"}
 
 
 @router.get("/{run_id}/artifacts/{name}")
