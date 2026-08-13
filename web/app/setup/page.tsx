@@ -28,7 +28,9 @@ export default function SetupPage() {
           <b>ATS Resumaker</b>
         </Link>
         <nav className="doc-topnav">
-          <a className="doc-navlink" href="https://github.com/AakashBelide/ATS_Resumaker2" target="_blank" rel="noreferrer">Repo</a>
+          <a className="doc-navlink doc-navicon" href="https://github.com/AakashBelide/ATS_Resumaker2" target="_blank" rel="noreferrer" title="View on GitHub" aria-label="GitHub">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" width="18" height="18"><path d="M9 19c-4 1.5-4-2-5-2.5M15 21v-3.5c0-1 .1-1.4-.5-2 2.8-.3 5.5-1.4 5.5-6a4.6 4.6 0 0 0-1.3-3.2 4.3 4.3 0 0 0-.1-3.2s-1-.3-3.5 1.3a12 12 0 0 0-6.2 0C6.9 2.1 5.9 2.4 5.9 2.4a4.3 4.3 0 0 0-.1 3.2A4.6 4.6 0 0 0 4.5 8.8c0 4.6 2.7 5.7 5.5 6-.6.6-.6 1.2-.5 2V21" /></svg>
+          </a>
           <Link className="btn btn-sm btn-primary" href="/login">Login</Link>
         </nav>
       </header>

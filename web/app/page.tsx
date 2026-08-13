@@ -39,6 +39,7 @@ const icons = {
   wand: I(<><path d="M15 4V2M15 10V8M11 6H9M19 6h-2" /><path d="M4 20l10-10 2 2L6 22z" /></>),
   check: I(<path d="M20 6L9 17l-5-5" />),
   spark: I(<path d="M12 3l1.7 5.1L19 10l-5.3 1.9L12 17l-1.7-5.1L5 10l5.3-1.9L12 3z" />),
+  login: I(<><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" /><path d="M10 17l5-5-5-5M15 12H3" /></>),
   github: I(<path d="M9 19c-4 1.5-4-2-5-2.5M15 21v-3.5c0-1 .1-1.4-.5-2 2.8-.3 5.5-1.4 5.5-6a4.6 4.6 0 0 0-1.3-3.2 4.3 4.3 0 0 0-.1-3.2s-1-.3-3.5 1.3a12 12 0 0 0-6.2 0C6.9 2.1 5.9 2.4 5.9 2.4a4.3 4.3 0 0 0-.1 3.2A4.6 4.6 0 0 0 4.5 8.8c0 4.6 2.7 5.7 5.5 6-.6.6-.6 1.2-.5 2V21" />),
 };
 
@@ -61,11 +62,12 @@ const MockMatch = () => (
         <span className="lp-meter-t"><span className="lp-meter-f" style={{ width: `${v}%` }} /></span>
       </div>
     ))}
-    <div className="lp-mock-score">69<small>/100</small> <span className="lp-mock-ok">apply</span></div>
+    <div className="lp-mock-score">68<small>/100</small> <span className="lp-mock-ok">apply</span></div>
   </div>
 );
 const MockGate = () => (
-  <div className="lp-mock">
+  <div className="lp-mock lp-mock-gate">
+    <span className="lp-gate-scan" aria-hidden />
     <div className="lp-gate ok">$6M fraud prevented <span>traced to profile</span></div>
     <div className="lp-gate ok">3 yrs experience <span>verified</span></div>
     <div className="lp-gate bad">5+ yrs experience <span>blocked</span></div>
@@ -78,7 +80,7 @@ const CvOnboard = () => (
     <span className="lp-cv-chip">Databricks</span>
     <svg className="lp-cv-ar" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
     <span className="lp-cv-chip alt">greenhouse.io/databricks</span>
-    <em className="lp-cv-cost">$0</em>
+    <em className="lp-cv-cost">resolved</em>
   </div>
 );
 const CvCapture = () => (
@@ -110,7 +112,7 @@ const PRIMARY = [
   { icon: icons.shield, t: "Anti-fabrication gate", d: "Every metric, employer, and title must trace to your profile. A mechanical gate blocks anything you cannot defend.", mock: <MockGate /> },
 ];
 const SECONDARY = [
-  { icon: icons.spark, t: "Agentic onboarding", d: "Give a company name and Claude resolves its ATS board automatically. $0 beyond your Claude subscription, or bring your own API key.", viz: <CvOnboard /> },
+  { icon: icons.spark, t: "Agentic onboarding", d: "Give a company name and Claude resolves its ATS board automatically, no manual config. It uses your Claude subscription or your own API key.", viz: <CvOnboard /> },
   { icon: icons.puzzle, t: "One-click capture", d: "A browser extension grabs any posting, text plus a full-page screenshot, into your tracker.", viz: <CvCapture /> },
   { icon: icons.globe, t: "Sponsorship-aware", d: "USCIS H-1B history and the posting's own stance drive the apply or skip call.", viz: <CvSponsor /> },
   { icon: icons.lock, t: "Self-hosted and free", d: "Runs on free tiers, or one small box. Your data stays yours.", viz: <CvFree /> },
@@ -173,7 +175,7 @@ const ROTATE = [
   "Deterministic discovery, no LLM guesswork",
   "Grounded strictly to your real profile",
   "Sponsorship-aware, apply or skip",
-  "$0 to self-host on free tiers",
+  "Self-host on free-tier infrastructure",
 ];
 function Rotator() {
   const [i, setI] = useState(0);
@@ -212,9 +214,9 @@ export default function LandingPage() {
           <a className="lp-navlink" href="#features">Features</a>
           <a className="lp-navlink" href="#how">How it works</a>
           <Link className="lp-navlink" href="/setup">Self-host</Link>
-          <a className="lp-navlink lp-navicon" href={REPO} target="_blank" rel="noreferrer" title="View on GitHub">{icons.github}</a>
-          <Link className="lp-navlink" href="/login">Login</Link>
-          <Link className="btn btn-sm btn-primary" href="/login">Get started</Link>
+          <a className="lp-navicon" href={REPO} target="_blank" rel="noreferrer" title="View on GitHub" aria-label="GitHub">{icons.github}</a>
+          <Link className="btn btn-sm lp-iconbtn" href="/login">{icons.login}<span className="lp-btn-t">Login</span></Link>
+          <Link className="btn btn-sm btn-primary" href="/setup">Get started</Link>
         </nav>
       </header>
 
@@ -225,8 +227,8 @@ export default function LandingPage() {
             Land interviews faster.<br /><span className="lp-grad">Without the fabrication.</span>
           </motion.h1>
           <motion.div initial="hidden" animate="show" variants={fadeUp} custom={2} className="lp-cta">
-            <Link className="btn btn-primary" href="/login">Get started</Link>
-            <Link className="btn" href="/setup">Self-host guide</Link>
+            <Link className="btn btn-primary" href="/setup">Get started</Link>
+            <Link className="btn lp-iconbtn" href="/login">{icons.login}Login</Link>
           </motion.div>
         </div>
         <div className="lp-hero-r">
@@ -247,7 +249,7 @@ export default function LandingPage() {
             </motion.div>
             <motion.div className="lp-hviz-float f1"
               animate={{ y: [0, -10, 0] }} transition={{ duration: 4, repeat: Infinity, ease: "easeInOut", delay: 0.4 }}>
-              {icons.spark}<span>Agent onboarded a board</span><em>$0 extra</em>
+              {icons.spark}<span>Agent onboarded a board</span>
             </motion.div>
             <motion.div className="lp-hviz-float f2"
               animate={{ y: [0, 9, 0] }} transition={{ duration: 4.6, repeat: Infinity, ease: "easeInOut", delay: 0.9 }}>
@@ -298,9 +300,10 @@ export default function LandingPage() {
           ))}
         </div>
         <Reveal className="lp-rail">
-          {RAIL.map((r, i) => (
-            <span key={r} className="lp-rail-item mono">{r}{i < RAIL.length - 1 && <i aria-hidden>·</i>}</span>
-          ))}
+          <div className="lp-rail-track">
+            {RAIL.map((r) => <span key={r} className="lp-rail-item mono">{r}<i aria-hidden>·</i></span>)}
+            {RAIL.map((r) => <span key={"d" + r} className="lp-rail-item mono dup" aria-hidden>{r}<i aria-hidden>·</i></span>)}
+          </div>
         </Reveal>
       </section>
 
@@ -350,8 +353,8 @@ export default function LandingPage() {
               own API key. Read it, self-host it. You are never locked in.
             </p>
             <div className="lp-cta">
-              <a className="btn btn-primary" href={REPO} target="_blank" rel="noreferrer">View on GitHub</a>
-              <Link className="btn" href="/setup">Self-host guide</Link>
+              <Link className="btn btn-primary" href="/setup">Self-host guide</Link>
+              <a className="btn lp-iconbtn" href={REPO} target="_blank" rel="noreferrer">{icons.github}View on GitHub</a>
             </div>
           </Reveal>
           <Reveal i={1} className="lp-os-r">
@@ -369,12 +372,42 @@ export default function LandingPage() {
                 </div>
               ))}
               <div className="lp-proof-foot">
-                <span><b>$0</b> / month</span>
-                <span className="mono">0 auto-applies, human in the loop</span>
+                <span><b>~$0</b> infra / mo</span>
+                <span className="mono">Claude subscription or API key required, billed separately</span>
               </div>
             </div>
           </Reveal>
         </div>
+      </section>
+
+      {/* credits + validation */}
+      <section className="lp-section" id="credits">
+        <Reveal><p className="lp-kicker mono">Built on, and checked against, real tools</p></Reveal>
+        <Reveal i={1}><h2 className="lp-h2"><span className="lp-h2-dim">Synthesized from prior work,</span> validated against a real ATS.</h2></Reveal>
+        <div className="lp-credits">
+          {[
+            { t: "career-ops", d: "Hard fact-gate and public-ATS provider modules", href: "https://github.com/santifer/career-ops" },
+            { t: "Job-Ops", d: "0 to 100 role-fit scoring and multi-board ingest", href: "https://github.com/dakheera47/Job-Ops" },
+            { t: "ATS Resumaker v1", d: "The original .docx tailoring and scoring engine", href: "https://github.com/AakashBelide/ATS-Resumaker" },
+          ].map((c, i) => (
+            <Reveal key={c.t} i={i} className="lp-credit-wrap">
+              <a className="lp-credit" href={c.href} target="_blank" rel="noreferrer">
+                <span className="lp-credit-ico">{icons.github}</span>
+                <span className="lp-credit-txt"><b>{c.t}</b><span>{c.d}</span></span>
+                <svg className="lp-credit-ar" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M7 17L17 7M9 7h8v8" /></svg>
+              </a>
+            </Reveal>
+          ))}
+        </div>
+        <Reveal i={1} className="lp-validate">
+          <span className="lp-validate-ico">{icons.check}</span>
+          <p>
+            Generated resumes were parsed with <a href="https://www.affinda.com/" target="_blank" rel="noreferrer">Affinda</a> and
+            imported into <a href="https://github.com/opencats/OpenCATS" target="_blank" rel="noreferrer">OpenCATS</a>, an
+            open-source applicant tracking system. Fields extract cleanly and map to the right columns, so the output is
+            validated against a real ATS, not just our own parser.
+          </p>
+        </Reveal>
       </section>
 
       {/* final CTA */}

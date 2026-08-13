@@ -27,6 +27,7 @@ const ic = {
   image: S(<><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="9" cy="9" r="2" /><path d="M21 15l-5-5L5 21" /></>),
   clock: S(<><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></>),
   x: S(<path d="M18 6L6 18M6 6l12 12" />),
+  menu: S(<path d="M4 6h16M4 12h16M4 18h16" />),
 };
 
 /* ---- data ------------------------------------------------------------------ */
@@ -78,7 +79,7 @@ function buildReport(company: string, role: string, fit: number): Report {
 type Tracked = { key: string; company: string; role: string; lvl: Lvl; fit: number; stage: string; loading: boolean; report: Report };
 // seed companies deliberately do NOT overlap with the Discovery feed
 const seedTracked = (): Tracked[] => [
-  { key: "morgan", company: "Morgan Stanley", role: "AI Engineer", lvl: "mid", fit: 69, stage: "applied", loading: false, report: buildReport("Morgan Stanley", "AI Engineer", 69) },
+  { key: "morgan", company: "Morgan Stanley", role: "AI Engineer", lvl: "mid", fit: 68, stage: "applied", loading: false, report: buildReport("Morgan Stanley", "AI Engineer", 68) },
   { key: "datadog", company: "Datadog", role: "ML Engineer", lvl: "mid", fit: 61, stage: "interview", loading: false, report: buildReport("Datadog", "ML Engineer", 61) },
   { key: "plaid", company: "Plaid", role: "AI Engineer", lvl: "junior", fit: 57, stage: "interested", loading: false, report: buildReport("Plaid", "AI Engineer", 57) },
 ];
@@ -99,6 +100,7 @@ const TABS = [
 /* ---- component ------------------------------------------------------------- */
 export default function DemoConsole() {
   const [tab, setTab] = useState(0);
+  const [navOpen, setNavOpen] = useState(false);
   const [auto, setAuto] = useState(true);
   const [pressed, setPressed] = useState("");
   const [ingesting, setIngesting] = useState(false);
@@ -226,7 +228,7 @@ export default function DemoConsole() {
     setBoards((p) => (p.some((b) => b.name.toLowerCase() === name.toLowerCase()) ? p : [...p, { name, on: true }]));
   }
 
-  const goTab = (i: number) => { takeControl(); setReport(null); setTab(i); };
+  const goTab = (i: number) => { takeControl(); setReport(null); setTab(i); setNavOpen(false); };
 
   return (
     <div className="dc" ref={rootRef}>
@@ -237,11 +239,13 @@ export default function DemoConsole() {
           {auto
             ? <button className="dc-tourbadge" onClick={takeControl}><span className="dc-live" /><span className="dc-tb-full">Auto tour playing, click to take control</span><span className="dc-tb-min">Auto tour</span></button>
             : <button className="dc-replay" onClick={runTour}>{ic.spark}<span className="dc-tb-full">Replay tour</span><span className="dc-tb-min">Replay</span></button>}
+          <button className="dc-menu" onClick={() => setNavOpen((o) => !o)} aria-label="menu">{navOpen ? ic.x : ic.menu}</button>
         </div>
       </div>
 
       <div className="dc-body">
-        <nav className="dc-nav">
+        {navOpen && <div className="dc-nav-backdrop" onClick={() => setNavOpen(false)} aria-hidden />}
+        <nav className={`dc-nav ${navOpen ? "open" : ""}`}>
           {TABS.map((t, i) => (
             <button key={t.key} className={`dc-navitem ${tab === i ? "on" : ""}`} onClick={() => goTab(i)}>
               <span className="ico">{t.icon}</span><span>{t.label}</span>
@@ -436,7 +440,7 @@ function OnboardView({ text, status, steps, boards, pressed, onText, onGo, onTog
 }) {
   return (
     <div className="dc-pane">
-      <div className="dc-pane-head"><h4>Onboarding</h4><span className="dc-count">agentic, $0 extra</span></div>
+      <div className="dc-pane-head"><h4>Onboarding</h4><span className="dc-count">agentic, no config</span></div>
       <div className="dc-onb-form">
         <input className="dc-input" placeholder="Company name, e.g. Databricks" value={text} onChange={(e) => onText(e.target.value)} onKeyDown={(e) => e.key === "Enter" && onGo()} />
         <button className={`dc-btn ${pressed === "onb-go" ? "press" : ""}`} onClick={onGo} disabled={status === "resolving"}>{status === "resolving" ? "Resolving." : "Onboard"}</button>

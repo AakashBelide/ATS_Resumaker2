@@ -235,7 +235,7 @@ export default function OnboardPage() {
                   const states = computeSteps(run);
                   const cloud = run.events.some((e) => e.stage === "agent" && /Actions/i.test(e.detail));
                   const meta = [
-                    { label: "Deterministic resolve", hint: "slug-probe + careers-page parse · $0", stage: "deterministic" },
+                    { label: "Deterministic resolve", hint: "slug-probe + careers-page parse · no LLM", stage: "deterministic" },
                     { label: "AI agent", hint: cloud ? "sandboxed resolver · GitHub Actions" : "sandboxed Claude resolver", stage: "agent" },
                     { label: "Validate & add to watchlist", hint: "confirm the board has live postings", stage: "" },
                   ];
