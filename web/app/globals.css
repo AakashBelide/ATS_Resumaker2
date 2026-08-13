@@ -1505,3 +1505,30 @@ button, input, select, textarea { font-family: inherit; }
 .scrolltop svg { width: 20px; height: 20px; }
 @media (max-width: 560px) { .scrolltop { right: 14px; bottom: 14px; width: 42px; height: 42px; } }
 @media (prefers-reduced-motion: reduce) { .scrolltop { transition: none; } }
+
+/* ---- landing: self-improving agentic onboarder band ---- */
+.lp-si-band { position: relative; overflow: hidden; margin-top: 30px; border: 1px solid var(--line-2); border-radius: 22px;
+    padding: 40px; background: radial-gradient(ellipse at 80% 0%, rgba(52,210,232,.1), rgba(14,23,40,.4)); }
+.lp-si-orb { position: absolute; right: -10%; top: -40%; width: 480px; height: 480px; pointer-events: none; z-index: 0;
+    background: radial-gradient(circle, rgba(52,210,232,.14), transparent 62%); filter: blur(20px); }
+.lp-si-head { position: relative; z-index: 1; max-width: 720px; }
+.lp-si-flow { position: relative; z-index: 1; display: flex; align-items: stretch; flex-wrap: wrap; gap: 6px; margin-top: 30px; }
+.lp-si-cell { display: flex; align-items: center; gap: 6px; flex: 1 1 0; min-width: 0; }
+.lp-si-box { flex: 1; min-width: 0; border: 1px solid var(--line-2); border-radius: 14px; padding: 16px 14px;
+    background: rgba(10,17,32,.55); text-align: center; }
+.lp-si-ico { display: inline-flex; align-items: center; justify-content: center; width: 38px; height: 38px; margin-bottom: 9px;
+    border-radius: 11px; color: var(--cyan); background: rgba(52,210,232,.1); border: 1px solid var(--line-2); }
+.lp-si-ico svg { width: 19px; height: 19px; }
+.lp-si-t { font-family: var(--font-display); font-weight: 600; font-size: 14px; }
+.lp-si-d { color: var(--muted); font-size: 11px; line-height: 1.45; margin-top: 4px; }
+.lp-si-arrow { position: relative; color: var(--cyan); display: inline-flex; flex-shrink: 0; }
+.lp-si-dot { position: absolute; left: 0; top: 50%; width: 5px; height: 5px; border-radius: 50%; margin-top: -2.5px;
+    background: var(--cyan); box-shadow: 0 0 8px var(--cyan); }
+@media (max-width: 900px) {
+  .lp-si-band { padding: 28px; }
+  .lp-si-flow { flex-direction: column; align-items: center; }
+  .lp-si-cell { flex-direction: column; width: 100%; max-width: 320px; }
+  .lp-si-box { width: 100%; }
+  .lp-si-arrow { transform: rotate(90deg); }
+}
+@media (prefers-reduced-motion: reduce) { .lp-si-dot { animation: none !important; } }

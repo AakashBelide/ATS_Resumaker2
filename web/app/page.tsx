@@ -41,6 +41,10 @@ const icons = {
   check: I(<path d="M20 6L9 17l-5-5" />),
   spark: I(<path d="M12 3l1.7 5.1L19 10l-5.3 1.9L12 17l-1.7-5.1L5 10l5.3-1.9L12 3z" />),
   login: I(<><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" /><path d="M10 17l5-5-5-5M15 12H3" /></>),
+  code: I(<path d="M8 6l-6 6 6 6M16 6l6 6-6 6" />),
+  box: I(<><path d="M21 8l-9-5-9 5 9 5 9-5z" /><path d="M3 8v8l9 5 9-5V8M12 13v8" /></>),
+  branch: I(<><circle cx="6" cy="6" r="2.5" /><circle cx="6" cy="18" r="2.5" /><circle cx="18" cy="8" r="2.5" /><path d="M6 8.5v7M18 10.5c0 4-6 2.5-6 6.5" /></>),
+  building: I(<><rect x="5" y="3" width="14" height="18" rx="1" /><path d="M9 8h1M14 8h1M9 12h1M14 12h1M9 16h1M14 16h1" /></>),
   github: I(<path d="M9 19c-4 1.5-4-2-5-2.5M15 21v-3.5c0-1 .1-1.4-.5-2 2.8-.3 5.5-1.4 5.5-6a4.6 4.6 0 0 0-1.3-3.2 4.3 4.3 0 0 0-.1-3.2s-1-.3-3.5 1.3a12 12 0 0 0-6.2 0C6.9 2.1 5.9 2.4 5.9 2.4a4.3 4.3 0 0 0-.1 3.2A4.6 4.6 0 0 0 4.5 8.8c0 4.6 2.7 5.7 5.5 6-.6.6-.6 1.2-.5 2V21" />),
 };
 
@@ -113,7 +117,7 @@ const PRIMARY = [
   { icon: icons.shield, t: "Anti-fabrication gate", d: "Every metric, employer, and title must trace to your profile. A mechanical gate blocks anything you cannot defend.", mock: <MockGate /> },
 ];
 const SECONDARY = [
-  { icon: icons.spark, t: "Agentic onboarding", d: "Give a company name and Claude resolves its ATS board automatically, no manual config. It uses your Claude subscription or your own API key.", viz: <CvOnboard /> },
+  { icon: icons.spark, t: "Agentic onboarding", d: "Name a company we don't cover and an agent writes a new board adapter, tests it in a sandbox, and opens a PR to add it. The system teaches itself new ATS boards.", viz: <CvOnboard /> },
   { icon: icons.puzzle, t: "One-click capture", d: "A browser extension grabs any posting, text plus a full-page screenshot, into your tracker.", viz: <CvCapture /> },
   { icon: icons.globe, t: "Sponsorship-aware", d: "USCIS H-1B history and the posting's own stance drive the apply or skip call.", viz: <CvSponsor /> },
   { icon: icons.lock, t: "Self-hosted and free", d: "Runs on free tiers, or one small box. Your data stays yours.", viz: <CvFree /> },
@@ -127,6 +131,15 @@ const FLOW = [
   { icon: icons.target, t: "Match", d: "One click scans the posting, then an LLM scores fit with concrete haves and gaps.", viz: "match" },
   { icon: icons.wand, t: "Generate", d: "It drafts a resume and cover letter, every line traced to your real profile.", viz: "generate" },
   { icon: icons.check, t: "Apply", d: "You review, tweak, and apply. It never auto-applies. Human stays in the loop.", viz: "apply" },
+];
+
+// the self-improving onboarding loop (agent writes + tests + PRs a new board adapter)
+const SI_STEPS = [
+  { icon: icons.building, t: "New company", d: "You name a board we don't cover yet" },
+  { icon: icons.code, t: "Agent writes it", d: "Claude drafts a new board adapter" },
+  { icon: icons.box, t: "Sandbox", d: "Runs isolated, no access to your data" },
+  { icon: icons.check, t: "Validate", d: "Tested against live postings" },
+  { icon: icons.branch, t: "Opens a PR", d: "You review and approve the merge" },
 ];
 
 // looping mini visual inside each how-it-works box
@@ -229,6 +242,7 @@ export default function LandingPage() {
   }, []);
 
   return (
+    <>
     <div className="lp">
       <div className="lp-orb lp-orb-a" aria-hidden />
       <div className="lp-orb lp-orb-b" aria-hidden />
@@ -378,6 +392,40 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* self-improving agentic onboarder */}
+      <section className="lp-section" id="self-improving">
+        <div className="lp-si-band">
+          <div className="lp-si-orb" aria-hidden />
+          <Reveal className="lp-si-head">
+            <p className="lp-kicker mono">Self-improving</p>
+            <h2 className="lp-h2"><span className="lp-h2-dim">It teaches itself</span> new ATS boards.</h2>
+            <p className="lp-sub" style={{ margin: "12px 0 0" }}>
+              Name a company we don't cover yet and an agent writes a brand-new board adapter, runs it
+              in an isolated sandbox, validates it against live postings, and opens a pull request to
+              merge it. Coverage grows on its own, and you approve every merge. It runs on your Claude
+              subscription or your own API key.
+            </p>
+          </Reveal>
+          <div className="lp-si-flow">
+            {SI_STEPS.map((s, i) => (
+              <div className="lp-si-cell" key={s.t}>
+                <Reveal i={i} className="lp-si-box">
+                  <span className="lp-si-ico">{s.icon}</span>
+                  <div className="lp-si-t">{s.t}</div>
+                  <div className="lp-si-d">{s.d}</div>
+                </Reveal>
+                {i < SI_STEPS.length - 1 && (
+                  <span className="lp-si-arrow" aria-hidden>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="18" height="18"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+                    <motion.i className="lp-si-dot" animate={{ x: [-2, 20], opacity: [0, 1, 0] }} transition={{ duration: 1.5, repeat: Infinity, delay: i * 0.25 }} />
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* open-source / self-host band */}
       <section className="lp-section">
         <div className="lp-os">
@@ -473,7 +521,8 @@ export default function LandingPage() {
           <Link href="/login">Login</Link>
         </div>
       </footer>
-      <ScrollTop />
     </div>
+    <ScrollTop />
+    </>
   );
 }
