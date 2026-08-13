@@ -72,17 +72,50 @@ const MockGate = () => (
   </div>
 );
 
+// ---- inner "mock" visuals for the secondary cards (in-theme, static) -------
+const CvOnboard = () => (
+  <div className="lp-cv lp-cv-onb">
+    <span className="lp-cv-chip">Databricks</span>
+    <svg className="lp-cv-ar" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+    <span className="lp-cv-chip alt">greenhouse.io/databricks</span>
+    <em className="lp-cv-cost">$0</em>
+  </div>
+);
+const CvCapture = () => (
+  <div className="lp-cv lp-cv-cap">
+    <span className="lp-cv-win"><i /><i /><i /><b /></span>
+    <span className="lp-cv-clip">full-page capture</span>
+  </div>
+);
+const CvSponsor = () => (
+  <div className="lp-cv lp-cv-spon">
+    <span className="lp-cv-h1b">H-1B history, 14 approvals</span>
+    <span className="lp-cv-dec ok">apply</span>
+    <span className="lp-cv-dec no">skip</span>
+  </div>
+);
+const CvFree = () => (
+  <div className="lp-cv lp-cv-free">
+    {[["Cloud Run", 3], ["Storage", 2]].map(([k, v]) => (
+      <div className="lp-cv-mrow" key={k as string}>
+        <span>{k}</span><span className="lp-cv-mtrack"><i style={{ width: `${v}%` }} /></span><em>{v}%</em>
+      </div>
+    ))}
+  </div>
+);
+
 const PRIMARY = [
   { icon: icons.radar, t: "Deterministic Discovery", d: "A filterable, LLM-free feed of fresh postings from companies you onboard, with no misleading resume-fit ranking.", mock: <MockDiscovery /> },
   { icon: icons.target, t: "Match, then tailor", d: "One click runs fit, gap, sponsorship, and keywords. Generate a grounded resume and cover letter only when you choose to.", mock: <MockMatch /> },
   { icon: icons.shield, t: "Anti-fabrication gate", d: "Every metric, employer, and title must trace to your profile. A mechanical gate blocks anything you cannot defend.", mock: <MockGate /> },
 ];
 const SECONDARY = [
-  { icon: icons.spark, t: "Agentic onboarding", d: "Give a company name and Claude resolves its ATS board automatically. $0 beyond your Claude subscription, or bring your own API key." },
-  { icon: icons.puzzle, t: "One-click capture", d: "A browser extension grabs any posting (text plus a full-page screenshot) into your tracker." },
-  { icon: icons.globe, t: "Sponsorship-aware", d: "USCIS H-1B history and the posting's own stance drive the apply or skip call." },
-  { icon: icons.lock, t: "Self-hosted and free", d: "Runs on free tiers, or one small box. Your data stays yours." },
+  { icon: icons.spark, t: "Agentic onboarding", d: "Give a company name and Claude resolves its ATS board automatically. $0 beyond your Claude subscription, or bring your own API key.", viz: <CvOnboard /> },
+  { icon: icons.puzzle, t: "One-click capture", d: "A browser extension grabs any posting, text plus a full-page screenshot, into your tracker.", viz: <CvCapture /> },
+  { icon: icons.globe, t: "Sponsorship-aware", d: "USCIS H-1B history and the posting's own stance drive the apply or skip call.", viz: <CvSponsor /> },
+  { icon: icons.lock, t: "Self-hosted and free", d: "Runs on free tiers, or one small box. Your data stays yours.", viz: <CvFree /> },
 ];
+const RAIL = ["Deterministic", "Grounded", "Sponsorship-aware", "One-click capture", "Self-hosted"];
 
 // ---- how-it-works flow ------------------------------------------------------
 const FLOW = [
@@ -238,9 +271,15 @@ export default function LandingPage() {
               <span className="lp-card-ico">{f.icon}</span>
               <div className="lp-card-t">{f.t}</div>
               <div className="lp-card-d">{f.d}</div>
+              {f.viz}
             </Reveal>
           ))}
         </div>
+        <Reveal className="lp-rail">
+          {RAIL.map((r, i) => (
+            <span key={r} className="lp-rail-item mono">{r}{i < RAIL.length - 1 && <i aria-hidden>·</i>}</span>
+          ))}
+        </Reveal>
       </section>
 
       {/* interactive product console: auto-plays the workflow, then you drive it */}
@@ -294,10 +333,24 @@ export default function LandingPage() {
             </div>
           </Reveal>
           <Reveal i={1} className="lp-os-r">
-            <div className="lp-stat"><b>$0</b><span>free-tier hostable</span></div>
-            <div className="lp-stat"><b>100%</b><span>grounded to your profile</span></div>
-            <div className="lp-stat"><b>1-click</b><span>capture and track</span></div>
-            <div className="lp-stat"><b>0</b><span>auto-applies (human in loop)</span></div>
+            <div className="lp-proof">
+              <div className="lp-proof-head">
+                <span className="lp-proof-h mono">Free-tier headroom, one user</span>
+                <span className="lp-proof-live"><i />live estimate</span>
+              </div>
+              {[["Cloud Run", "240k vCPU-sec / mo", 3], ["Cloud Storage", "5 GB", 2], ["Turso", "3 GB syncs", 1], ["GitHub Actions", "2000 min / mo", 4]].map(([k, lim, v], idx) => (
+                <div className="lp-proof-row" key={k as string}>
+                  <span className="lp-proof-k">{k}</span>
+                  <span className="lp-proof-track"><motion.i initial={{ width: 0 }} whileInView={{ width: `${v}%` }} viewport={{ once: true }} transition={{ delay: idx * 0.08, duration: 0.8 }} /></span>
+                  <span className="lp-proof-v mono">{v}%</span>
+                  <span className="lp-proof-lim mono">{lim}</span>
+                </div>
+              ))}
+              <div className="lp-proof-foot">
+                <span><b>$0</b> / month</span>
+                <span className="mono">0 auto-applies, human in the loop</span>
+              </div>
+            </div>
           </Reveal>
         </div>
       </section>

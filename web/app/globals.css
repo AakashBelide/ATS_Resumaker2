@@ -998,6 +998,51 @@ button, input, select, textarea { font-family: inherit; }
    ============================================================================ */
 .lp-flow-box { display: flex; flex-direction: column; align-items: center; position: relative; }
 .lp-flow-n { position: absolute; top: 10px; left: 12px; font-size: 10px; letter-spacing: 1px; color: var(--muted); opacity: .6; }
+
+/* ---- secondary feature-card mini visuals (in-theme, static) ---- */
+.lp-cv { margin-top: 14px; padding: 12px; border: 1px solid var(--line); border-radius: 11px; background: var(--bg-2);
+    display: flex; align-items: center; gap: 8px; min-height: 54px; }
+.lp-cv-chip { font-family: var(--font-mono); font-size: 10px; color: var(--sky); border: 1px solid var(--line-2); border-radius: 7px; padding: 4px 8px; white-space: nowrap; }
+.lp-cv-chip.alt { color: var(--mist); overflow: hidden; text-overflow: ellipsis; }
+.lp-cv-ar { width: 15px; height: 15px; color: var(--electric); flex-shrink: 0; }
+.lp-cv-cost { margin-left: auto; font-family: var(--font-mono); font-size: 11px; color: var(--good); font-style: normal; }
+.lp-cv-win { position: relative; width: 46px; height: 34px; border: 1px solid var(--line-2); border-radius: 6px; background: var(--surface); display: flex; gap: 3px; padding: 5px; flex-shrink: 0; }
+.lp-cv-win i { width: 4px; height: 4px; border-radius: 50%; background: var(--line-2); }
+.lp-cv-win b { position: absolute; left: 5px; right: 5px; top: 13px; bottom: 5px; border-radius: 3px; background: linear-gradient(180deg, rgba(59,116,255,.4), rgba(52,210,232,.14)); }
+.lp-cv-clip { font-family: var(--font-mono); font-size: 10.5px; color: var(--sky); border: 1px dashed var(--line-2); border-radius: 6px; padding: 4px 9px; }
+.lp-cv-h1b { flex: 1; font-family: var(--font-mono); font-size: 10.5px; color: var(--mist); }
+.lp-cv-dec { font-family: var(--font-mono); font-size: 9.5px; text-transform: uppercase; letter-spacing: .4px; border-radius: 6px; padding: 3px 8px; }
+.lp-cv-dec.ok { color: var(--good); border: 1px solid rgba(52,232,158,.35); background: rgba(52,232,158,.08); }
+.lp-cv-dec.no { color: var(--muted); border: 1px solid var(--line); }
+.lp-cv-free { flex-direction: column; align-items: stretch; gap: 8px; }
+.lp-cv-mrow { display: flex; align-items: center; gap: 9px; }
+.lp-cv-mrow > span:first-child { width: 62px; font-family: var(--font-mono); font-size: 10px; color: var(--muted); }
+.lp-cv-mtrack { flex: 1; height: 6px; border-radius: 4px; background: rgba(126,164,224,.14); overflow: hidden; }
+.lp-cv-mtrack i { display: block; height: 100%; border-radius: 4px; background: linear-gradient(90deg,var(--electric),var(--cyan)); }
+.lp-cv-mrow em { width: 26px; text-align: right; font-family: var(--font-mono); font-size: 10px; color: var(--sky); font-style: normal; }
+
+/* ---- mono caption rail under the feature grid ---- */
+.lp-rail { display: flex; flex-wrap: wrap; justify-content: center; gap: 16px; margin-top: 28px; padding-top: 20px; border-top: 1px solid var(--line); }
+.lp-rail-item { display: inline-flex; align-items: center; gap: 16px; font-size: 10.5px; letter-spacing: 1.6px; text-transform: uppercase; color: var(--muted); }
+.lp-rail-item i { color: var(--electric); opacity: .55; font-style: normal; }
+
+/* ---- open/self-host: free-tier proof panel (replaces static stat tiles) ---- */
+.lp-os-r { display: block; }
+.lp-proof { border: 1px solid var(--line-2); border-radius: 18px; padding: 22px; background: rgba(6,10,20,.5); }
+.lp-proof-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
+.lp-proof-h { font-size: 10.5px; letter-spacing: 1px; text-transform: uppercase; color: var(--sky); }
+.lp-proof-live { display: inline-flex; align-items: center; gap: 6px; font-size: 10px; color: var(--muted); }
+.lp-proof-live i { width: 7px; height: 7px; border-radius: 50%; background: var(--good); animation: dc-pulse 1.6s infinite; }
+.lp-proof-row { display: grid; grid-template-columns: 108px 1fr 34px; align-items: center; gap: 5px 10px; margin-bottom: 14px; }
+.lp-proof-k { font-size: 13px; color: var(--mist); }
+.lp-proof-track { grid-column: 2; height: 7px; border-radius: 4px; background: rgba(126,164,224,.14); overflow: hidden; }
+.lp-proof-track i { display: block; height: 100%; border-radius: 4px; background: linear-gradient(90deg,var(--electric),var(--cyan)); }
+.lp-proof-v { grid-column: 3; text-align: right; font-size: 11px; color: var(--sky); }
+.lp-proof-lim { grid-column: 1 / -1; font-size: 10px; color: var(--muted); margin-top: -3px; }
+.lp-proof-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 4px; padding-top: 16px; border-top: 1px solid var(--line); flex-wrap: wrap; }
+.lp-proof-foot > span:first-child { color: var(--mist); font-size: 14px; }
+.lp-proof-foot b { font-family: var(--font-display); font-size: 24px; color: var(--text); }
+.lp-proof-foot .mono { font-size: 10.5px; color: var(--muted); }
 .lp-fv { width: 100%; height: 34px; margin-top: 12px; border-top: 1px solid var(--line);
     padding-top: 10px; display: flex; align-items: center; justify-content: center; gap: 6px; position: relative; }
 .lp-fv-chat { flex-direction: column; gap: 5px; }
@@ -1254,7 +1299,8 @@ button, input, select, textarea { font-family: inherit; }
     font-family: inherit; font-size: 12px; outline: none; min-width: 120px; }
 .dc-kwadd:focus { border-color: var(--electric); border-style: solid; } .dc-kwadd::placeholder { color: var(--muted); }
 .dc-quiet { display: flex; align-items: center; gap: 10px; }
-.dc-quiet select { background: var(--bg-2); border: 1px solid var(--line-2); border-radius: 8px; padding: 8px 10px; color: var(--text); font-family: var(--font-mono); font-size: 12px; cursor: pointer; }
+.dc-quiet select, .dc-select { background: var(--bg-2); border: 1px solid var(--line-2); border-radius: 8px; padding: 8px 10px; color: var(--text); font-family: var(--font-mono); font-size: 12px; cursor: pointer; }
+.dc-select { padding: 9px 12px; min-width: 200px; width: fit-content; }
 .dc-quiet span { color: var(--muted); font-size: 12px; }
 .dc-mail-lvl { font-family: var(--font-mono); font-size: 10.5px; color: var(--sky); border: 1px solid var(--line-2); border-radius: 6px; padding: 2px 8px; text-transform: capitalize; }
 

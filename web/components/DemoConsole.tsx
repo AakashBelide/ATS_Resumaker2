@@ -111,7 +111,7 @@ export default function DemoConsole() {
   const [onbText, setOnbText] = useState("");
   const [onbStatus, setOnbStatus] = useState<"idle" | "resolving" | "done">("idle");
   const [onbSteps, setOnbSteps] = useState<string[]>([]);
-  const [freq, setFreq] = useState<"daily" | "weekly" | "off">("daily");
+  const [freq, setFreq] = useState<string>("hourly");
   const [mailLevels, setMailLevels] = useState<Record<Lvl, boolean>>({ junior: true, mid: true, senior: false });
   const [include, setInclude] = useState<string[]>(["LLM", "RAG", "Python"]);
   const [exclude, setExclude] = useState<string[]>(["clearance", "senior"]);
@@ -120,8 +120,9 @@ export default function DemoConsole() {
 
   const timers = useRef<number[]>([]);
   const waiters = useRef<Array<() => void>>([]);
-  const stopped = useRef(false);
-  const started = useRef(false);
+  const genRef = useRef(0);          // current tour generation; bumping it cancels the running loop
+  const runningRef = useRef(false);  // a tour loop is currently active
+  const controlRef = useRef(false);  // visitor took control, do not auto-restart
   const reportScroll = useRef<HTMLDivElement | null>(null);
   const rootRef = useRef<HTMLDivElement | null>(null);
 
@@ -141,7 +142,7 @@ export default function DemoConsole() {
 
   function takeControl() {
     if (!auto) return;
-    stopped.current = true; flush();
+    controlRef.current = true; genRef.current++; runningRef.current = false; flush();
     setAuto(false); setIngesting(false); setPressed("");
     setTracked((prev) => prev.map((t) => ({ ...t, loading: false })));
   }
@@ -151,12 +152,12 @@ export default function DemoConsole() {
     setLevels({ junior: true, mid: true, senior: false }); setDays(1);
     setTracked(seedTracked()); setBoards(seedBoards());
     setOnbText(""); setOnbStatus("idle"); setOnbSteps([]);
-    setFreq("daily"); setTab(0);
+    setFreq("hourly"); setMailLevels({ junior: true, mid: true, senior: false });
+    setInclude(["LLM", "RAG", "Python"]); setExclude(["clearance", "senior"]);
+    setQuietFrom("22:00"); setQuietTo("07:00"); setTab(0);
   }
 
-  async function playOnce(): Promise<boolean> {
-    const dead = () => stopped.current;
-    resetSlate();
+  async function playOnce(dead: () => boolean): Promise<boolean> {
     setTab(2); await wait(700); if (dead()) return false;
     const name = "Databricks";
     for (let i = 1; i <= name.length; i++) { setOnbText(name.slice(0, i)); await wait(60); if (dead()) return false; }
@@ -178,12 +179,11 @@ export default function DemoConsole() {
 
     setPressed("report-databricks"); await wait(220); setPressed("");
     setTracked((prev) => { const f = prev.find((t) => t.key === "databricks"); if (f) setReport(f); return prev; });
-    await wait(650); autoScrollReport(); await wait(3200); if (dead()) return false;
+    await wait(650); autoScrollReport(dead); await wait(3200); if (dead()) return false;
     setReport(null); await wait(500); if (dead()) return false;
 
     setTab(3); await wait(2400); if (dead()) return false;
-    setTab(4); await wait(900);
-    setPressed("freq-weekly"); await wait(220); setPressed(""); setFreq("weekly"); await wait(1600); if (dead()) return false;
+    setTab(4); await wait(900); setFreq("every 4 hours"); await wait(1700); if (dead()) return false;
     setTab(5); await wait(1900); if (dead()) return false;
 
     setTab(0); await wait(2600); if (dead()) return false;
@@ -191,23 +191,28 @@ export default function DemoConsole() {
   }
 
   async function runTour() {
-    stopped.current = false; flush(); setAuto(true);
-    while (!stopped.current) { const ok = await playOnce(); if (!ok) break; }
+    const gen = ++genRef.current;            // invalidate any prior loop
+    const dead = () => gen !== genRef.current;
+    controlRef.current = false; runningRef.current = true; setAuto(true);
+    while (!dead()) { flush(); resetSlate(); const ok = await playOnce(dead); if (!ok) break; }
+    if (gen === genRef.current) runningRef.current = false;
   }
 
-  function autoScrollReport() {
+  function autoScrollReport(dead: () => boolean) {
     const el = reportScroll.current; if (!el) return;
     const max = el.scrollHeight - el.clientHeight; if (max <= 0) return;
     let y = 0;
-    const step = () => { if (stopped.current || !reportScroll.current) return; y = Math.min(y + max / 44, max); el.scrollTop = y; if (y < max) { const id = window.setTimeout(step, 45); timers.current.push(id); } };
+    const step = () => { if (dead() || !reportScroll.current) return; y = Math.min(y + max / 44, max); el.scrollTop = y; if (y < max) { const id = window.setTimeout(step, 45); timers.current.push(id); } };
     step();
   }
 
   useEffect(() => {
     const node = rootRef.current; if (!node) return;
-    const obs = new IntersectionObserver((e) => { if (e[0].isIntersecting && !started.current) { started.current = true; runTour(); } }, { threshold: 0.3 });
+    const obs = new IntersectionObserver((e) => {
+      if (e[0].isIntersecting && !controlRef.current && !runningRef.current) runTour();
+    }, { threshold: 0.25 });
     obs.observe(node);
-    return () => { obs.disconnect(); stopped.current = true; flush(); };
+    return () => { obs.disconnect(); genRef.current++; runningRef.current = false; flush(); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -270,7 +275,7 @@ export default function DemoConsole() {
                 )}
                 {tab === 3 && <DashboardView tracked={tracked} boards={boards} />}
                 {tab === 4 && (
-                  <MailerView freq={freq} mailLevels={mailLevels} include={include} exclude={exclude} quietFrom={quietFrom} quietTo={quietTo} pressed={pressed}
+                  <MailerView freq={freq} mailLevels={mailLevels} include={include} exclude={exclude} quietFrom={quietFrom} quietTo={quietTo}
                     onFreq={(f) => { takeControl(); setFreq(f); }}
                     onLevel={(l) => { takeControl(); setMailLevels((p) => ({ ...p, [l]: !p[l] })); }}
                     onAddInclude={(k) => { takeControl(); setInclude((p) => (p.includes(k) ? p : [...p, k])); }}
@@ -487,14 +492,15 @@ function DashboardView({ tracked, boards }: { tracked: Tracked[]; boards: { name
   );
 }
 
-function MailerView({ freq, mailLevels, include, exclude, quietFrom, quietTo, pressed, onFreq, onLevel, onAddInclude, onDelInclude, onAddExclude, onDelExclude, onQuiet }: {
-  freq: "daily" | "weekly" | "off"; mailLevels: Record<Lvl, boolean>; include: string[]; exclude: string[]; quietFrom: string; quietTo: string; pressed: string;
-  onFreq: (f: "daily" | "weekly" | "off") => void; onLevel: (l: Lvl) => void;
+function MailerView({ freq, mailLevels, include, exclude, quietFrom, quietTo, onFreq, onLevel, onAddInclude, onDelInclude, onAddExclude, onDelExclude, onQuiet }: {
+  freq: string; mailLevels: Record<Lvl, boolean>; include: string[]; exclude: string[]; quietFrom: string; quietTo: string;
+  onFreq: (f: string) => void; onLevel: (l: Lvl) => void;
   onAddInclude: (k: string) => void; onDelInclude: (k: string) => void; onAddExclude: (k: string) => void; onDelExclude: (k: string) => void;
   onQuiet: (f: string, t: string) => void;
 }) {
   const [inc, setInc] = useState(""); const [exc, setExc] = useState("");
   const times = ["06:00", "07:00", "08:00", "18:00", "20:00", "21:00", "22:00", "23:00"];
+  const FREQS = ["hourly", "every 2 hours", "every 4 hours", "every 8 hours", "daily", "off"];
   const pool = [
     { co: "Databricks", role: "AI Engineer", lvl: "junior", tags: ["llm", "rag", "python"] },
     { co: "Notion", role: "AI Engineer", lvl: "junior", tags: ["llm", "python"] },
@@ -509,8 +515,9 @@ function MailerView({ freq, mailLevels, include, exclude, quietFrom, quietTo, pr
     <div className="dc-pane">
       <div className="dc-pane-head"><h4>Email digest</h4><span className="dc-count">delivered to you</span></div>
       <div className="dc-field"><label>Frequency</label>
-        <div className="dc-seg">{(["daily", "weekly", "off"] as const).map((f) => (
-          <button key={f} className={`${freq === f ? "on" : ""} ${pressed === `freq-${f}` ? "press" : ""}`} onClick={() => onFreq(f)}>{f}</button>))}</div>
+        <select className="dc-select" value={freq} onChange={(e) => onFreq(e.target.value)}>
+          {FREQS.map((f) => <option key={f} value={f}>{f}</option>)}
+        </select>
       </div>
       <div className="dc-field"><label>Levels</label>
         <div className="dc-fgrp">{(["junior", "mid", "senior"] as Lvl[]).map((l) => (
@@ -538,8 +545,8 @@ function MailerView({ freq, mailLevels, include, exclude, quietFrom, quietTo, pr
         </div>
       </div>
       <div className="dc-mail-prev">
-        <div className="dc-mail-top"><span className="dc-logo sm" /><b>ATS Resumaker</b><em>{freq === "off" ? "paused" : `${freq} digest`}</em></div>
-        <div className="dc-mail-sub">{matches.length} new roles match your filters, sent outside {quietFrom} to {quietTo}</div>
+        <div className="dc-mail-top"><span className="dc-logo sm" /><b>ATS Resumaker</b><em>{freq === "off" ? "paused" : freq}</em></div>
+        <div className="dc-mail-sub">{matches.length} new roles match your filters{freq === "off" ? ", digest paused" : `, sent ${freq}, outside ${quietFrom} to ${quietTo}`}</div>
         {matches.slice(0, 3).map((m) => (<div className="dc-mail-row" key={m.co + m.role}><span>{m.co} <i>{m.role}</i></span><span className="dc-mail-lvl">{m.lvl}</span></div>))}
         {freq === "off" && <div className="dc-mail-off">Digest paused, turn on daily or weekly to resume.</div>}
       </div>
