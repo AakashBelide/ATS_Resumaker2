@@ -11,6 +11,7 @@ secrets keep their conventional unprefixed names (`ANTHROPIC_API_KEY`,
 from __future__ import annotations
 
 import functools
+import os
 from pathlib import Path
 
 from pydantic import Field, model_validator
@@ -153,6 +154,17 @@ class Settings(BaseSettings):
             self.data_dir = self.root_dir / "data"
         if self.output_dir is None:
             self.output_dir = self.root_dir / "outputs"
+        return self
+
+    @model_validator(mode="after")
+    def _default_turso_remote_only(self) -> Settings:
+        # A Turso URL implies a HOSTED (prod) database. Default to remote-only whenever one is set,
+        # UNLESS the operator explicitly pinned `RESUMAKER_TURSO_REMOTE_ONLY` (either value wins).
+        # Guards against a stray local `.env` that carries a Turso URL without remote_only silently
+        # spinning up a syncing embedded replica against prod (writes + full re-sync on every start).
+        # We check `os.environ` (not the parsed field) so an explicit `=false` still disables it.
+        if self.turso_url and "RESUMAKER_TURSO_REMOTE_ONLY" not in os.environ:
+            self.turso_remote_only = True
         return self
 
     # -- convenience path accessors -----------------------------------------

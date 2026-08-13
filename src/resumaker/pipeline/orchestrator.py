@@ -47,7 +47,8 @@ def _noop(stage: str, status: str, detail: str = "") -> None:
     pass
 
 
-def run_pipeline(url: str | None = None, *, job=None, out_dir: str | None = None,
+def run_pipeline(url: str | None = None, *, job=None, keyword_set=None, gap=None,
+                 out_dir: str | None = None,
                  run_id: str | None = None, target_pages: int = 1, gate: bool = False,
                  match_only: bool = False,
                  parallel: bool = True, make_cover_letter: bool = True,
@@ -57,6 +58,9 @@ def run_pipeline(url: str | None = None, *, job=None, out_dir: str | None = None
 
     url            : JD URL to scrape (skip if `job` is supplied).
     job            : a pre-structured JobPosting (skips scrape+structure; for tests).
+    keyword_set    : a pre-computed KeywordSet - skips the keywords stage (REUSE from a prior
+                     match's report.json on the generation path, so we don't re-extract).
+    gap            : a pre-computed GapReport - skips the gap stage (same reuse rationale).
     run_id         : stable id for this run (the API supplies one up front so SSE +
                      artifacts route immediately); defaults to the company-role slug.
     gate           : if True, stop before resume/cover when apply-decision is negative.
@@ -104,7 +108,12 @@ def run_pipeline(url: str | None = None, *, job=None, out_dir: str | None = None
         if reporter.out_dir is None:
             reporter.set_out_dir(resolved_out)
 
-        # 2) parallel fan-out: keywords | gap | sponsorship (independent)
+        # 2) keywords | gap | sponsorship. keyword_set/gap may be REUSED from a prior match's
+        #    report.json (the generation path) - when supplied we skip re-extracting them; only the
+        #    sponsorship signal always recomputes (company-level + cheap, and not in report.json).
+        need_kw = keyword_set is None
+        need_gap = gap is None
+
         def _kw():
             return extract_keywords(job)
 
@@ -118,13 +127,21 @@ def run_pipeline(url: str | None = None, *, job=None, out_dir: str | None = None
             reporter.emit("analyze", "start", "keywords|gap|sponsorship (parallel)")
             t0 = time.time()
             with ThreadPoolExecutor(max_workers=3) as ex:
-                f_kw, f_gap, f_spon = ex.submit(_kw), ex.submit(_gap), ex.submit(_spon)
-                ks, gap, sig = f_kw.result(), f_gap.result(), f_spon.result()
+                f_kw = ex.submit(_kw) if need_kw else None
+                f_gap = ex.submit(_gap) if need_gap else None
+                f_spon = ex.submit(_spon)
+                ks = f_kw.result() if f_kw else keyword_set
+                gap = f_gap.result() if f_gap else gap
+                sig = f_spon.result()
             timings["analyze"] = round(time.time() - t0, 2)
             reporter.emit("analyze", "done")
         else:
-            ks = timed("keywords", _kw)
-            gap = timed("gap", _gap)
+            ks = timed("keywords", _kw) if need_kw else keyword_set
+            if not need_kw:
+                reporter.emit("keywords", "skip", "reused from prior match")
+            gap = timed("gap", _gap) if need_gap else gap
+            if not need_gap:
+                reporter.emit("gap", "skip", "reused from prior match")
             sig = timed("sponsorship", _spon)
         res.keyword_set, res.gap = ks, gap
 

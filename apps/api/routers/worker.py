@@ -17,13 +17,14 @@ identical. Protected by the same single-user token; Cloud Scheduler/Tasks send i
 from __future__ import annotations
 
 import contextlib
+import json
 import uuid
 
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 
 from apps.api.security import require_token
-from resumaker.domain import RunRecord
+from resumaker.domain import GapReport, JobPosting, KeywordSet, RunRecord
 from resumaker.observability.logging import get_logger
 from resumaker.persistence import db
 from resumaker.persistence.artifacts import get_artifact_store
@@ -109,14 +110,41 @@ def run_pipeline_endpoint(body: RunPipelineIn) -> RunRecord:
     a crash surfaces as a 500 and gets redelivered. The orchestrator persists the `runs` row +
     artifacts, so status is durable regardless of which instance served the request."""
     run_id = body.run_id or uuid.uuid4().hex[:12]
-    res = run_pipeline(url=body.url, run_id=run_id, gate=body.gate, match_only=body.match_only,
+
+    # Generation REUSES the match's persisted analysis instead of re-running it. The match already
+    # scraped + structured the JD and ran keywords/gap, publishing them to report.json; re-doing
+    # that is wasteful AND breaks captured/bot-walled jobs (a re-scrape hits e.g. LinkedIn's wall).
+    # Load report.json and reconstruct the domain objects so run_pipeline skips scrape + structure +
+    # keywords + gap - only tailor -> render -> fact-gate -> ats -> cover run. Anything missing or
+    # unparseable falls through to `job=None` -> the plain scrape-by-url path (unchanged).
+    job = keyword_set = gap = None
+    with contextlib.suppress(Exception):
+        raw = get_artifact_store().open(run_id, "report.json")
+        data = json.loads(raw) if raw else {}
+        if data.get("job"):
+            job = JobPosting(**data["job"])                       # skips scrape + structure
+            if data.get("keyword_set"):
+                keyword_set = KeywordSet(**data["keyword_set"])   # skips keywords stage
+            if data.get("gap"):
+                gap = GapReport(**data["gap"])                    # skips gap stage
+
+    res = run_pipeline(url=body.url, job=job, keyword_set=keyword_set, gap=gap, run_id=run_id,
+                       gate=body.gate, match_only=body.match_only,
                        make_cover_letter=body.make_cover_letter, target_pages=body.target_pages,
                        semantic_method=body.semantic_method)
     # publish artifacts to durable storage (no-op on the local backend; GCS upload in cloud, so
     # they survive this ephemeral instance). Never fail the run if publishing hiccups.
     with contextlib.suppress(Exception):
         get_artifact_store().publish(run_id)
+
     rec = db.get_run(run_id)
+    # Guarantee a TERMINAL status. The orchestrator's exception path returns `res.error` WITHOUT
+    # indexing the run, so the row can be left at the pre-submit "running" status (or missing) and
+    # the frontend's /progress poll would spin forever ("generating…"). Force it to "error" so
+    # getProgress/getRun report done and the UI surfaces the failure instead of hanging.
+    if res.error or rec is None or rec.status not in ("done", "matched", "gated_out"):
+        db.set_run_status(run_id, "error", url=body.url)
+        rec = db.get_run(run_id)
     if rec is not None:
         return rec
     # orchestrator persists on the happy path; synthesize a terminal record if it didn't.

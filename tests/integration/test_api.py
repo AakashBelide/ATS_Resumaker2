@@ -154,6 +154,73 @@ def test_worker_run_pipeline(client, monkeypatch):
     assert body["id"] == "wrk-1" and body["status"] == "done" and body["fit_0_100"] == 71.0
 
 
+def test_worker_run_pipeline_reuses_report_json_and_skips_rework(client, monkeypatch):
+    """Generation REUSES the match's persisted report.json: it reconstructs job/keyword_set/gap and
+    hands them to run_pipeline, so scrape + structure + keyword/gap extraction never re-run (works
+    for captured AND scraped jobs — the point is zero re-scrape). Enum fields coerce from strings."""
+    import json
+
+    from resumaker.domain import RunRecord
+    from resumaker.persistence import db
+
+    report = {
+        "url": "https://linkedin.com/jobs/view/1",
+        "job": {"title": "ML Engineer", "company": "X Corp", "work_model": "remote",
+                "raw_text": "Full JD body here.", "required_quals": ["python"]},
+        "keyword_set": {"keywords": [{"term": "python", "weight": 1.0, "kind": "hard"}],
+                        "standardized": ["python"]},
+        "gap": {"items": [{"requirement": "python", "status": "existing"}], "gaps": []},
+    }
+
+    class FakeStore:
+        def open(self, run_id, name):
+            return json.dumps(report).encode() if name == "report.json" else None
+
+        def publish(self, run_id):
+            pass
+    monkeypatch.setattr("apps.api.routers.worker.get_artifact_store", lambda: FakeStore())
+
+    seen: dict = {}
+
+    def fake_run_pipeline(url=None, *, job=None, keyword_set=None, gap=None, run_id=None, **kw):
+        seen.update(url=url, job=job, keyword_set=keyword_set, gap=gap)
+        db.record_run(RunRecord(id=run_id, url=url, status="done", fit_0_100=80.0))
+        return type("R", (), {"error": ""})()
+
+    def boom_scrape(*a, **k):
+        raise AssertionError("scrape must NOT run when report.json is reused")
+    monkeypatch.setattr("apps.api.routers.worker.run_pipeline", fake_run_pipeline)
+    monkeypatch.setattr("resumaker.providers.scrape.scrape", boom_scrape)
+
+    r = client.post("/v1/worker/run-pipeline", headers={"X-API-Key": "secret"},
+                    json={"url": "https://linkedin.com/jobs/view/1", "run_id": "gen-run-1"})
+    assert r.status_code == 200 and r.json()["status"] == "done"
+    assert seen["url"] == "https://linkedin.com/jobs/view/1"
+    assert seen["job"] is not None and seen["job"].title == "ML Engineer"      # reconstructed
+    assert seen["job"].work_model.value == "remote"                            # enum coerced
+    assert seen["keyword_set"] is not None and seen["keyword_set"].hard == ["python"]
+    assert seen["gap"] is not None and seen["gap"].items[0].requirement == "python"
+
+
+def test_worker_run_pipeline_failure_sets_terminal_error(client, monkeypatch):
+    """A generation whose pipeline fails must end in a TERMINAL 'error' status. The orchestrator's
+    exception path returns `res.error` WITHOUT indexing the run, leaving the row at the pre-submit
+    'running' — the endpoint forces 'error' so /progress reports done and the UI stops spinning."""
+    from resumaker.persistence import db
+
+    db.set_run_status("fail-run-1", "running", url="https://x.co/j")   # what start_run leaves behind
+
+    def fake_run_pipeline(**kw):
+        # errored (e.g. scrape failed); the orchestrator returns res.error but never re-indexes.
+        return type("R", (), {"error": "ScrapeError: bot-walled"})()
+    monkeypatch.setattr("apps.api.routers.worker.run_pipeline", fake_run_pipeline)
+
+    r = client.post("/v1/worker/run-pipeline", headers={"X-API-Key": "secret"},
+                    json={"url": "https://x.co/j", "run_id": "fail-run-1"})
+    assert r.status_code == 200 and r.json()["status"] == "error"
+    assert db.get_run("fail-run-1").status == "error"   # no longer stuck at "running"
+
+
 def test_worker_tracker_match(client, monkeypatch):
     """The Cloud Tasks target for a tracked entry's match: runs run_match_for on the worker."""
     seen = {}
@@ -340,3 +407,63 @@ def test_match_uses_captured_jd_and_skips_scrape(client, monkeypatch):
     assert seen["structured"].startswith("Captured JD body.")   # the captured text was structured
     assert seen["job"] is not None                              # job passed -> pipeline skips scrape
     assert seen["url"] == "https://x.co/j/1"                    # URL preserved for report.json
+
+
+def test_scraped_match_caches_jd_then_rematch_skips_scrape(client, monkeypatch):
+    """A plain (non-captured) tracked job scrapes on its FIRST match, but we cache the scraped JD in
+    `captured_jd` so every re-match reuses it (structure, no scrape) — nothing re-scrapes after the
+    first match. The cache lives in the DB, so it survives the re-match's run-folder cleanup."""
+    from resumaker.domain import JobPosting
+    from resumaker.ingestion import tracker
+    from resumaker.persistence import db
+
+    calls = {"scrape": 0}
+
+    def fake_run_pipeline(url=None, *, job=None, **kw):
+        # No job passed == the SCRAPE path; return a res carrying the "scraped" JobPosting.
+        if job is None:
+            calls["scrape"] += 1
+        j = job or JobPosting(title="AI Engineer", company="ACME",
+                              raw_text="Scraped JD body text. " * 20)
+        return type("R", (), {"job": j, "fit": None, "decision": None, "sponsorship": None,
+                              "error": "", "out_dir": ""})()
+
+    def fake_structure(raw, **kw):
+        return JobPosting(title="AI Engineer", company="ACME", raw_text=raw)
+
+    monkeypatch.setattr("resumaker.pipeline.run_pipeline", fake_run_pipeline)
+    monkeypatch.setattr("resumaker.stages.structure.structure_jd", fake_structure)
+
+    entry = tracker.add(url="https://acme.com/jobs/1")          # inline match -> scrapes once
+    assert calls["scrape"] == 1
+    stored = db.get_tracker(entry.id)
+    assert stored.captured_jd.startswith("Scraped JD body text.")   # cached durably in the DB
+
+    calls["scrape"] = 0
+    tracker.run_match_for(entry.id)                            # re-match now reuses the cached JD
+    assert calls["scrape"] == 0                                # ...so it never re-scrapes
+
+
+def test_scraped_match_never_overwrites_existing_captured_jd(client, monkeypatch):
+    """A capture (or a prior cache) is authoritative: a later match must NOT clobber `captured_jd`
+    with freshly-scraped text, even if the pipeline returns a different JD body."""
+    from resumaker.domain import JobPosting
+    from resumaker.ingestion import tracker
+    from resumaker.persistence import db
+
+    entry = tracker.capture(url="https://x.co/j/2", raw_text="ORIGINAL captured JD body. " * 8,
+                            title="ML Engineer", run_id="cap-run-2")
+
+    def fake_run_pipeline(url=None, *, job=None, **kw):
+        # returns a DIFFERENT raw_text than the stored capture; must not overwrite it.
+        j = job or JobPosting(title="ML Engineer", company="X", raw_text="DIFFERENT scraped body")
+        return type("R", (), {"job": j, "fit": None, "decision": None, "sponsorship": None,
+                              "error": "", "out_dir": ""})()
+
+    monkeypatch.setattr("resumaker.pipeline.run_pipeline", fake_run_pipeline)
+    monkeypatch.setattr("resumaker.stages.structure.structure_jd",
+                        lambda raw, **kw: JobPosting(title="ML Engineer", company="X", raw_text=raw))
+
+    tracker.run_match_for(entry.id)
+    stored = db.get_tracker(entry.id)
+    assert stored.captured_jd.startswith("ORIGINAL captured JD body.")   # untouched
