@@ -3,9 +3,10 @@
 // Sections: nav, hero, demo slot, feature cards (with inner mocks), a mini app-shell preview whose
 // left nav swaps the right panel like the real platform, an animated how-it-works flow, an
 // open/self-host band, and a final CTA. No AI-tell punctuation in the copy.
-import { AnimatePresence, motion, type Variants } from "framer-motion";
+import { motion, type Variants } from "framer-motion";
 import Link from "next/link";
-import { type ReactNode, useState } from "react";
+import { type ReactNode } from "react";
+import DemoConsole from "@/components/DemoConsole";
 
 const REPO = "https://github.com/AakashBelide/ATS_Resumaker2";
 
@@ -83,78 +84,58 @@ const SECONDARY = [
   { icon: icons.lock, t: "Self-hosted and free", d: "Runs on free tiers, or one small box. Your data stays yours." },
 ];
 
-// ---- mini app-shell preview (mirrors the real platform after login) --------
-const PanelDiscovery = () => (
-  <div className="lp-panel">
-    <div className="lp-panel-filters">
-      <span className="lp-fpill on">AI Engineer</span>
-      <span className="lp-fpill">junior</span>
-      <span className="lp-fpill">last 1 day</span>
-      <span className="lp-fpill ghost">+ filter</span>
-    </div>
-    {[["Baselayer", 70], ["Ramp", 62], ["Databricks", 66]].map(([co, w]) => (
-      <div className="lp-jobrow" key={co as string}>
-        <span className="lp-jobrow-logo" />
-        <div className="lp-jobrow-txt">
-          <span className="lp-jobrow-t">{co} <i>AI Engineer</i></span>
-          <span className="lp-line" style={{ width: `${w}%` }} />
-        </div>
-        <span className="lp-app-pill">+ Track</span>
-      </div>
-    ))}
-  </div>
-);
-const PanelTracker = () => (
-  <div className="lp-panel">
-    <div className="lp-trow lp-thead"><span>Company</span><span>Role</span><span className="c">Fit</span><span>Stage</span></div>
-    {[["Baselayer", "Identity Graph", 46, "interested"], ["Morgan Stanley", "AI Engineer", 69, "applied"], ["Ramp", "ML Engineer", 58, "interview"]].map((r) => (
-      <div className="lp-trow" key={r[0] as string}>
-        <span className="lp-tco"><span className="lp-jobrow-logo sm" />{r[0]}</span>
-        <span className="dim">{r[1]}</span>
-        <span className="c"><b className={`lp-fit ${(r[2] as number) >= 65 ? "hi" : "mid"}`}>{r[2]}</b></span>
-        <span className="lp-stage">{r[3]}</span>
-      </div>
-    ))}
-  </div>
-);
-const PanelOnboard = () => (
-  <div className="lp-panel">
-    <div className="lp-onb-form">
-      <span className="lp-onb-input">Company name</span>
-      <span className="lp-app-pill solid">Onboard</span>
-    </div>
-    <div className="lp-onb-result">
-      <div className="lp-onb-line ok">{icons.check}<span>Greenhouse board resolved for Databricks</span></div>
-      <div className="lp-onb-agent">{icons.spark}<span>Agent resolved it via Claude CLI</span><em>$0 extra</em></div>
-    </div>
-  </div>
-);
-const PanelProfile = () => (
-  <div className="lp-panel">
-    <div className="lp-prof-stats"><div><b>3</b><span>yrs</span></div><div><b>7</b><span>employers</span></div><div><b>70</b><span>skills</span></div></div>
-    <div className="lp-prof-chips">
-      {["Python", "FastAPI", "RAG", "LangGraph", "GCP", "Airflow", "Snowflake", "Prompt Eng"].map((s) => <span key={s}>{s}</span>)}
-    </div>
-  </div>
-);
-const APP = [
-  { key: "discovery", label: "Discovery", icon: icons.radar, panel: <PanelDiscovery /> },
-  { key: "tracker", label: "Tracker", icon: icons.columns, panel: <PanelTracker /> },
-  { key: "onboard", label: "Onboarding", icon: icons.link, panel: <PanelOnboard /> },
-  { key: "profile", label: "Profile", icon: icons.user, panel: <PanelProfile /> },
-];
-
 // ---- how-it-works flow ------------------------------------------------------
 const FLOW = [
-  { icon: icons.spark, t: "Onboard", d: "Name to ATS board, agentically" },
-  { icon: icons.radar, t: "Ingest", d: "Poll boards, dedupe new roles" },
-  { icon: icons.columns, t: "Track", d: "Fit, gap, sponsorship" },
-  { icon: icons.wand, t: "Generate", d: "Resume and cover, grounded" },
-  { icon: icons.check, t: "Apply", d: "You decide, human in loop" },
+  { icon: icons.spark, t: "Onboard", d: "You name a company. Claude CLI reads its careers page and resolves the ATS board, no config.", viz: "onboard" },
+  { icon: icons.radar, t: "Ingest", d: "Every hour it polls the onboarded boards, dedupes, and surfaces only genuinely new roles.", viz: "ingest" },
+  { icon: icons.target, t: "Match", d: "One click scans the posting, then an LLM scores fit with concrete haves and gaps.", viz: "match" },
+  { icon: icons.wand, t: "Generate", d: "It drafts a resume and cover letter, every line traced to your real profile.", viz: "generate" },
+  { icon: icons.check, t: "Apply", d: "You review, tweak, and apply. It never auto-applies. Human stays in the loop.", viz: "apply" },
 ];
 
+// looping mini visual inside each how-it-works box
+function FlowViz({ kind }: { kind: string }) {
+  if (kind === "onboard") return (
+    <div className="lp-fv lp-fv-chat">
+      {[0, 1].map((i) => (
+        <motion.span key={i} className={`lp-fv-bubble ${i ? "b" : "a"}`}
+          animate={{ opacity: [0.25, 1, 0.25] }} transition={{ duration: 2.4, repeat: Infinity, delay: i * 1.2 }}>
+          <i /><i /><i />
+        </motion.span>
+      ))}
+    </div>
+  );
+  if (kind === "ingest") return (
+    <div className="lp-fv lp-fv-ingest">
+      {[0, 1, 2].map((i) => (
+        <motion.span key={i} className="lp-fv-row"
+          animate={{ opacity: [0, 1, 1, 0], x: [-8, 0, 0, 0] }} transition={{ duration: 2.4, repeat: Infinity, delay: i * 0.35 }} />
+      ))}
+    </div>
+  );
+  if (kind === "match") return (
+    <div className="lp-fv lp-fv-match">
+      <motion.span className="lp-fv-scan" animate={{ y: [0, 30, 0] }} transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut" }} />
+      <motion.b animate={{ opacity: [0, 0, 1, 1] }} transition={{ duration: 2.2, repeat: Infinity }}>71</motion.b>
+    </div>
+  );
+  if (kind === "generate") return (
+    <div className="lp-fv lp-fv-gen">
+      {[0, 1, 2].map((i) => (
+        <motion.span key={i} className="lp-fv-line"
+          animate={{ width: ["0%", "80%"] }} transition={{ duration: 1.2, repeat: Infinity, repeatType: "reverse", delay: i * 0.2 }} />
+      ))}
+      <motion.span className="lp-fv-check" animate={{ scale: [0.6, 1, 0.6], opacity: [0, 1, 0] }} transition={{ duration: 2.4, repeat: Infinity }}>{icons.check}</motion.span>
+    </div>
+  );
+  return (
+    <div className="lp-fv lp-fv-apply">
+      <motion.span className="lp-fv-stamp" animate={{ scale: [0.7, 1, 1, 0.7], opacity: [0, 1, 1, 0] }} transition={{ duration: 2.4, repeat: Infinity }}>{icons.check}</motion.span>
+    </div>
+  );
+}
+
 export default function LandingPage() {
-  const [sec, setSec] = useState(0);
   return (
     <div className="lp">
       <div className="lp-orb lp-orb-a" aria-hidden />
@@ -193,11 +174,37 @@ export default function LandingPage() {
             <Link className="btn" href="/setup">Self-host guide</Link>
           </motion.div>
         </div>
-        <motion.p initial="hidden" animate="show" variants={fadeUp} custom={1} className="lp-hero-r">
-          Watch the companies you care about, surface new roles, and turn any posting into a
-          fact-checked, ATS-optimized resume and cover letter, traced strictly to your real
-          experience. It advises and drafts; it never auto-applies.
-        </motion.p>
+        <div className="lp-hero-r">
+          <motion.div className="lp-hviz" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.15, duration: 0.6, ease: [0.22, 1, 0.36, 1] }}>
+            <motion.div className="lp-hviz-card"
+              animate={{ y: [0, -8, 0] }} transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}>
+              <div className="lp-hviz-top"><span className="lp-hviz-logo" /><div><b>Databricks</b><span>AI Engineer</span></div>
+                <span className="lp-hviz-badge">71</span></div>
+              {[["skills", 83], ["experience", 63], ["domain", 77]].map(([k, v]) => (
+                <div className="lp-hviz-meter" key={k as string}>
+                  <span>{k}</span>
+                  <span className="lp-hviz-track"><motion.span className="lp-hviz-fill"
+                    initial={{ width: 0 }} animate={{ width: `${v}%` }} transition={{ delay: 0.5, duration: 1 }} /></span>
+                </div>
+              ))}
+              <div className="lp-hviz-chips">{["Python", "RAG", "GCP", "FastAPI"].map((s) => <span key={s}>{s}</span>)}</div>
+            </motion.div>
+            <motion.div className="lp-hviz-float f1"
+              animate={{ y: [0, -10, 0] }} transition={{ duration: 4, repeat: Infinity, ease: "easeInOut", delay: 0.4 }}>
+              {icons.spark}<span>Agent onboarded a board</span><em>$0 extra</em>
+            </motion.div>
+            <motion.div className="lp-hviz-float f2"
+              animate={{ y: [0, 9, 0] }} transition={{ duration: 4.6, repeat: Infinity, ease: "easeInOut", delay: 0.9 }}>
+              {icons.check}<span>Traced to your profile</span>
+            </motion.div>
+          </motion.div>
+          <motion.p initial="hidden" animate="show" variants={fadeUp} custom={1} className="lp-hero-copy">
+            Watch the companies you care about, surface new roles, and turn any posting into a
+            fact-checked, ATS-optimized resume and cover letter, traced strictly to your real
+            experience. It advises and drafts; it never auto-applies.
+          </motion.p>
+        </div>
       </section>
 
       {/* demo video slot */}
@@ -236,32 +243,11 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* mini app-shell preview */}
-      <section className="lp-section">
-        <Reveal><h2 className="lp-h2"><span className="lp-h2-dim">See it in action,</span> the whole workflow in one place.</h2></Reveal>
-        <Reveal i={1}>
-          <div className="lp-app">
-            <div className="lp-app-bar"><span /><span /><span /><em className="mono">ats-resumaker</em></div>
-            <div className="lp-app-body">
-              <nav className="lp-app-nav">
-                {APP.map((s, i) => (
-                  <button key={s.key} className={`lp-app-navitem ${sec === i ? "on" : ""}`} onClick={() => setSec(i)}>
-                    <span className="ico">{s.icon}</span><span>{s.label}</span>
-                  </button>
-                ))}
-              </nav>
-              <div className="lp-app-main">
-                <AnimatePresence mode="wait">
-                  <motion.div key={sec} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.25 }}>
-                    <div className="lp-app-title mono">{APP[sec].label}</div>
-                    {APP[sec].panel}
-                  </motion.div>
-                </AnimatePresence>
-              </div>
-            </div>
-          </div>
-        </Reveal>
+      {/* interactive product console: auto-plays the workflow, then you drive it */}
+      <section className="lp-section lp-section-wide">
+        <Reveal><h2 className="lp-h2"><span className="lp-h2-dim">See it in action.</span> It plays the whole workflow, then it is yours to click.</h2></Reveal>
+        <Reveal i={1}><p className="lp-sub" style={{ marginTop: 12 }}>Watch onboarding, ingestion, matching, the tailored report, and the digest run once, then take control and try it yourself.</p></Reveal>
+        <Reveal i={2}><DemoConsole /></Reveal>
       </section>
 
       {/* how it works: animated flow */}
@@ -275,12 +261,14 @@ export default function LandingPage() {
                 <span className="lp-flow-ico">{s.icon}</span>
                 <div className="lp-flow-t">{s.t}</div>
                 <div className="lp-flow-d">{s.d}</div>
+                <FlowViz kind={s.viz} />
               </Reveal>
               {i < FLOW.length - 1 && (
                 <motion.span className="lp-flow-arrow" aria-hidden
                   initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }}
                   transition={{ delay: i * 0.05 + 0.2 }}>
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="20" height="20"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+                  <motion.i className="lp-flow-dot" animate={{ x: [-2, 22], opacity: [0, 1, 0] }} transition={{ duration: 1.4, repeat: Infinity, delay: i * 0.2 }} />
                 </motion.span>
               )}
             </div>
