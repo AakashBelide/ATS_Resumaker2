@@ -4,11 +4,11 @@
 // sections, so those are shown only when present.
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Spinner from "@/components/Spinner";
 
 import CompanyLogo from "@/components/CompanyLogo";
-import { artifactUrl, fetchArtifactText, getProgress, getReport, getRun, getTrackerByRun, startRun, type Report, type TrackerEntry } from "@/lib/api";
+import { artifactUrl, fetchArtifactText, getProgress, getReport, getReportOrNull, getRun, getTrackerByRun, startRun, type Report, type TrackerEntry } from "@/lib/api";
 
 function scoreColor(v: number) { return v >= 65 ? "hi" : v >= 45 ? "mid" : "lo"; }
 function pct(v: number) { return Math.round(v <= 1 ? v * 100 : v); }
@@ -35,7 +35,10 @@ export default function ReportPage() {
   const runId = params.runId;
   const [r, setR] = useState<Report | null>(null);
   const [error, setError] = useState("");
+  const [matchTimedOut, setMatchTimedOut] = useState(false);          // match poll hit its cap, still 404
+  const [reloadNonce, setReloadNonce] = useState(0);                  // bumped by "refresh" to re-poll
   const [gen, setGen] = useState<{ stage: string } | null>(null);   // in-progress generation
+  const genPoll = useRef<ReturnType<typeof setInterval> | null>(null); // active generation-poll interval
   const [tracked, setTracked] = useState<TrackerEntry | null>(null); // authoritative ATS title/company
   const [docTab, setDocTab] = useState<"resume" | "cover">("resume"); // which document is previewed
   const [coverText, setCoverText] = useState<string | null>(null);    // cover letter body, fetched inline
@@ -51,11 +54,82 @@ export default function ReportPage() {
     try { await navigator.clipboard.writeText(coverText); setCopied(true); setTimeout(() => setCopied(false), 1500); } catch { /* clipboard blocked */ }
   }
 
-  const load = useCallback(() => {
-    setError("");
-    getReport(runId).then(setR).catch((e) => setError(String(e)));
+  // Shared generation-progress loop: poll the run until it ends, then reload the report so the
+  // freshly published resume/cover letter render. Used by BOTH the Generate button (which starts a
+  // run first) and mount-resume (which reattaches to a generation already in flight after the user
+  // navigated away and came back). Returns the interval id so callers can stash it for cleanup.
+  const pollUntilDone = useCallback((run_id: string) => {
+    // Poll progress (no SSE): status.json gives the live stage; `done` ends the loop, then one
+    // getRun tells us success vs error. status.json may not exist for the first tick.
+    const poll = setInterval(async () => {
+      try {
+        const p = await getProgress(run_id);
+        if (p.current) setGen({ stage: p.current });
+        if (p.done) {
+          clearInterval(poll);
+          const rec = await getRun(run_id).catch(() => null);
+          if (rec && rec.status === "error") { setGen(null); setError("generation failed - see the run log"); return; }
+          // The worker marks the run done a beat before it finishes publishing to GCS, so poll the
+          // report until the resume actually appears, then reveal the documents.
+          setGen({ stage: "finishing" });
+          for (let i = 0; i < 8; i++) {
+            const rep = await getReport(runId).catch(() => null);
+            if (rep && (rep.resume || rep.cover_letter)) { setR(rep); break; }
+            await new Promise((res) => setTimeout(res, 1500));
+          }
+          setGen(null);
+        }
+      } catch { /* status.json not written yet - keep polling */ }
+    }, 2000);
+    genPoll.current = poll;
+    return poll;
   }, [runId]);
-  useEffect(() => { load(); }, [load]);
+
+  // Mount / retry: the report page can be opened while the MATCH is still running, so report.json
+  // 404s at first. Instead of dead-ending in an error box, poll getReportOrNull every ~2.5s and show
+  // a "matching…" state until it publishes. Once it loads, if the match is done but no documents
+  // exist yet AND the run is currently "running", a generation is in flight (started before we
+  // navigated away) - reattach to it (Fix 2) rather than showing the Generate button again. Only a
+  // genuine non-404 failure surfaces the hard error box; a persistent 404 (cap ~40 tries) softens to
+  // a "still matching, check back" message instead of an error.
+  useEffect(() => {
+    let cancelled = false;
+    let tries = 0;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    setError(""); setMatchTimedOut(false);
+
+    const attempt = async () => {
+      try {
+        const rep = await getReportOrNull(runId);
+        if (cancelled) return;
+        if (rep) {
+          setR(rep);
+          if (!rep.resume && !rep.cover_letter) {
+            // Fix 2: resume an already-running generation on mount (do NOT start a new one).
+            const rec = await getRun(runId).catch(() => null);
+            if (!cancelled && rec && rec.status === "running") {
+              setGen({ stage: "resuming" });
+              pollUntilDone(runId);
+            }
+          }
+          return;                                     // report ready -> stop the matching poll
+        }
+        tries += 1;                                   // still 404 -> match not published yet
+        if (tries >= 40) { setMatchTimedOut(true); return; }   // soft cap; stop hammering
+        timer = setTimeout(attempt, 2500);
+      } catch (e) {
+        if (!cancelled) setError(String(e));          // genuine/persistent failure -> hard error box
+      }
+    };
+    attempt();
+
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+      if (genPoll.current) { clearInterval(genPoll.current); genPoll.current = null; }
+    };
+  }, [runId, reloadNonce, pollUntilDone]);
+  const retry = useCallback(() => { setR(null); setError(""); setMatchTimedOut(false); setReloadNonce((n) => n + 1); }, []);
   // The tracker keeps the real ATS posting title/company (report.json holds the JD-extracted one,
   // which can differ) - prefer it in the header so the report matches the Tracker card.
   useEffect(() => { getTrackerByRun(runId).then(setTracked).catch(() => {}); }, [runId]);
@@ -75,29 +149,9 @@ export default function ReportPage() {
     try {
       // Reuse THIS report's run_id so the resume is written into the same folder; on success we
       // just reload the report (it now carries the resume + cover), so a refresh keeps showing it.
+      // The button STARTS a run, then hands off to the same poll loop mount-resume uses.
       const { run_id } = await startRun(r.url, runId);
-      // Poll progress (no SSE): status.json gives the live stage; `done` ends the loop, then
-      // one getRun tells us success vs error. status.json may not exist for the first tick.
-      const poll = setInterval(async () => {
-        try {
-          const p = await getProgress(run_id);
-          if (p.current) setGen({ stage: p.current });
-          if (p.done) {
-            clearInterval(poll);
-            const rec = await getRun(run_id).catch(() => null);
-            if (rec && rec.status === "error") { setGen(null); setError("generation failed - see the run log"); return; }
-            // The worker marks the run done a beat before it finishes publishing to GCS, so poll the
-            // report until the resume actually appears, then reveal the documents.
-            setGen({ stage: "finishing" });
-            for (let i = 0; i < 8; i++) {
-              const rep = await getReport(runId).catch(() => null);
-              if (rep && (rep.resume || rep.cover_letter)) { setR(rep); break; }
-              await new Promise((res) => setTimeout(res, 1500));
-            }
-            setGen(null);
-          }
-        } catch { /* status.json not written yet - keep polling */ }
-      }, 2000);
+      pollUntilDone(run_id);
     } catch (e) { setError(String(e)); setGen(null); }
   }
 
@@ -116,10 +170,23 @@ export default function ReportPage() {
           <div className="empty" style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 14 }}>
             <span className="error">{error}</span>
             <span className="muted" style={{ fontSize: 12.5 }}>The API may have just restarted. Try again.</span>
-            <button className="btn btn-sm btn-primary" onClick={load}>retry</button>
+            <button className="btn btn-sm btn-primary" onClick={retry}>retry</button>
           </div>
         )}
-        {!r && !error && <Spinner />}
+        {/* match still running: report.json 404s until it publishes. Show a friendly loading state
+            (not an error) and let the mount poll fill it in. After the cap, soften to "check back". */}
+        {!r && !error && !matchTimedOut && (
+          <div className="empty" style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 14 }}>
+            <Spinner />
+            <span className="matching mono">matching… fit fills in shortly</span>
+          </div>
+        )}
+        {!r && !error && matchTimedOut && (
+          <div className="empty" style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 14 }}>
+            <span className="muted">still matching — check back in a moment</span>
+            <button className="btn btn-sm btn-primary" onClick={retry}>refresh</button>
+          </div>
+        )}
         {r && (
           <div className="report-grid">
             {/* -------- left: analysis -------- */}

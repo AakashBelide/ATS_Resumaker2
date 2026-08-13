@@ -247,6 +247,15 @@ export async function getReport(runId: string): Promise<Report> {
   if (!r.ok) throw new Error(`getReport → ${r.status}`);
   return r.json();
 }
+// Like getReport but returns null when report.json isn't published yet (404) instead of throwing,
+// so the report page can show a friendly "matching…" loading state and poll until it appears. Any
+// OTHER failure (non-404) still throws, so genuine/persistent errors surface as a hard error box.
+export async function getReportOrNull(runId: string): Promise<Report | null> {
+  const r = await fetch(`${BASE}/v1/runs/${encodeURIComponent(runId)}/artifacts/report.json`, { headers: headers() });
+  if (r.status === 404) return null;              // report not ready yet (match still running)
+  if (!r.ok) throw new Error(`getReport → ${r.status}`);
+  return r.json();
+}
 
 // ---- Onboarding (RI.0) ------------------------------------------------------
 export type Company = { id: number | null; name: string; active: boolean; boards: { source: string; token: string; extra: Record<string, string> }[] };

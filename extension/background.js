@@ -110,14 +110,102 @@ function captureVisible(windowId) {
   });
 }
 
+// --- scroll-and-stitch fallback (no debugger needed) ------------------------------------------
+// chrome.debugger.attach FAILS while DevTools is open on the tab (DevTools owns the debug channel),
+// so fullPageShot silently degrades. This path captures the whole page WITHOUT the debugger: it asks
+// the content script for the page geometry, scrolls the page in viewport-sized steps, grabs each
+// frame with chrome.tabs.captureVisibleTab, and stitches them top->bottom onto one tall
+// OffscreenCanvas (scaled by devicePixelRatio). captureVisibleTab is rate-limited to ~2/s
+// (MAX_CAPTURE_VISIBLE_TAB_CALLS_PER_SECOND), so frames are paced ~600ms apart - which doubles as a
+// dwell for lazy content. NOTE: sticky/fixed headers render in EVERY frame, so they can appear
+// duplicated down the stitched image - an accepted tradeoff; the debugger path (primary) avoids it.
+const CAPTURE_INTERVAL_MS = 600;      // >= 1000/2 to respect the captureVisibleTab rate limit
+const STITCH_MAX_HEIGHT = 16000;      // device-px cap on the tall canvas (matches CDP's texture ceiling)
+
+// Promise wrapper for messaging the content script (resolves undefined if it isn't there / errors).
+function tabMessage(tabId, msg) {
+  return new Promise((resolve) => {
+    try {
+      chrome.tabs.sendMessage(tabId, msg, (res) => { void chrome.runtime.lastError; resolve(res); });
+    } catch { resolve(undefined); }
+  });
+}
+
+// Decode a base64 data URL to an ImageBitmap without fetch()/FileReader (unreliable in a module SW).
+async function dataUrlToBitmap(dataUrl) {
+  const comma = dataUrl.indexOf(",");
+  const meta = dataUrl.slice(0, comma);
+  const bin = atob(dataUrl.slice(comma + 1));
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  const mime = (meta.match(/data:([^;]+)/) || [])[1] || "image/png";
+  return createImageBitmap(new Blob([bytes], { type: mime }));
+}
+
+// Encode a Blob to a base64 data URL (btoa is available in the service worker; FileReader may not be).
+async function blobToDataUrl(blob) {
+  const bytes = new Uint8Array(await blob.arrayBuffer());
+  let binary = "";
+  const CHUNK = 0x8000;                // chunk to avoid String.fromCharCode arg-count limits
+  for (let i = 0; i < bytes.length; i += CHUNK) {
+    binary += String.fromCharCode.apply(null, bytes.subarray(i, i + CHUNK));
+  }
+  return `data:${blob.type || "image/jpeg"};base64,${btoa(binary)}`;
+}
+
+// Stitched full-page shot. Returns a JPEG (quality 80) data URL, or throws so the caller can fall
+// back to a single visible-viewport shot. Restores the user's original scroll position at the end.
+async function stitchPageShot(tabId, windowId) {
+  const m = await tabMessage(tabId, { type: "pageMetrics" });
+  if (!m || !m.innerHeight) throw new Error("no page metrics");
+  const dpr = m.dpr || 1;
+  const vh = m.innerHeight;
+  const originalScrollY = m.scrollY || 0;
+  const total = Math.min(m.scrollHeight || vh, Math.floor(STITCH_MAX_HEIGHT / dpr));  // cap ~16000 device px
+  const canvas = new OffscreenCanvas(
+    Math.round(m.innerWidth * dpr), Math.min(Math.round(total * dpr), STITCH_MAX_HEIGHT));
+  const ctx = canvas.getContext("2d");
+  try {
+    let y = 0, lastY = -1, first = true;
+    while (y < total) {
+      const res = await tabMessage(tabId, { type: "scrollTo", y });
+      const actualY = res && typeof res.y === "number" ? res.y : y;   // clamped at the bottom
+      // Pace for the capture rate-limit AND let lazy content paint (first frame settles faster).
+      await new Promise((r) => setTimeout(r, first ? 250 : CAPTURE_INTERVAL_MS));
+      first = false;
+      const dataUrl = await captureVisible(windowId);
+      if (!dataUrl) { if (y === 0) throw new Error("captureVisibleTab blocked"); break; }
+      const bmp = await dataUrlToBitmap(dataUrl);
+      ctx.drawImage(bmp, 0, Math.round(actualY * dpr));   // place at the REAL offset (last frame overlaps)
+      bmp.close();
+      if (actualY <= lastY) break;      // couldn't scroll further -> reached the bottom, done
+      lastY = actualY;
+      y += vh;
+    }
+    return await blobToDataUrl(await canvas.convertToBlob({ type: "image/jpeg", quality: 0.8 }));
+  } finally {
+    await tabMessage(tabId, { type: "scrollTo", y: originalScrollY });   // restore the user's view
+  }
+}
+
 async function capture({ url, title, rawText, tabId, windowId }) {
   // Small delay so the content script's pill-hide has painted before we grab the page.
   await new Promise((r) => setTimeout(r, 150));
   let screenshot = null;
   if (tabId != null) {
+    // PRIMARY: debugger/CDP full-page (cleanest - no sticky-header dupes). Denied when DevTools is
+    // open on the tab (it owns the debug channel), so fall through to the stitch path.
     try { screenshot = await fullPageShot(tabId); }
-    catch { screenshot = null; }               // debugger denied/detached -> fall back below
+    catch { screenshot = null; }
+    // FALLBACK: scroll-and-stitch via captureVisibleTab - needs NO debugger, so it works even with
+    // DevTools open. Yields a full-page image (with possible sticky-header dupes) instead of a
+    // single visible slice.
+    if (!screenshot) {
+      try { screenshot = await stitchPageShot(tabId, windowId); }
+      catch { screenshot = null; }
+    }
   }
+  // LAST RESORT: a single visible-viewport shot, if even stitching failed (capture fully blocked).
   if (!screenshot) screenshot = await captureVisible(windowId);
 
   const c = await cfg();

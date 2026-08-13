@@ -166,12 +166,33 @@
     return result || { ok: false, error: "unknown" };
   }
 
-  // The toolbar popup delegates here so the button and the pill share ONE capture path.
+  // The toolbar popup delegates here so the button and the pill share ONE capture path. The service
+  // worker's stitch-capture fallback (background.js) also messages us: it can't scroll the page or
+  // read its geometry without the debugger, so it asks us for page metrics and to scroll to each
+  // viewport offset between captureVisibleTab shots.
   chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     if (msg && msg.type === "triggerCapture") {
       if (busy) { sendResponse({ ok: false, error: "already capturing" }); return; }
       doCapture().then(sendResponse).catch((e) => sendResponse({ ok: false, error: String(e) }));
       return true;   // async response
+    }
+    if (msg && msg.type === "pageMetrics") {
+      const body = document.body;
+      sendResponse({
+        scrollHeight: Math.max(document.documentElement.scrollHeight, body ? body.scrollHeight : 0),
+        innerHeight: window.innerHeight,
+        innerWidth: window.innerWidth,
+        dpr: window.devicePixelRatio || 1,
+        scrollY: window.scrollY || 0,
+      });
+      return;   // synchronous response
+    }
+    if (msg && msg.type === "scrollTo") {
+      window.scrollTo(0, msg.y || 0);
+      // Report the ACTUAL post-scroll position: the browser clamps at max scroll, so the last frame
+      // lands short of the requested y - the stitcher needs the real offset to place it correctly.
+      sendResponse({ y: window.scrollY || 0 });
+      return;   // synchronous response
     }
   });
 
