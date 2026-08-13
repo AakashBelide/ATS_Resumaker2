@@ -3,9 +3,9 @@
 // Sections: nav, hero, demo slot, feature cards (with inner mocks), a mini app-shell preview whose
 // left nav swaps the right panel like the real platform, an animated how-it-works flow, an
 // open/self-host band, and a final CTA. No AI-tell punctuation in the copy.
-import { motion, type Variants } from "framer-motion";
+import { AnimatePresence, motion, type Variants } from "framer-motion";
 import Link from "next/link";
-import { type ReactNode } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import DemoConsole from "@/components/DemoConsole";
 
 const REPO = "https://github.com/AakashBelide/ATS_Resumaker2";
@@ -89,7 +89,7 @@ const CvCapture = () => (
 );
 const CvSponsor = () => (
   <div className="lp-cv lp-cv-spon">
-    <span className="lp-cv-h1b">H-1B history, 14 approvals</span>
+    <span className="lp-cv-h1b">H-1B, 14 approvals</span>
     <span className="lp-cv-dec ok">apply</span>
     <span className="lp-cv-dec no">skip</span>
   </div>
@@ -164,6 +164,28 @@ function FlowViz({ kind }: { kind: string }) {
   return (
     <div className="lp-fv lp-fv-apply">
       <motion.span className="lp-fv-stamp" animate={{ scale: [0.7, 1, 1, 0.7], opacity: [0, 1, 1, 0] }} transition={{ duration: 2.4, repeat: Infinity }}>{icons.check}</motion.span>
+    </div>
+  );
+}
+
+// cycling proof line for the final CTA
+const ROTATE = [
+  "Deterministic discovery, no LLM guesswork",
+  "Grounded strictly to your real profile",
+  "Sponsorship-aware, apply or skip",
+  "$0 to self-host on free tiers",
+];
+function Rotator() {
+  const [i, setI] = useState(0);
+  useEffect(() => { const t = setInterval(() => setI((v) => (v + 1) % ROTATE.length), 2400); return () => clearInterval(t); }, []);
+  return (
+    <div className="lp-rot" aria-live="polite">
+      <span className="lp-rot-dot" />
+      <AnimatePresence mode="wait">
+        <motion.span key={i} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.35 }}>
+          {ROTATE[i]}
+        </motion.span>
+      </AnimatePresence>
     </div>
   );
 }
@@ -338,10 +360,10 @@ export default function LandingPage() {
                 <span className="lp-proof-h mono">Free-tier headroom, one user</span>
                 <span className="lp-proof-live"><i />live estimate</span>
               </div>
-              {[["Cloud Run", "240k vCPU-sec / mo", 3], ["Cloud Storage", "5 GB", 2], ["Turso", "3 GB syncs", 1], ["GitHub Actions", "2000 min / mo", 4]].map(([k, lim, v], idx) => (
+              {[["Cloud Run", "240k vCPU-sec / mo", 8], ["Cloud Storage", "5 GB", 4], ["Turso", "3 GB syncs", 6], ["Cloud Tasks", "1M dispatches / mo", 5], ["GitHub Actions", "2000 min / mo", 12], ["Secret Manager", "6 active versions", 9]].map(([k, lim, v], idx) => (
                 <div className="lp-proof-row" key={k as string}>
                   <span className="lp-proof-k">{k}</span>
-                  <span className="lp-proof-track"><motion.i initial={{ width: 0 }} whileInView={{ width: `${v}%` }} viewport={{ once: true }} transition={{ delay: idx * 0.08, duration: 0.8 }} /></span>
+                  <span className="lp-proof-track"><motion.i className="lp-fill-anim" initial={{ width: 0 }} whileInView={{ width: `${v}%` }} viewport={{ once: true }} transition={{ delay: idx * 0.07, duration: 0.8 }} /></span>
                   <span className="lp-proof-v mono">{v}%</span>
                   <span className="lp-proof-lim mono">{lim}</span>
                 </div>
@@ -357,10 +379,14 @@ export default function LandingPage() {
 
       {/* final CTA */}
       <Reveal className="lp-cta-band">
-        <h2 className="lp-h2">Land interviews faster, <span className="lp-grad">without the fabrication.</span></h2>
-        <div className="lp-cta" style={{ justifyContent: "center", marginTop: 18 }}>
-          <Link className="btn btn-primary" href="/login">Get started</Link>
-          <Link className="btn" href="/setup">Self-host guide</Link>
+        <span className="lp-cta-aurora" aria-hidden />
+        <div className="lp-cta-inner">
+          <Rotator />
+          <h2 className="lp-h2">Land interviews faster, <span className="lp-grad">without the fabrication.</span></h2>
+          <div className="lp-cta" style={{ justifyContent: "center", marginTop: 20 }}>
+            <Link className="btn btn-primary" href="/login">Get started</Link>
+            <Link className="btn" href="/setup">Self-host guide</Link>
+          </div>
         </div>
       </Reveal>
 
