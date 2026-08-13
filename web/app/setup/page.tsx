@@ -4,6 +4,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import ScrollTop from "@/components/ScrollTop";
+import DocNav from "@/components/DocNav";
 
 const REPO = "https://github.com/AakashBelide/ATS_Resumaker2";
 
@@ -49,10 +50,7 @@ export default function SetupPage() {
       </header>
 
       <div className="doc-layout">
-        <aside className="doc-side">
-          <p className="doc-side-h mono">On this page</p>
-          {NAV.map(([id, label]) => <a key={id} href={`#${id}`} className="doc-side-link">{label}</a>)}
-        </aside>
+        <DocNav items={NAV} />
 
         <main className="doc-main">
           <p className="doc-kicker mono">Self-host guide</p>

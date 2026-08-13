@@ -818,8 +818,13 @@ button, input, select, textarea { font-family: inherit; }
 .doc-layout { display: grid; grid-template-columns: 240px 1fr; gap: 56px; max-width: 1240px; margin: 0 auto; padding: 40px 32px 90px; }
 .doc-side { position: sticky; top: 78px; align-self: start; display: flex; flex-direction: column; gap: 2px; }
 .doc-side-h { font-size: 10.5px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; }
-.doc-side-link { color: var(--muted); font-size: 14px; padding: 7px 11px; border-radius: 7px; border-left: 2px solid transparent; }
+.doc-side-link { color: var(--muted); font-size: 14px; padding: 7px 11px; border-radius: 7px; border-left: 2px solid transparent; transition: color .15s, background .15s, border-color .15s; }
 .doc-side-link:hover { color: var(--text); background: rgba(255,255,255,.03); border-left-color: var(--line-2); }
+.doc-side-link.active { color: var(--text); background: rgba(59,116,255,.1); border-left-color: var(--electric); }
+/* reading-progress bar pinned to the very top */
+.doc-progress { position: fixed; top: 0; left: 0; right: 0; height: 3px; z-index: 60; background: rgba(126,164,224,.12); }
+.doc-progress span { display: block; height: 100%; transform-origin: left; transform: scaleX(0);
+    background: linear-gradient(90deg, var(--electric), var(--cyan)); transition: transform .1s linear; }
 
 .doc-main { min-width: 0; }
 .doc-kicker { font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--sky); margin: 0 0 8px; }
