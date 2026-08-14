@@ -276,6 +276,44 @@ The agent acts on **attacker-controlled scraped web content**, so it needs tools
 - ~~**Free CI/CD**~~ ✅ Done — `.github/workflows/deploy.yml` builds + `gcloud run deploy`s api/ingestor/worker on push to `main` (deploy is main-only).
 - **Write durability window**: Turso is now **remote-only** in cloud (no embedded-replica sync lag); this row is moot for the deployed services. (Local dev may still use a `file:` DB.)
 
+### Demo-audit fixes (2026-08-14, branch `feature/profile-chat-agent`)
+
+Findings from an agent driving the prod app while recording the walkthrough. Fixed:
+- **Scrape coverage audit + fixes.** A per-source audit found only 4/23 sources resolved via a
+  dedicated API handler; the rest fell to Playwright (would hard-fail on the no-Chromium image, like
+  Amazon did). Fixed: Greenhouse custom-domain (`?gh_jid=` token derivation), Workday `/apply`
+  suffix, new Rippling + Eightfold handlers, and a generic schema.org **JSON-LD JobPosting** extractor
+  as the last structured-data resort before Playwright. Covered live: eightfold/netflix, takeda,
+  dassault, rippling. 6 tests.
+- **Discovery filter race** (`discovery/page.tsx`): `load()` had no request ordering, so a slow
+  earlier fetch (default feed) could overwrite a newer filtered one → results desynced from the
+  active filters. Fixed with a request sequence-id guard (drop stale responses).
+- **Onboarding false "added"**: re-onboarding an existing company said "added to watchlist" though
+  `add_company` upserts (count unchanged). Now detects the existing entry and says "already on your
+  watchlist". Test: `test_onboard_reports_already_on_watchlist`.
+- **Thin-JD failure**: the raw `ValueError("JD text too short to structure")` is now an actionable
+  message naming the source + suggesting extension capture (tracker shows it as `match_error`).
+  Amazon's specific case is fixed by the new `search.json` scraper (match scrapes fresh via
+  `run_pipeline`, so the fix applies once this branch deploys).
+- **PDF preview fallback** (`report/[runId]`): an "Open the PDF ↗" escape hatch for webviews without
+  a PDF plugin (the inline preview is an `<iframe>`).
+
+**Deferred / documented (infra, not fixed here):**
+- **Live progress stalls at "generating… starting"** — root cause: the `ProgressReporter` writes
+  `status.json` to the worker's local disk, but the separate API instance serving
+  `/v1/runs/{id}/progress` can't see it until the run publishes to GCS at the end. Fix (follow-up):
+  publish `status.json` to the artifact store incrementally (per emit) so cross-instance polling sees
+  live stages. Works fine locally (single process).
+- **Cold-start `http 000`** — the API scales to zero; first request after idle can time out then
+  succeed on retry. Options: a warmup ping, min-instances=1 (breaks free tier), or a one-shot retry
+  in the BFF proxy on a connection failure.
+- **Apple / JS-only sources need Chromium** — Apple's detail API is CSRF-gated so it stays on
+  Playwright; the worker image needs Chromium for these (or accept they're uncoverable). The JSON-LD
+  extractor + new handlers reduce how many sources depend on Playwright.
+- **Landing autoplay video vs `networkidle`** — already mitigated: the walkthrough is now
+  `preload="metadata"` + play-on-scroll, so the marketing page reaches network idle before the user
+  scrolls to it (the ~15 MB streams only when in view).
+
 ### Interim reliability fixes (2026-08-11, on `main`)
 
 - **Amazon / AWS JDs now scrape (2026-08-14).** Added `_amazon` handler in `providers/scrape/scraper.py`: amazon.jobs detail pages are a JS-rendered SPA behind Akamai (a plain GET or the `.json` variant returns an empty shell / 406), so they used to fall to the flaky Playwright path. The handler pulls the JD from the same public `search.json` API the ingestion adapter already uses (`base_query=<job_id>`, confirm exact `id_icims`/`id` match, stitch description + basic/preferred qualifications). Verified on two live Amazon/Kuiper roles (`source_type=amazon`, full text). Test: `test_amazon_scraper`.
