@@ -588,6 +588,48 @@ def test_oracle_cloud_scraper(monkeypatch):
     assert scraper._oracle_cloud("https://boards.greenhouse.io/acme/jobs/1") is None
 
 
+def test_amazon_scraper(monkeypatch):
+    """The amazon handler recognizes amazon.jobs detail URLs and pulls the JD from the public
+    search.json API (the SPA's own source), matching the exact job id and stitching the
+    description + basic/preferred qualifications - not the empty HTML shell / 406 .json page."""
+    import httpx
+
+    from resumaker.providers.scrape import scraper
+
+    body = {"jobs": [
+        # a decoy the text-search may also return - must be ignored (id mismatch)
+        {"id_icims": "999", "title": "Other Role", "description": "nope"},
+        {"id_icims": "10496449", "title": "Software Development Engineer",
+         "company_name": "Amazon.com Services LLC", "normalized_location": "Seattle, WA, USA",
+         "description": "Build <b>conversational</b> ads.",
+         "basic_qualifications": "3+ years <i>Java</i>.",
+         "preferred_qualifications": "Experience with ML."},
+    ]}
+
+    class _Resp:
+        def raise_for_status(self): pass
+        def json(self): return body
+
+    seen = {}
+
+    def fake_get(url, **kw):
+        seen["url"] = url
+        seen["params"] = kw.get("params")
+        return _Resp()
+
+    monkeypatch.setattr(httpx, "get", fake_get)
+    url = "https://www.amazon.jobs/en/jobs/10496449/software-development-engineer"
+    r = scraper._amazon(url)
+    assert r is not None and r.source_type == "amazon"
+    assert r.title == "Software Development Engineer" and r.company == "Amazon.com Services LLC"
+    low = r.raw_text.lower()
+    assert "conversational" in low and "java" in low and "ml" in low   # all three JD fields, de-HTML'd
+    assert "nope" not in low                                           # the id-mismatch decoy is dropped
+    assert seen["params"]["base_query"] == "10496449"                  # queried by the exact job id
+    # a non-amazon URL is not claimed by this handler
+    assert scraper._amazon("https://boards.greenhouse.io/acme/jobs/1") is None
+
+
 def test_dashboard_stats(tmp_db):
     from resumaker.analytics import dashboard_stats
     from resumaker.domain import JobRecord, TrackerEntry

@@ -169,6 +169,36 @@ def _oracle_cloud(url: str) -> RawJD | None:
     )
 
 
+# --------------------------------------------------------------- Amazon / AWS
+def _amazon(url: str) -> RawJD | None:
+    """amazon.jobs detail pages are a JS-rendered SPA behind Akamai - a plain GET (or the `.json`
+    variant) returns an empty shell / 406, so it used to fall to the Playwright path. The JD lives
+    behind the same public `search.json` API the ingestion adapter already uses: query by the job id
+    and stitch description + basic/preferred qualifications. Covers Amazon and AWS roles."""
+    m = re.search(r"amazon\.jobs/[a-z-]+/jobs/(\d+)", url)
+    if not m:
+        return None
+    job_id = m.group(1)
+    api = "https://www.amazon.jobs/en/search.json"
+    r = httpx.get(api, params={"base_query": job_id, "result_limit": "10", "sort": "relevant"},
+                  headers={"User-Agent": UA, "Accept": "application/json"},
+                  timeout=25, follow_redirects=True)
+    r.raise_for_status()
+    jobs = (r.json() or {}).get("jobs", []) or []
+    # base_query is a text search, so confirm we matched the exact id (id_icims/id) before trusting it.
+    job = next((j for j in jobs if str(j.get("id_icims") or j.get("id")) == job_id), None)
+    if job is None:
+        return None
+    parts = [job.get(k, "") for k in ("description", "basic_qualifications", "preferred_qualifications")]
+    return RawJD(
+        raw_text=_html_to_text("\n\n".join(p for p in parts if p)),
+        source_type="amazon", source_url=url,
+        title=job.get("title", ""), company=job.get("company_name", "") or "Amazon",
+        location=job.get("normalized_location", "") or job.get("location", ""),
+        extra={"job_id": job_id},
+    )
+
+
 # --------------------------------------------------------------- Playwright fallback
 def _playwright(url: str) -> RawJD:
     from playwright.sync_api import sync_playwright
@@ -184,7 +214,7 @@ def _playwright(url: str) -> RawJD:
     return RawJD(raw_text=_html_to_text(content), source_type="playwright", source_url=url)
 
 
-_API_HANDLERS = [_greenhouse, _lever, _ashby, _workday, _oracle_cloud]
+_API_HANDLERS = [_greenhouse, _lever, _ashby, _workday, _oracle_cloud, _amazon]
 
 
 def scrape(url: str) -> RawJD:
