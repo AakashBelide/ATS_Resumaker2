@@ -182,16 +182,17 @@ def apply_proposal(p: Proposal, *, profile_path: Path | None = None) -> Applied 
                                rule=str(p.value), rationale=p.source_quote)
         return Applied("add_house_rule", p.path, None, p.value, "house rule (not auto-undoable)")
 
-    # profile.json writes (append or replace) -> update_profile_fact (audited). Read the profile
-    # FRESH from the same file update_profile_fact writes to (never the lru-cached load_profile),
-    # so chained writes in one confirmation batch see each other - otherwise a stale snapshot makes
-    # a whole-list overwrite drop the previous write and project lookups miss just-added projects.
+    # Read the profile from the SAME canonical store update_profile_fact writes to, so chained writes
+    # in one confirmation batch see each other (a stale snapshot would make a whole-list overwrite
+    # drop the previous write and project lookups miss just-added projects). Canonical = the DB
+    # document via load_profile(), which is re-read fresh after each write's cache invalidation; an
+    # explicit profile_path (tests) reads that file instead.
+    import copy as _copy
     import json as _json
-    from pathlib import Path as _Path
-
-    from resumaker.config import get_settings as _get_settings
-    _pf = profile_path or _get_settings().profile_path
-    prof = _json.loads(_Path(_pf).read_text())
+    if profile_path is not None:
+        prof = _json.loads(profile_path.read_text())
+    else:
+        prof = _copy.deepcopy(profile_store.load_profile())
     kw = {"profile_path": profile_path} if profile_path else {}
 
     # `projects` is a LIST addressed by title. A new project is appended - but the model tends to

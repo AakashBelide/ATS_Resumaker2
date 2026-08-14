@@ -132,6 +132,21 @@ def test_db_run_upsert(tmp_settings):
     assert len(db.list_runs()) == 1
 
 
+def test_update_profile_fact_writes_to_db(tmp_settings, monkeypatch):
+    """The canonical profile store is the DB document. update_profile_fact (no explicit file path)
+    must write THERE so the app + profile agent actually see the change - not a stale JSON file the
+    rest of the app never reads (the bug where agent edits never reached the summary/document)."""
+    from resumaker.enrichment import manager
+    from resumaker.persistence import profile as prof
+    db.init_db()
+    monkeypatch.setattr(manager, "record_enrichment", lambda *a, **k: {})   # keep the audit log out of tmp
+    prof.invalidate()
+    prof.save_profile({"skills": {"Frontend": ["React"]}, "projects": []})
+    manager.update_profile_fact(["skills", "Frontend"], ["React", "Next.js"], reason="test")
+    assert db.get_document("profile")["skills"]["Frontend"] == ["React", "Next.js"]
+    assert prof.load_profile()["skills"]["Frontend"] == ["React", "Next.js"]   # and it's visible via the cache
+
+
 def test_db_run_record_serializes_datetimes(tmp_settings):
     """record_run must serialize datetime timestamps to ISO strings before binding: the
     libSQL/Turso driver rejects datetime params ("Unsupported parameter type"), which silently

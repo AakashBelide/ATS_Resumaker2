@@ -4,11 +4,15 @@
 import { useEffect, useState } from "react";
 import Spinner from "@/components/Spinner";
 
-import { profileProposals, profileSummary, savePreferences, type ProfileSummary, type Proposal } from "@/lib/api";
+import { profileDocument, profileProposals, profileSummary, savePreferences, type ProfileBullet, type ProfileDocument, type ProfileSummary, type Proposal } from "@/lib/api";
 import { groupSkills } from "@/lib/skills";
+
+const bulletText = (b: ProfileBullet) => (typeof b === "string" ? b : b?.text ?? "");
 
 export default function ProfilePage() {
   const [p, setP] = useState<ProfileSummary | null>(null);
+  const [doc, setDoc] = useState<ProfileDocument | null>(null);
+  const [raw, setRaw] = useState(false);
   const [prop, setProp] = useState<{ have_but_unlisted: Proposal[]; recurring_gaps: Proposal[] } | null>(null);
   const [error, setError] = useState("");
   const [prefEdit, setPrefEdit] = useState(false);
@@ -18,6 +22,7 @@ export default function ProfilePage() {
 
   useEffect(() => {
     profileSummary().then(setP).catch((e) => setError(String(e)));
+    profileDocument().then(setDoc).catch(() => {});
     profileProposals().then(setProp).catch(() => {});
   }, []);
 
@@ -118,6 +123,52 @@ export default function ProfilePage() {
                 ))}
               </div>
             </div>
+
+            {doc && (
+              <div className="block">
+                <div className="block-head"><h2>Full profile</h2>
+                  <span className="count">{(doc.projects?.length ?? 0)} projects · {(doc.experience?.length ?? 0)} roles</span>
+                  <button className="btn btn-sm" style={{ marginLeft: "auto" }} onClick={() => setRaw((v) => !v)}>
+                    {raw ? "readable" : "raw JSON"}
+                  </button>
+                </div>
+                {raw ? (
+                  <pre className="json-view">{JSON.stringify(doc, null, 2)}</pre>
+                ) : (
+                  <div className="panel">
+                    {doc.summary && (
+                      <div className="doc-sec"><div className="kicker">Summary</div><p className="doc-summary">{doc.summary}</p></div>
+                    )}
+                    {(doc.experience?.length ?? 0) > 0 && (
+                      <div className="doc-sec"><div className="kicker">Experience</div>
+                        {doc.experience!.map((e, i) => (
+                          <div className="doc-item" key={i}>
+                            <div className="doc-item-head">
+                              <span className="doc-title">{e.title}{e.organization ? ` · ${e.organization}` : ""}</span>
+                              <span className="mono muted">{[e.start_date, e.is_current ? "present" : e.end_date].filter(Boolean).join(" – ")}</span>
+                            </div>
+                            <ul className="doc-bullets">{(e.bullets ?? []).map((b, j) => <li key={j}>{bulletText(b)}</li>)}</ul>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {(doc.projects?.length ?? 0) > 0 && (
+                      <div className="doc-sec"><div className="kicker">Projects</div>
+                        {doc.projects!.map((pr, i) => (
+                          <div className="doc-item" key={i}>
+                            <div className="doc-item-head">
+                              <span className="doc-title">{pr.title}{pr.organization ? ` · ${pr.organization}` : ""}</span>
+                              <span className="mono muted">{pr.date}</span>
+                            </div>
+                            <ul className="doc-bullets">{(pr.bullets ?? []).map((b, j) => <li key={j}>{bulletText(b)}</li>)}</ul>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
 
             {prop && (
               <div className="block">

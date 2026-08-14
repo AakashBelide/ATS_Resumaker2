@@ -156,6 +156,18 @@ export type ProfileSummary = {
 };
 export type Proposal = { requirement: string; count: number; companies: string[]; evidence: string };
 export const profileSummary = () => get<ProfileSummary>("/v1/profile/summary");
+// the full canonical profile document (summary, experience, projects+bullets, skills, education…)
+export type ProfileBullet = { text?: string; metrics?: string[]; skills_used?: string[] } | string;
+export type ProfileExperience = { title?: string; organization?: string; location?: string;
+  start_date?: string; end_date?: string; is_current?: boolean; bullets?: ProfileBullet[] };
+export type ProfileProject = { title?: string; organization?: string; date?: string; url?: string;
+  bullets?: ProfileBullet[] };
+export type ProfileDocument = {
+  summary?: string; experience?: ProfileExperience[]; projects?: ProfileProject[];
+  skills?: Record<string, string[]>; education?: Record<string, unknown>[];
+  [k: string]: unknown;
+};
+export const profileDocument = () => get<ProfileDocument>("/v1/profile/document");
 export const profileProposals = () =>
   get<{ have_but_unlisted: Proposal[]; recurring_gaps: Proposal[] }>("/v1/profile/proposals");
 

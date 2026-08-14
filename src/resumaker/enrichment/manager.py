@@ -150,16 +150,26 @@ def update_profile_fact(path: list, value: Any, reason: str, *,
                         source: str = "conversation",
                         profile_path: Path | None = None,
                         log_path: Path | None = None) -> dict:
-    """Fold a new/corrected fact into the canonical profile.json, log the change
-    (old -> new + reason), and invalidate the profile cache. `path` is a list of
-    dict keys / list indices, e.g. ['contact','location'] or ['projects',1,'url'].
-    NEVER call this to fabricate - only to record real owner-provided facts."""
-    profile_path = profile_path or get_settings().profile_path
-    data = json.loads(profile_path.read_text())
-    old = _set_by_path(data, path, value)
-    data.setdefault("_meta", {})["updated"] = _now()
-    profile_path.write_text(json.dumps(data, indent=1))
-    prof.invalidate()
+    """Fold a new/corrected fact into the canonical profile, log the change (old -> new + reason),
+    and invalidate the profile cache. `path` is a list of dict keys / list indices, e.g.
+    ['contact','location'] or ['projects',1,'url']. NEVER call this to fabricate - only to record
+    real owner-provided facts.
+
+    The canonical store is the DB document (see persistence.profile._load_doc). Writes go there via
+    save_profile so the rest of the app sees them. An explicit `profile_path` (tests / one-off file
+    tooling) keeps the direct-file behaviour for isolation."""
+    if profile_path is not None:
+        data = json.loads(profile_path.read_text())
+        old = _set_by_path(data, path, value)
+        data.setdefault("_meta", {})["updated"] = _now()
+        profile_path.write_text(json.dumps(data, indent=1))
+        prof.invalidate()
+    else:
+        import copy
+        data = copy.deepcopy(prof.load_profile())     # don't mutate the cached dict in place
+        old = _set_by_path(data, path, value)
+        data.setdefault("_meta", {})["updated"] = _now()
+        prof.save_profile(data)                        # DB write + cache invalidate
     return record_enrichment(
         "profile_update", reason, source=source, log_path=log_path,
         field=".".join(str(p) for p in path), old=old, new=value)

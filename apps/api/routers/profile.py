@@ -45,6 +45,14 @@ def summary() -> dict:
     }
 
 
+@router.get("/document")
+def document() -> dict:
+    """The full canonical profile document (summary, experience, projects+bullets, skills, education,
+    ...). Single-user and behind require_token, so the owner sees their own resume content - this is
+    the source of truth the agent and matching read/write, exposed for the profile viewer/editor."""
+    return profile.load_profile()
+
+
 @router.patch("/fact")
 def set_fact(body: FactIn) -> dict:
     """Fold an owner-provided fact into the canonical profile (audited in the enrichment log).

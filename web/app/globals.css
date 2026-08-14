@@ -325,6 +325,19 @@ button, input, select, textarea { font-family: inherit; }
 .block-head .count { font-family: var(--font-mono); font-size: 12px; color: var(--muted); }
 .panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px 22px; }
 
+/* ---- full profile document view ---- */
+.json-view { background: rgba(6,10,20,.7); border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 18px 20px; max-height: 60vh; overflow: auto; font-family: var(--font-mono); font-size: 12.5px;
+  line-height: 1.6; color: var(--sky); white-space: pre; tab-size: 2; }
+.doc-sec { padding: 4px 0; }
+.doc-sec + .doc-sec { margin-top: 20px; border-top: 1px solid var(--line); padding-top: 18px; }
+.doc-summary { font-size: 14px; line-height: 1.6; margin-top: 8px; color: var(--text); }
+.doc-item { margin-top: 14px; }
+.doc-item-head { display: flex; align-items: baseline; gap: 12px; justify-content: space-between; }
+.doc-title { font-weight: 600; font-size: 14.5px; }
+.doc-bullets { margin: 6px 0 0; padding-left: 18px; }
+.doc-bullets li { font-size: 13.5px; line-height: 1.55; color: var(--text-2, var(--muted)); margin: 3px 0; }
+
 /* ---- tracker board (columns per stage) ---- */
 .board { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 14px; align-items: start; }
 .col { background: rgba(255,255,255,0.02); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px; min-height: 90px; }
