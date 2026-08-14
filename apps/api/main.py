@@ -22,6 +22,7 @@ from apps.api.routers import (
     mailer,
     onboard,
     profile,
+    profile_agent,
     runs,
     tracker,
     worker,
@@ -60,8 +61,8 @@ def create_app() -> FastAPI:
     app.add_middleware(
         CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
     for r in (health.router, runs.router, jobs.router, onboard.router, discovery.router,
-              tracker.router, profile.router, mailer.router, costs.router, dashboard.router,
-              worker.router):
+              tracker.router, profile.router, profile_agent.router, mailer.router, costs.router,
+              dashboard.router, worker.router):
         app.include_router(r)
     return app
 

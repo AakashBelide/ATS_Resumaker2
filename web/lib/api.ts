@@ -315,3 +315,37 @@ export async function stopOnboard(id: string): Promise<OnboardingRun> {
   if (!r.ok) throw new Error(`stopOnboard → ${r.status}`);
   return r.json();
 }
+
+// ---- Profile chat-agent (POC) ---------------------------------------------
+export type AgentProposal = { kind: string; path: (string | number)[]; value: unknown; source_quote: string; preview: string };
+export type AgentState = {
+  run_id: string; mode: "intake" | "enhance" | "gapchat"; state: string;
+  events: { stage: string; status: string; detail: string; ts: number }[];
+  history: { role: string; text: string }[];
+  pending: AgentProposal[]; applied: unknown[]; meta: Record<string, unknown>;
+};
+
+export async function startAgent(mode: string, opts?: { report_run_id?: string; resume_text?: string }): Promise<AgentState> {
+  const r = await fetch(`${BASE}/v1/profile-agent`, {
+    method: "POST", headers: headers(), body: JSON.stringify({ mode, ...opts }),
+  });
+  if (!r.ok) throw new Error(`startAgent → ${r.status}`);
+  return r.json();
+}
+export async function getAgent(id: string): Promise<AgentState> {
+  const r = await fetch(`${BASE}/v1/profile-agent/${encodeURIComponent(id)}`, { headers: headers() });
+  if (!r.ok) throw new Error(`getAgent → ${r.status}`);
+  return r.json();
+}
+export async function agentSay(id: string, message: string): Promise<AgentState> {
+  const r = await fetch(`${BASE}/v1/profile-agent/${encodeURIComponent(id)}/say`, {
+    method: "POST", headers: headers(), body: JSON.stringify({ message }),
+  });
+  if (!r.ok) throw new Error(`agentSay → ${r.status}`);
+  return r.json();
+}
+export async function stopAgent(id: string): Promise<AgentState> {
+  const r = await fetch(`${BASE}/v1/profile-agent/${encodeURIComponent(id)}/stop`, { method: "POST", headers: headers() });
+  if (!r.ok) throw new Error(`stopAgent → ${r.status}`);
+  return r.json();
+}

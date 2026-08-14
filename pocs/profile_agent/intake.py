@@ -63,11 +63,20 @@ def run_intake(resume_path: str, *, linkedin_path: str | None = None, llm: Any =
     and stash the result in the run dir. Returns the run state (state=needs_input if thin spots or
     preferences remain to be asked)."""
     st = store.new_run("intake", resume_path=resume_path, linkedin_path=linkedin_path or "")
-    llm = llm or get_provider("claude", model="sonnet")
-
     text = extract_text(resume_path)
     if linkedin_path:
         text += "\n\n=== LINKEDIN EXPORT ===\n" + extract_text(linkedin_path)
+    return _parse_into_run(st, text, llm)
+
+
+def run_intake_text(text: str, *, llm: Any = None) -> store.RunState:
+    """Same as run_intake but from pasted resume text (used by the web UI - no file upload)."""
+    st = store.new_run("intake", resume_path="(pasted text)")
+    return _parse_into_run(st, text, llm)
+
+
+def _parse_into_run(st: store.RunState, text: str, llm: Any) -> store.RunState:
+    llm = llm or get_provider("claude", model="sonnet")
     st.add_event("extract", "ok", f"{len(text)} chars of source text")
 
     parsed = llm.complete_json(INTAKE_PARSE.format(guardrail=GUARDRAIL, resume_text=text[:20000]),

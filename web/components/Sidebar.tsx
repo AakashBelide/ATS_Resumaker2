@@ -13,9 +13,10 @@ const NAV = [
   { href: "/tracker", label: "Tracker", idx: "02", icon: <><rect x="3" y="4" width="7" height="16" rx="1" /><rect x="14" y="4" width="7" height="10" rx="1" /></> },
   { href: "/onboard", label: "Onboarding", idx: "03", icon: <><rect x="4" y="3" width="16" height="18" rx="1.5" /><path d="M9 21v-4h6v4M9 8h.01M15 8h.01M9 12h.01M15 12h.01" /></> },
   { href: "/profile", label: "Profile", idx: "04", icon: <><circle cx="12" cy="8" r="4" /><path d="M4.5 21c0-4 3.6-6 7.5-6s7.5 2 7.5 6" /></> },
-  { href: "/mailer", label: "Mailer", idx: "05", icon: <><rect x="3" y="5" width="18" height="14" rx="2" /><path d="M3 7l9 6 9-6" /></> },
-  { href: "/dashboard", label: "Dashboard", idx: "06", icon: <><rect x="3" y="3" width="8" height="8" rx="1" /><rect x="13" y="3" width="8" height="5" rx="1" /><rect x="13" y="10" width="8" height="11" rx="1" /><rect x="3" y="13" width="8" height="8" rx="1" /></> },
-  { href: "/metrics", label: "Metrics", idx: "07", icon: <><path d="M3 21h18" /><path d="M7 21V11M12 21V5M17 21v-7" /></> },
+  { href: "/profile-agent", label: "Assistant", idx: "05", icon: <><path d="M12 3a4 4 0 0 1 4 4v1a4 4 0 0 1-8 0V7a4 4 0 0 1 4-4z" /><path d="M5 21v-1a5 5 0 0 1 5-5h4a5 5 0 0 1 5 5v1" /><path d="M9 10h.01M15 10h.01" /></> },
+  { href: "/mailer", label: "Mailer", idx: "06", icon: <><rect x="3" y="5" width="18" height="14" rx="2" /><path d="M3 7l9 6 9-6" /></> },
+  { href: "/dashboard", label: "Dashboard", idx: "07", icon: <><rect x="3" y="3" width="8" height="8" rx="1" /><rect x="13" y="3" width="8" height="5" rx="1" /><rect x="13" y="10" width="8" height="11" rx="1" /><rect x="3" y="13" width="8" height="8" rx="1" /></> },
+  { href: "/metrics", label: "Metrics", idx: "08", icon: <><path d="M3 21h18" /><path d="M7 21V11M12 21V5M17 21v-7" /></> },
 ];
 
 export default function Sidebar() {

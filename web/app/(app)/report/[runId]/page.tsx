@@ -3,7 +3,7 @@
 // of raw JSON. Its own route (linked from the Tracker). Match-only runs have no resume/ATS
 // sections, so those are shown only when present.
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import Spinner from "@/components/Spinner";
 
@@ -32,7 +32,9 @@ const GAP_GROUPS: { key: string; label: string; cls: string }[] = [
 
 export default function ReportPage() {
   const params = useParams<{ runId: string }>();
+  const router = useRouter();
   const runId = params.runId;
+  const [showNudge, setShowNudge] = useState(false);   // gap-clarification nudge before generating
   const [r, setR] = useState<Report | null>(null);
   const [error, setError] = useState("");
   const [matchTimedOut, setMatchTimedOut] = useState(false);          // match poll hit its cap, still 404
@@ -169,6 +171,10 @@ export default function ReportPage() {
   const title = tracked?.title || r?.job.title || "…";
   const company = tracked?.company || r?.job.company || "";
   const uploaded = !!(r?.resume && (r.resume as { uploaded?: boolean }).uploaded);  // owner's own PDF
+  // gap-clarification nudge: how many JD requirements the profile doesn't evidence (gap) or has but
+  // hasn't named (supportedByResume) - clarifying these with the agent can raise the score honestly.
+  const gapCount = (r?.gap?.items ?? []).filter((it) => it.status === "gap").length;
+  const unlistedCount = (r?.gap?.items ?? []).filter((it) => it.status === "supportedByResume").length;
 
   async function generate() {
     if (!r) return;
@@ -420,7 +426,10 @@ export default function ReportPage() {
                           <span className="matching mono">generating… {gen.stage}</span>
                         </button>
                       ) : (
-                        <button className="btn btn-sm btn-primary" onClick={generate}>Generate resume &amp; cover letter</button>
+                        <button className="btn btn-sm btn-primary"
+                                onClick={() => { if (gapCount + unlistedCount > 0) setShowNudge(true); else generate(); }}>
+                          Generate resume &amp; cover letter
+                        </button>
                       )}
                       {/* or attach your own PDF (kept in the bucket for this run) */}
                       <button className="btn btn-sm" onClick={pickPdf} disabled={uploading || !!gen}>
@@ -457,6 +466,26 @@ export default function ReportPage() {
           </div>
         )}
       </div>
+
+      {/* gap-clarification nudge before generating */}
+      {showNudge && (
+        <div className="nudge-backdrop" onClick={() => setShowNudge(false)}>
+          <div className="nudge" onClick={(e) => e.stopPropagation()}>
+            <h3>Clarify {gapCount} gap{gapCount === 1 ? "" : "s"}{unlistedCount > 0 ? ` and ${unlistedCount} you may already have` : ""} first?</h3>
+            <p className="muted">
+              This job wants things your profile doesn&apos;t fully evidence yet. Talking them through
+              with the resume agent lets us re-compute your fit against your real background, so the
+              tailored resume is more accurate. You only add what you confirm.
+            </p>
+            <div className="nudge-actions">
+              <button className="btn btn-primary" onClick={() => router.push(`/profile-agent?mode=gapchat&run=${encodeURIComponent(runId)}`)}>
+                Talk to the agent
+              </button>
+              <button className="btn" onClick={() => { setShowNudge(false); generate(); }}>Generate anyway</button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
