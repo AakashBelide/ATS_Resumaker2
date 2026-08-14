@@ -7,6 +7,7 @@ for arbitrary pages. Prefer official APIs; use the browser only within ToS.
 from __future__ import annotations
 
 import html
+import json
 import re
 from dataclasses import dataclass, field
 from urllib.parse import urlparse
@@ -43,18 +44,26 @@ def _html_to_text(raw_html: str) -> str:
 
 # --------------------------------------------------------------- Greenhouse
 def _greenhouse(url: str) -> RawJD | None:
-    m = re.search(r"greenhouse\.io/(?:embed/job_app\?for=)?([\w-]+)(?:/jobs/|.*gh_jid=)(\d+)", url)
     host = urlparse(url).netloc
-    if "greenhouse" not in host and "greenhouse" not in url:
-        return None
-    if not m:
-        m = re.search(r"greenhouse\.io/([\w-]+)/jobs/(\d+)", url)
-    if not m:
-        return None
-    company, job_id = m.group(1), m.group(2)
+    m = (re.search(r"greenhouse\.io/(?:embed/job_app\?for=)?([\w-]+)(?:/jobs/|.*gh_jid=)(\d+)", url)
+         or re.search(r"greenhouse\.io/([\w-]+)/jobs/(\d+)", url))
+    if m:
+        company, job_id = m.group(1), m.group(2)
+    else:
+        # Custom-domain board (e.g. hubspot.com/careers/jobs/8119462?gh_jid=8119462): the URL carries
+        # the greenhouse job id but no board token, so derive it from the registrable domain (the
+        # greenhouse board token is almost always the company name). If the guess is wrong the API
+        # 404s and we fall through.
+        gh = re.search(r"[?&]gh_jid=(\d+)", url)
+        if not gh:
+            return None
+        job_id = gh.group(1)
+        labels = [x for x in host.split(".") if x not in ("www", "jobs", "careers")]
+        company = labels[-2] if len(labels) >= 2 else labels[0]
     api = f"https://boards-api.greenhouse.io/v1/boards/{company}/jobs/{job_id}?content=true"
     r = httpx.get(api, headers={"User-Agent": UA}, timeout=20, follow_redirects=True)
-    r.raise_for_status()
+    if r.status_code != 200:
+        return None
     j = r.json()
     return RawJD(
         raw_text=_html_to_text(j.get("content", "")),
@@ -119,6 +128,7 @@ def _workday(url: str) -> RawJD | None:
     if not m:
         return None
     tenant, wd, site, ext = m.group(1), m.group(2), m.group(3), m.group(4)
+    ext = ext.removesuffix("/apply")     # some URLs end .../job/<ext>/apply -> CXS wants just <ext>
     host = f"{tenant}.{wd}.myworkdayjobs.com"
     cxs = f"https://{host}/wday/cxs/{tenant}/{site}/job/{ext}"
     # Workday is behind Akamai (TLS/JA3 fingerprinting) -> curl_cffi impersonation.
@@ -199,6 +209,118 @@ def _amazon(url: str) -> RawJD | None:
     )
 
 
+# --------------------------------------------------------------- Rippling ATS
+def _rippling(url: str) -> RawJD | None:
+    """Rippling-hosted boards (ats.rippling.com/<slug>/jobs/<uuid>). The public board API returns
+    the full JD by uuid."""
+    m = re.search(r"rippling\.com/([\w-]+)/jobs/([0-9a-f-]{36})", url)
+    if not m:
+        return None
+    slug, uuid = m.group(1), m.group(2)
+    api = f"https://api.rippling.com/platform/api/ats/v1/board/{slug}/jobs/{uuid}"
+    r = httpx.get(api, headers={"User-Agent": UA, "Accept": "application/json"}, timeout=25,
+                  follow_redirects=True)
+    if r.status_code != 200:
+        return None
+    j = r.json() or {}
+    locs = j.get("workLocations") or []
+    return RawJD(
+        raw_text=_html_to_text(j.get("description", "")),
+        source_type="rippling", source_url=url,
+        title=j.get("name", ""), company=slug,
+        location=", ".join(loc.get("label", "") for loc in locs if loc.get("label")),
+        extra={"uuid": uuid},
+    )
+
+
+# --------------------------------------------------------------- Eightfold
+def _eightfold(url: str) -> RawJD | None:
+    """Eightfold career sites (app.eightfold.ai and white-label hosts like explore.jobs.<co>.net).
+    The position-detail API needs a `domain` param that isn't in the URL, so we try a few candidates
+    derived from the host and self-validate on a non-empty job_description."""
+    m = re.search(r"/careers/job/(\d{6,})", url)
+    if not m:
+        return None
+    host = urlparse(url).netloc
+    job_id = m.group(1)
+    skip = {"explore", "jobs", "careers", "app", "www", "eightfold", "ai", "com", "net", "io", "co"}
+    labels = [x for x in host.split(".") if x not in skip]
+    cands = [f"{x}.com" for x in labels] + [f"{x}.net" for x in labels]
+    cands.append(".".join(host.split(".")[-2:]))
+    for domain in dict.fromkeys(cands):     # de-dup, keep order
+        try:
+            r = httpx.get(f"https://{host}/api/apply/v2/jobs/{job_id}", params={"domain": domain},
+                          headers={"User-Agent": UA, "Accept": "application/json"}, timeout=20,
+                          follow_redirects=True)
+            if r.status_code != 200:
+                continue
+            j = r.json() or {}
+            desc = j.get("job_description") or j.get("description") or ""
+            if desc:
+                loc = j.get("location") or (j.get("locations") or [""])[0]
+                return RawJD(raw_text=_html_to_text(desc), source_type="eightfold", source_url=url,
+                             title=j.get("name", ""), company=labels[0] if labels else host,
+                             location=loc if isinstance(loc, str) else "", extra={"job_id": job_id})
+        except Exception:  # noqa: BLE001 - try the next candidate domain
+            continue
+    return None
+
+
+# --------------------------------------------------------------- Generic JSON-LD (schema.org)
+def _jsonld(url: str) -> RawJD | None:
+    """Last structured-data resort before Playwright: many careers pages (Radancy/Takeda, Dassault,
+    iCIMS, some Avature) render server-side HTML with a schema.org JobPosting in a <script
+    type="application/ld+json">. Parse it - full JD, no browser needed. Runs on any URL, so it's the
+    final API handler; returns None (=> Playwright) when no JobPosting is present."""
+    try:
+        r = httpx.get(url, headers={"User-Agent": UA}, timeout=25, follow_redirects=True)
+        if r.status_code != 200:
+            return None
+    except Exception:  # noqa: BLE001
+        return None
+    soup = BeautifulSoup(r.text, "lxml")
+
+    def _walk(node: object) -> dict | None:
+        if isinstance(node, dict):
+            if node.get("@type") == "JobPosting" or "JobPosting" in (node.get("@type") or []):
+                return node
+            for v in node.values():
+                hit = _walk(v)
+                if hit:
+                    return hit
+        elif isinstance(node, list):
+            for v in node:
+                hit = _walk(v)
+                if hit:
+                    return hit
+        return None
+
+    for tag in soup.find_all("script", type="application/ld+json"):
+        try:
+            data = json.loads(tag.string or "")
+        except (ValueError, TypeError):
+            continue
+        job = _walk(data)
+        if not job:
+            continue
+        desc = _html_to_text(job.get("description", ""))
+        if not desc:
+            continue
+        org = job.get("hiringOrganization") or {}
+        loc = job.get("jobLocation") or {}
+        loc = loc[0] if isinstance(loc, list) and loc else loc
+        addr = (loc.get("address") if isinstance(loc, dict) else {}) or {}
+        city = addr.get("addressLocality", "") if isinstance(addr, dict) else ""
+        region = addr.get("addressRegion", "") if isinstance(addr, dict) else ""
+        return RawJD(
+            raw_text=desc, source_type="jsonld", source_url=url,
+            title=job.get("title", ""),
+            company=(org.get("name", "") if isinstance(org, dict) else "") or urlparse(url).netloc,
+            location=", ".join(p for p in (city, region) if p),
+        )
+    return None
+
+
 # --------------------------------------------------------------- Playwright fallback
 def _playwright(url: str) -> RawJD:
     from playwright.sync_api import sync_playwright
@@ -214,7 +336,10 @@ def _playwright(url: str) -> RawJD:
     return RawJD(raw_text=_html_to_text(content), source_type="playwright", source_url=url)
 
 
-_API_HANDLERS = [_greenhouse, _lever, _ashby, _workday, _oracle_cloud, _amazon]
+# Specific board handlers first; `_jsonld` is the generic structured-data fallback, tried last
+# before Playwright (it runs on any URL, so it must not preempt a dedicated handler).
+_API_HANDLERS = [_greenhouse, _lever, _ashby, _workday, _oracle_cloud, _amazon,
+                 _rippling, _eightfold, _jsonld]
 
 
 def scrape(url: str) -> RawJD:

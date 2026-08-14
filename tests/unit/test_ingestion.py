@@ -630,6 +630,89 @@ def test_amazon_scraper(monkeypatch):
     assert scraper._amazon("https://boards.greenhouse.io/acme/jobs/1") is None
 
 
+class _Resp:
+    def __init__(self, *, status=200, payload=None, text=""):
+        self.status_code = status
+        self._payload = payload
+        self.text = text
+    def raise_for_status(self): pass
+    def json(self): return self._payload
+
+
+def test_workday_strips_apply_suffix(monkeypatch):
+    """A .../job/<ext>/apply URL must query the CXS API for <ext>, not <ext>/apply."""
+    from curl_cffi import requests as cffi
+
+    from resumaker.providers.scrape import scraper
+    seen = {}
+
+    def fake_get(url, **kw):
+        seen["url"] = url
+        return _Resp(payload={"jobPostingInfo": {"title": "Eng", "jobDescription": "<p>Build</p>",
+                                                 "location": "OH"}})
+
+    monkeypatch.setattr(cffi, "get", fake_get)
+    url = "https://mitre.wd5.myworkdayjobs.com/MITRE/job/Fairborn-OH/Lead-Eng_R117203-1/apply"
+    r = scraper._workday(url)
+    assert r and r.source_type == "workday" and r.title == "Eng"
+    assert seen["url"].endswith("Lead-Eng_R117203-1") and "/apply" not in seen["url"]
+
+
+def test_greenhouse_custom_domain_derives_board_token(monkeypatch):
+    """A custom-domain board (hubspot.com/...?gh_jid=) has no board token in the URL; derive it from
+    the registrable domain and hit the public boards API."""
+    from resumaker.providers.scrape import scraper
+    seen = {}
+
+    def fake_get(url, **kw):
+        seen["url"] = url
+        return _Resp(payload={"title": "PM", "content": "<p>Own the board</p>",
+                              "location": {"name": "Remote"}})
+
+    monkeypatch.setattr(scraper.httpx, "get", fake_get)
+    r = scraper._greenhouse("https://www.hubspot.com/careers/jobs/8119462?gh_jid=8119462")
+    assert r and r.source_type == "greenhouse" and r.company == "hubspot"
+    assert "/boards/hubspot/jobs/8119462" in seen["url"]
+
+
+def test_rippling_scraper(monkeypatch):
+    from resumaker.providers.scrape import scraper
+    monkeypatch.setattr(scraper.httpx, "get", lambda url, **kw: _Resp(payload={
+        "name": "AE", "description": "<p>Sell <b>things</b></p>",
+        "workLocations": [{"label": "NYC"}]}))
+    r = scraper._rippling("https://ats.rippling.com/rippling/jobs/2f0674e6-f01f-4ecd-b459-e947241c211f")
+    assert r and r.source_type == "rippling" and "sell" in r.raw_text.lower() and "things" in r.raw_text.lower()
+    assert scraper._rippling("https://jobs.lever.co/x/abc") is None
+
+
+def test_eightfold_scraper(monkeypatch):
+    from resumaker.providers.scrape import scraper
+    monkeypatch.setattr(scraper.httpx, "get", lambda url, **kw: _Resp(payload={
+        "name": "Analytics Engineer", "job_description": "<p>Model <b>data</b></p>", "location": "Remote"}))
+    r = scraper._eightfold("https://explore.jobs.netflix.net/careers/job/790317705130")
+    assert r and r.source_type == "eightfold" and "model" in r.raw_text.lower() and "data" in r.raw_text.lower()
+    assert scraper._eightfold("https://example.com/about") is None
+
+
+def test_jsonld_extractor(monkeypatch):
+    from resumaker.providers.scrape import scraper
+    html_doc = """<html><head>
+      <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebPage"}</script>
+      <script type="application/ld+json">{"@type":"JobPosting","title":"Validation Engineer",
+        "description":"<p>Validate <b>systems</b> end to end</p>",
+        "hiringOrganization":{"name":"Takeda"},
+        "jobLocation":{"address":{"addressLocality":"Thousand Oaks","addressRegion":"CA"}}}</script>
+      </head><body>x</body></html>"""
+    monkeypatch.setattr(scraper.httpx, "get", lambda url, **kw: _Resp(text=html_doc))
+    r = scraper._jsonld("https://jobs.takeda.com/en/job/123")
+    assert r and r.source_type == "jsonld" and r.title == "Validation Engineer"
+    assert "validate" in r.raw_text.lower() and "systems" in r.raw_text.lower() and r.company == "Takeda"
+    assert r.location == "Thousand Oaks, CA"
+    # no JobPosting -> None (falls through to Playwright)
+    monkeypatch.setattr(scraper.httpx, "get", lambda url, **kw: _Resp(text="<html><body>no jd</body></html>"))
+    assert scraper._jsonld("https://example.com/x") is None
+
+
 def test_dashboard_stats(tmp_db):
     from resumaker.analytics import dashboard_stats
     from resumaker.domain import JobRecord, TrackerEntry
