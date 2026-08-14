@@ -44,6 +44,19 @@ For EACH requirement return an object:
      - supportedByResume: NOT a named skill, but clearly demonstrated in the profile's
        experience/project bullets. Provide the exact snippet as evidence.
      - gap: no evidence anywhere in the profile.
+
+  RECOGNIZE THE SAME CAPABILITY UNDER DIFFERENT WORDING. A requirement is `existing` or
+  `supportedByResume` when the underlying technique or outcome is shown, even if the exact term
+  differs. Judge by capability, not keywords. For example:
+     - "fuzzy matching" / "approximate matching" / "fuzzy search" <- entity resolution, record
+       linkage, deduplication, similarity matching, address/name/record matching, dedup engines
+     - "entity resolution" / "identity graph" <- deduplication, record linkage, graph of entities
+     - "streaming" / "real-time" <- real-time APIs/pipelines, Kafka, event processing
+     - "orchestration" <- Airflow, LangGraph, multi-agent routing
+     - "graph database" <- Neo4j, TigerGraph, graph-based systems
+  Be consistent: if you credit one phrasing of a capability, credit its synonyms too. You MUST still
+  cite a verbatim profile snippet as evidence for existing/supportedByResume; if none demonstrates
+  the capability, it is a genuine gap.
   "evidence": for existing -> the matching skill name; for supportedByResume -> a short
      verbatim snippet copied from a profile bullet; for gap -> "".
   "substitution": ONLY for a gap that the EQUIVALENCE MAP can bridge -> the owned_tool
