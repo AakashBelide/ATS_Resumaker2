@@ -49,8 +49,40 @@ def parse_slash(msg: str) -> tuple[str | None, str]:
     return (head, rest.strip()) if head in SLASH else ("__unknown__", m)
 
 
+_AFFIRM_LEAD = ("sounds good", "go ahead", "do it", "yeah", "yep", "yup", "sure", "okay",
+                "apply", "confirm", "approve", "approved", "yes", "ok", "y")
+# a redirect/negation right after the "yes" means the user is correcting, NOT confirming
+_CONTRA_LEAD = ("but", "actually", "no ", "not ", "except", "however", "instead", "wait",
+                "change", "rather", "hold on", "don't", "dont", "under ", "make it")
+
+
+def split_affirmative(msg: str) -> tuple[bool, str]:
+    """Detect a message that STARTS with a clean confirmation, optionally carrying new info after it
+    ("yes, I built it in 2026"). Returns (True, remainder) - remainder is '' for a bare "yes". Returns
+    (False, '') when it isn't a leading confirmation, or when a contrast word right after it
+    ("yes but...", "yes, actually...") signals a redirect rather than a confirmation."""
+    m = msg.strip()
+    low = m.lower()
+    for tok in _AFFIRM_LEAD:                      # ordered longest-ish first so "yeah" beats "y"
+        if low == tok:
+            return True, ""
+        if not low.startswith(tok) or low[len(tok):len(tok) + 1].isalnum():
+            continue                              # must end on a word boundary, not "yesterday"
+        rest = m[len(tok):].lstrip(" ,.!;:-").strip()
+        rl = rest.lower()
+        if rl.startswith("and "):
+            rest, rl = rest[4:].strip(), rl[4:]
+        if not rest:
+            return True, ""
+        if any(rl == c.strip() or rl.startswith(c) for c in _CONTRA_LEAD):
+            return False, ""                      # "yes but ..." -> let the model handle the redirect
+        return True, rest
+    return False, ""
+
+
 def is_affirmative(msg: str) -> bool:
-    return msg.strip().lower().rstrip("!.") in _AFFIRM
+    ok, rest = split_affirmative(msg)
+    return ok and not rest
 
 
 # -- anti-fabrication: a proposal is only valid if the user actually said it --
@@ -272,6 +304,30 @@ def cap_status(st: RunState) -> tuple[bool, str]:
 
 
 # -- the turn loop -----------------------------------------------------------
+def _analyze_turn(st: RunState, message: str, *,
+                  build_prompt: Callable[[RunState, str], tuple[str, str]], llm: Any) -> str:
+    """One LLM analysis turn: build the prompt, call the model, validate proposals against the
+    anti-fabrication gate, set pending, and craft the reply. The caller has already counted the turn
+    and checked caps."""
+    system, prompt = build_prompt(st, message)
+    data = llm.complete_json(prompt, system=system, task="profile-agent")
+    raw = data.get("proposals", []) if isinstance(data, dict) else []
+    accepted, rejected = to_proposals(raw, message)
+    st.pending = [asdict(p) for p in accepted]
+    if rejected:
+        st.add_event("filter", "ok", f"dropped {len(rejected)} ungrounded proposal(s)")
+    reply = (data.get("reply") or data.get("question") or "").strip() if isinstance(data, dict) else ""
+    if not accepted and not (isinstance(data, dict) and data.get("question")):
+        st.meta["no_progress"] = st.meta.get("no_progress", 0) + 1
+        if st.meta["no_progress"] >= NO_PROGRESS_LIMIT:
+            reply += "\n(We don't seem to be adding anything new - say /done to finish.)"
+    else:
+        st.meta["no_progress"] = 0
+    if accepted and "approve" not in reply.lower() and "apply" not in reply.lower():
+        reply += "  Reply 'yes' to apply, or /skip."
+    return reply
+
+
 # A flow supplies `build_prompt(st, user_text) -> (system, prompt)`; the runtime handles slash
 # commands, confirmation, the single LLM call, proposal validation, and caps. `on_generate` is an
 # optional callback invoked by /generate (Flow 3) after pending changes are applied.
@@ -283,6 +339,8 @@ def run_turn(st: RunState, message: str, *,
     """Advance the conversation by one user message; returns the agent's reply text and saves state."""
     st.add_turn("user", message)
     cmd, arg = parse_slash(message)
+    # a confirmation (possibly with new info tacked on) only counts when something is pending
+    aff_ok, aff_rest = split_affirmative(message) if (cmd is None and st.pending) else (False, "")
 
     # 1) deterministic slash commands (the model never sees these)
     if cmd == "/stop":
@@ -314,16 +372,21 @@ def run_turn(st: RunState, message: str, *,
             st.state = "done"
     elif cmd == "__unknown__":
         reply = "Unknown command. Try /help."
-    # 2) affirmative -> apply pending proposals
-    elif st.pending and is_affirmative(message):
+    # 2) confirmation -> apply pending. If the user tacked new info onto the "yes" ("yes, I built it
+    #    in 2026"), don't lose it: analyze the remainder in the SAME turn so it lands, with the
+    #    conversation context the prompt now carries so "it" binds to the right project.
+    elif aff_ok:
         n = apply_pending(st, profile_path=profile_path)
         errs = st.meta.get("apply_errors") or []
+        st.meta["no_progress"] = 0
         reply = f"Applied {n} change(s)."
         if errs:
             reply += f" Couldn't apply {len(errs)}: {'; '.join(errs)}."
-        if n:
+        if aff_rest and cap_status(st)[0]:
+            st.meta["turns_used"] = st.meta.get("turns_used", 0) + 1
+            reply = (reply + " " + _analyze_turn(st, aff_rest, build_prompt=build_prompt, llm=llm)).strip()
+        elif n:
             reply += " Anything else, or /done?"
-        st.meta["no_progress"] = 0
     # 3) otherwise: a real message -> one LLM analysis turn
     else:
         ok, reason = cap_status(st)
@@ -332,23 +395,7 @@ def run_turn(st: RunState, message: str, *,
             reply = f"Wrapping up - {reason}. Applied {len(st.applied)} change(s)."
         else:
             st.meta["turns_used"] = st.meta.get("turns_used", 0) + 1
-            system, prompt = build_prompt(st, message)
-            data = llm.complete_json(prompt, system=system, task="profile-agent")
-            raw = data.get("proposals", []) if isinstance(data, dict) else []
-            accepted, rejected = to_proposals(raw, message)
-            st.pending = [asdict(p) for p in accepted]
-            if rejected:
-                st.add_event("filter", "ok", f"dropped {len(rejected)} ungrounded proposal(s)")
-            reply = (data.get("reply") or data.get("question") or "").strip() if isinstance(data, dict) else ""
-            # no-progress guard
-            if not accepted and not (isinstance(data, dict) and data.get("question")):
-                st.meta["no_progress"] = st.meta.get("no_progress", 0) + 1
-                if st.meta["no_progress"] >= NO_PROGRESS_LIMIT:
-                    reply += "\n(We don't seem to be adding anything new - say /done to finish.)"
-            else:
-                st.meta["no_progress"] = 0
-            if accepted and "approve" not in reply.lower() and "apply" not in reply.lower():
-                reply += "  Reply 'yes' to apply, or /skip."
+            reply = _analyze_turn(st, message, build_prompt=build_prompt, llm=llm)
 
     st.add_turn("agent", reply)
     store.save(st)

@@ -28,6 +28,20 @@ def test_is_affirmative(msg, ok):
     assert agent.is_affirmative(msg) is ok
 
 
+@pytest.mark.parametrize("msg,expected", [
+    ("yes", (True, "")),
+    ("Sure!", (True, "")),
+    ("yes, I built it from Jan to Aug 2026", (True, "I built it from Jan to Aug 2026")),
+    ("yeah and it uses Kafka", (True, "it uses Kafka")),
+    ("yes but actually put it under CurateAI", (False, "")),   # redirect, not a clean confirm
+    ("yes, no wait", (False, "")),
+    ("yesterday I shipped it", (False, "")),                    # not a confirmation at all
+    ("maybe later", (False, "")),
+])
+def test_split_affirmative(msg, expected):
+    assert agent.split_affirmative(msg) == expected
+
+
 # ---- anti-fabrication: the quote must come from the user ------------------
 def test_quote_supported_gate():
     user = "At Granite I stood up a Qdrant vector store and cut retrieval latency about 40%."
@@ -178,6 +192,44 @@ def test_enhance_turn_proposes_then_confirms(temp_profile, monkeypatch):
     reply2 = enhance.say(st, "yes", llm=fake, profile_path=temp_profile)
     assert "applied 1" in reply2.lower()
     assert "Kafka" in json.loads(temp_profile.read_text())["skills"]["Big Data & Data Engineering"]
+
+
+def test_yes_with_trailing_info_applies_then_analyzes(temp_profile, monkeypatch):
+    """'yes, <new info>' must APPLY the pending change AND analyze the tacked-on info in one turn -
+    the footgun where the confirmation used to be dropped and the info misattributed."""
+    from resumaker.persistence import profile as ps
+    monkeypatch.setattr(ps, "profile_text", lambda: "current profile")
+    # the remainder turn's LLM response proposes a date bullet
+    fake = _FakeLLM({"proposals": [{"kind": "add_bullet", "path": ["projects", "ATS Resumaker 2.0"],
+                                    "value": "Built Jan-Aug 2026", "source_quote": "Jan to Aug 2026",
+                                    "preview": "add date bullet"}],
+                     "reply": "Noted the timeframe.", "question": ""})
+    st = store.new_run("enhance")
+    # seed a pending project confirmation
+    st.pending = [Proposal(kind="add_project", path=["projects"],
+                           value={"title": "ATS Resumaker 2.0", "bullets": ["core bullet"]},
+                           source_quote="ATS Resumaker", preview="add project").__dict__]
+    reply = agent.run_turn(st, "yes, I built it from Jan to Aug 2026",
+                           build_prompt=enhance._build_prompt, llm=fake, profile_path=temp_profile)
+    assert "applied 1" in reply.lower()          # the project was applied
+    assert "noted the timeframe" in reply.lower()  # AND the trailing info was analyzed
+    assert st.pending and st.pending[0]["value"] == "Built Jan-Aug 2026"  # date bullet now pending
+    saved = json.loads(temp_profile.read_text())
+    assert any(p["title"] == "ATS Resumaker 2.0" for p in saved["projects"])
+
+
+def test_yes_but_redirect_does_not_apply(temp_profile, monkeypatch):
+    """'yes but ...' is a redirect - it must NOT auto-apply; it runs an analysis turn instead."""
+    from resumaker.persistence import profile as ps
+    monkeypatch.setattr(ps, "profile_text", lambda: "current profile")
+    fake = _FakeLLM({"proposals": [], "reply": "Got it, not that one.", "question": ""})
+    st = store.new_run("enhance")
+    st.pending = [{"kind": "add_skill", "path": ["skills", "x"], "value": "Y",
+                   "source_quote": "q", "preview": "p"}]
+    reply = agent.run_turn(st, "yes but actually put it under CurateAI",
+                           build_prompt=enhance._build_prompt, llm=fake, profile_path=temp_profile)
+    assert st.applied == []                       # nothing was applied
+    assert "got it" in reply.lower()
 
 
 def test_stop_is_deterministic_and_discards_pending(temp_profile):
