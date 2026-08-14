@@ -58,7 +58,14 @@ def structure_jd(raw, *, provider: str = "claude", model: str = "sonnet") -> Job
         jd_text = getattr(raw, "raw_text", None) or (raw.get("raw_text") if isinstance(raw, dict) else "")
         meta = raw if isinstance(raw, dict) else raw.__dict__
     if not jd_text or len(jd_text.strip()) < 20:
-        raise ValueError("JD text too short to structure")
+        # Usually means the scrape got only a stub/teaser (a JS-only or login/CSRF-gated posting that
+        # fell back to a thin browser render). Give the user an actionable message instead of a raw
+        # ValueError - the tracker records this as match_error and shows it on the row.
+        src = (meta or {}).get("source_type", "the source")
+        raise ValueError(
+            f"couldn't read the full job description from {src} - the posting may be JS-only or "
+            f"behind a login. Try capturing it with the browser extension, or open the posting and "
+            f"paste the description.")
 
     llm = get_provider(provider, model=model)
     data = llm.complete_json(

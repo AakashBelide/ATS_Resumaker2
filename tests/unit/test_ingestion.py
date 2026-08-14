@@ -639,6 +639,23 @@ class _Resp:
     def json(self): return self._payload
 
 
+def test_onboard_reports_already_on_watchlist(tmp_db):
+    """Re-onboarding an existing company must say 'already on your watchlist', not a false 'added'."""
+    from resumaker.domain import BoardRef, OnboardingRun
+    from resumaker.onboarding import service
+
+    board = BoardRef(source="greenhouse", token="acme")
+    run1 = OnboardingRun(id="r1", name="Acme")
+    service._resolve_and_add(run1, "deterministic", board, {"count": 5})
+    assert run1.evidence["already_present"] is False
+    assert "added to watchlist" in run1.events[-1].detail
+
+    run2 = OnboardingRun(id="r2", name="acme")            # same company, different case
+    service._resolve_and_add(run2, "deterministic", board, {"count": 5})
+    assert run2.evidence["already_present"] is True
+    assert "already on your watchlist" in run2.events[-1].detail
+
+
 def test_workday_strips_apply_suffix(monkeypatch):
     """A .../job/<ext>/apply URL must query the CXS API for <ext>, not <ext>/apply."""
     from curl_cffi import requests as cffi

@@ -1,7 +1,7 @@
 "use client";
 // Discovery (RA.1): a filterable, deterministic feed of ingested postings. No fit-scoring
 // here (that happens on add-to-Tracker); Discovery is pure filtering over the watchlist.
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Spinner from "@/components/Spinner";
 
 import CompanyLogo from "@/components/CompanyLogo";
@@ -92,11 +92,22 @@ export default function DiscoveryPage() {
     listTracker().then((rows) => setTracked(new Set(rows.map((r) => r.url)))).catch(() => {});
   }, []);
 
+  // Race guard: filters change fast (clear + keyword + title debounces each fire a new query), and
+  // requests can resolve out of order on a cold backend - a slower earlier fetch (the default feed)
+  // could otherwise overwrite a newer filtered one, leaving results that don't match the active
+  // filters. Tag each request with a sequence id and drop any response that isn't the latest.
+  const seqRef = useRef(0);
   const load = useCallback(async (query: DiscoveryQuery) => {
+    const seq = ++seqRef.current;
     setLoading(true); setError("");
-    try { setData(await discovery(query)); }
-    catch (e) { setError(String(e)); }
-    finally { setLoading(false); }
+    try {
+      const res = await discovery(query);
+      if (seq === seqRef.current) setData(res);
+    } catch (e) {
+      if (seq === seqRef.current) setError(String(e));
+    } finally {
+      if (seq === seqRef.current) setLoading(false);
+    }
   }, []);
 
   useEffect(() => {

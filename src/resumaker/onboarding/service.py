@@ -73,10 +73,16 @@ def _validate(board: BoardRef) -> dict:
 def _resolve_and_add(run: OnboardingRun, method: str, board: BoardRef, evidence: dict) -> None:
     if _cancelled(run):          # don't add to the watchlist if the user stopped it
         raise _Cancelled
+    # `add_company` upserts, so re-onboarding an existing company silently no-ops the count. Detect
+    # that first so the UI says "already on your watchlist" instead of a misleading "added".
+    already = any(c.name.strip().lower() == run.name.strip().lower()
+                  for c in db.list_companies(active_only=False))
+    evidence = {**evidence, "already_present": already}
     run.method, run.board, run.evidence, run.state = method, board, evidence, "resolved"
     db.add_company(Company(name=run.name, boards=[board]))
+    tail = "already on your watchlist" if already else "added to watchlist"
     _emit(run, method, "done",
-          f"{board.source}:{board.token} ({evidence.get('count', '?')} jobs) — added to watchlist")
+          f"{board.source}:{board.token} ({evidence.get('count', '?')} jobs) — {tail}")
 
 
 def _finish(run: OnboardingRun, state: OnboardState, note: str = "") -> None:

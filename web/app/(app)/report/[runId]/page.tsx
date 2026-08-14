@@ -401,7 +401,15 @@ export default function ReportPage() {
                       </span>
                     </div>
                     {r.resume != null && docTab === "resume" && (
-                      <iframe className="doc-frame" src={artifactUrl(runId, "resume.pdf")} title="resume PDF" />
+                      <>
+                        <iframe className="doc-frame" src={artifactUrl(runId, "resume.pdf")} title="resume PDF" />
+                        {/* the inline preview relies on the browser's PDF viewer; some webviews render
+                            a blank box, so always offer a direct escape hatch. */}
+                        <p className="mono muted" style={{ fontSize: 11.5, marginTop: 8 }}>
+                          Preview blank? <a href={artifactUrl(runId, "resume.pdf")} target="_blank" rel="noreferrer">Open the PDF ↗</a>
+                          {" "}or use PDF ↓ / DOCX ↓ above.
+                        </p>
+                      </>
                     )}
                     {r.cover_letter != null && docTab === "cover" && (
                       <pre className="doc-cover">{coverText ?? "loading…"}</pre>
