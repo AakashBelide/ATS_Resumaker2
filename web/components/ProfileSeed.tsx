@@ -48,8 +48,12 @@ export default function ProfileSeed() {
       <div className="agent">
         <div className="agent-head"><b>Profile seeded</b><span className="mono muted">deterministic</span></div>
         <div className="panel">
-          <p style={{ marginBottom: 12 }}>Loaded {done.experience} role(s), {done.projects} project(s), {done.skills} skill(s) into your profile.</p>
-          <Link className="btn btn-primary btn-sm" href="/profile">View profile →</Link>
+          <p style={{ marginBottom: 14 }}>Loaded {done.experience} role(s), {done.projects} project(s), {done.skills} skill(s) into your profile.</p>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <Link className="btn btn-sm btn-primary" href="/profile-agent">Enrich in Enhance chat →</Link>
+            <Link className="btn btn-sm" href="/profile#preferences">Set job preferences →</Link>
+            <Link className="btn btn-sm" href="/profile">View profile</Link>
+          </div>
         </div>
       </div>
     );

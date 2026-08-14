@@ -37,12 +37,23 @@ export default function ProfileIntake() {
   }
 
   if (applied) {
+    const thin = parsed?.thin_spots ?? [];
     return (
       <div className="agent">
         <div className="agent-head"><b>Profile updated</b><span className="mono muted">from resume</span></div>
         <div className="panel">
-          <p style={{ marginBottom: 12 }}>Loaded {applied.experience} role(s), {applied.projects} project(s), {applied.skills} skill(s).</p>
-          <Link className="btn btn-primary btn-sm" href="/profile">View profile →</Link>
+          <p style={{ marginBottom: 14 }}>Loaded {applied.experience} role(s), {applied.projects} project(s), {applied.skills} skill(s).</p>
+          {thin.length > 0 && (
+            <div style={{ marginBottom: 14 }}>
+              <p className="kicker" style={{ marginBottom: 6 }}>Strengthen these next</p>
+              <ul className="doc-bullets">{thin.map((s, i) => <li key={i}>{s}</li>)}</ul>
+            </div>
+          )}
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <Link className="btn btn-sm btn-primary" href="/profile-agent">Fill gaps in Enhance chat →</Link>
+            <Link className="btn btn-sm" href="/profile#preferences">Set job preferences →</Link>
+            <Link className="btn btn-sm" href="/profile">View profile</Link>
+          </div>
         </div>
       </div>
     );

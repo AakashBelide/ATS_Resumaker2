@@ -69,7 +69,7 @@ export default function ProfilePage() {
               <div className="stat"><div className="num">{p.employers.length}</div><div className="cap">Employers</div></div>
             </div>
 
-            <div className="block">
+            <div className="block" id="preferences">
               <div className="block-head"><h2>Preferences</h2>
                 <button className="btn btn-sm" style={{ marginLeft: "auto" }} onClick={() => setPrefEdit((v) => !v)}>
                   {prefEdit ? "cancel" : "edit"}
