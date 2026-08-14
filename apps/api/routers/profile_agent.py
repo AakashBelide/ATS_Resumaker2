@@ -17,7 +17,7 @@ from __future__ import annotations
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import asdict
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 
 from apps.api.security import require_token
@@ -59,8 +59,49 @@ def start(body: StartIn) -> dict:
     if mode == "intake":
         if not (body.resume_text or "").strip():
             raise HTTPException(400, "intake needs resume_text")
-        return asdict(intake.run_intake_text(body.resume_text))
+        try:
+            return asdict(intake.run_intake_text(body.resume_text))
+        except ValueError as e:
+            raise HTTPException(422, str(e)) from None
+        except Exception as e:  # noqa: BLE001 - surface a parse failure, don't 500
+            raise HTTPException(502, f"resume parse failed: {e}") from None
     raise HTTPException(400, f"unknown mode {body.mode!r}")
+
+
+@router.post("/parse")
+async def parse(request: Request) -> dict:
+    """Parse a resume into a profile-shaped doc WITHOUT persisting (the client reviews it, then POSTs
+    it to /v1/profile/seed to apply). Accepts either an uploaded file as the raw request body (with a
+    `?filename=` query param) or a JSON body {"text": "..."} - so no python-multipart dependency is
+    needed, and the filename survives the BFF proxy (which forwards the query string, not headers)."""
+    from pocs.profile_agent import intake
+    filename = request.query_params.get("filename", "")
+    try:
+        if filename:
+            raw = await request.body()
+            if not raw:
+                raise HTTPException(422, "empty file upload")
+            text = intake.extract_upload(raw, filename)
+        else:
+            data = await request.json()
+            text = str((data or {}).get("text") or "")
+    except HTTPException:
+        raise
+    except ValueError as e:
+        raise HTTPException(422, str(e)) from None
+    except Exception as e:  # noqa: BLE001 - bad body / unreadable file
+        raise HTTPException(422, f"couldn't read the input: {e}") from None
+
+    try:
+        parsed, thin = intake.parse_resume(text)
+    except ValueError as e:
+        raise HTTPException(422, str(e)) from None
+    except Exception as e:  # noqa: BLE001 - LLM/parse failure
+        raise HTTPException(502, f"resume parse failed: {e}") from None
+    n_skills = sum(len(v) for v in (parsed.get("skills") or {}).values() if isinstance(v, list))
+    return {"profile": parsed, "thin_spots": thin,
+            "summary": {"experience": len(parsed.get("experience") or []),
+                        "projects": len(parsed.get("projects") or []), "skills": n_skills}}
 
 
 @router.get("/{run_id}")

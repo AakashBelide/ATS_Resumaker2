@@ -58,6 +58,42 @@ def detect_thin_spots(profile: dict) -> list[str]:
     return spots
 
 
+def extract_upload(raw: bytes, filename: str) -> str:
+    """Extract text from an uploaded file's bytes (PDF/DOCX/TXT) by writing to a temp file and reusing
+    the local extractors. No LLM. Raises ValueError if nothing readable comes out."""
+    import tempfile
+    suffix = Path(filename or "").suffix.lower() or ".txt"
+    if suffix not in (".pdf", ".docx", ".txt", ".md"):
+        raise ValueError(f"unsupported file type {suffix!r} - upload a PDF, DOCX, or TXT")
+    with tempfile.NamedTemporaryFile(suffix=suffix, delete=True) as tmp:
+        tmp.write(raw)
+        tmp.flush()
+        text = extract_text(tmp.name)
+    if len((text or "").strip()) < 40:
+        raise ValueError("couldn't read text from that file - it may be scanned/image-only; "
+                         "try a text-based PDF/DOCX or paste the text")
+    return text
+
+
+def parse_resume(text: str, *, llm: Any = None) -> tuple[dict, list[str]]:
+    """Parse resume text into a profile-shaped dict (LLM, zero-invention) and return (profile,
+    thin_spots). Does NOT persist. Raises ValueError if the text is too short or yields no profile."""
+    if len((text or "").strip()) < 40:
+        raise ValueError("that doesn't look like resume text - too short to parse")
+    llm = llm or get_provider("claude", model="sonnet")
+    parsed = llm.complete_json(INTAKE_PARSE.format(guardrail=GUARDRAIL, resume_text=text[:20000]),
+                               task="profile-intake")
+    if not isinstance(parsed, dict) or not (
+            parsed.get("experience") or parsed.get("projects") or parsed.get("skills")):
+        raise ValueError("couldn't extract a profile from that text - is it a resume?")
+    parsed.setdefault("facts_allowlist", {})
+    parsed["facts_allowlist"].setdefault(
+        "employers", sorted({e.get("organization", "") for e in parsed.get("experience", []) if e.get("organization")}))
+    parsed["facts_allowlist"].setdefault(
+        "titles", sorted({e.get("title", "") for e in parsed.get("experience", []) if e.get("title")}))
+    return parsed, detect_thin_spots(parsed)
+
+
 def run_intake(resume_path: str, *, linkedin_path: str | None = None, llm: Any = None) -> store.RunState:
     """Parse a resume (+ optional LinkedIn PDF) into a profile.json-shaped dict, detect thin spots,
     and stash the result in the run dir. Returns the run state (state=needs_input if thin spots or

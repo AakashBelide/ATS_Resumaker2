@@ -146,6 +146,18 @@ def test_add_project_is_idempotent(temp_profile):
     assert [b["text"] for b in proj[0]["bullets"]] == ["first bullet", "second bullet"]
 
 
+@pytest.mark.parametrize("bad", ["", "   ", "too short"])
+def test_parse_resume_rejects_junk(bad):
+    """Garbage / too-short input is rejected deterministically BEFORE any LLM call."""
+    with pytest.raises(ValueError):
+        intake.parse_resume(bad)
+
+
+def test_extract_upload_rejects_unsupported_type():
+    with pytest.raises(ValueError, match="unsupported file type"):
+        intake.extract_upload(b"whatever", "malware.exe")
+
+
 def test_apply_pending_skips_unresolvable_bullet(temp_profile):
     """A bullet for a project that doesn't exist must be skipped (recorded), not 500 the whole turn."""
     st = store.new_run("enhance")

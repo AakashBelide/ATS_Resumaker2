@@ -170,6 +170,30 @@ def test_seed_profile_deterministic(tmp_settings, monkeypatch):
         prof.seed_profile({"experience": "not a list"})
 
 
+def test_seed_profile_normalizes_garbage(tmp_settings, monkeypatch):
+    """Valid JSON with messy nested shapes must be coerced (not saved raw) so tailoring/rendering,
+    which read e['bullets'][i]['text'], can't crash on a string bullet or a non-dict entry."""
+    from resumaker.persistence import profile as prof
+    monkeypatch.setattr("resumaker.persistence.profile.get_settings", lambda: tmp_settings)
+    db.init_db()
+    prof.invalidate()
+    messy = {
+        "experience": [
+            {"title": "MLE", "bullets": ["a plain-string bullet", {"text": "kept"}, {"text": ""}]},
+            "this entry is a string, not a dict",          # dropped
+        ],
+        "skills": {"Lang": ["Python", "  "], "Bad": "not-a-list"},   # blank dropped, non-list category dropped
+    }
+    prof.seed_profile(messy)
+    saved = prof.load_profile()
+    exp = saved["experience"]
+    assert len(exp) == 1                                    # the string entry was dropped
+    assert all(isinstance(b, dict) and b["text"] for b in exp[0]["bullets"])   # strings coerced, empties gone
+    assert [b["text"] for b in exp[0]["bullets"]] == ["a plain-string bullet", "kept"]
+    assert exp[0]["organization"] == ""                     # missing keys defaulted
+    assert saved["skills"] == {"Lang": ["Python"]}          # blank + non-list pruned
+
+
 def test_db_run_record_serializes_datetimes(tmp_settings):
     """record_run must serialize datetime timestamps to ISO strings before binding: the
     libSQL/Turso driver rejects datetime params ("Unsupported parameter type"), which silently

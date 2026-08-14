@@ -178,6 +178,28 @@ export async function seedProfile(doc: ProfileDocument, force = false): Promise<
   if (!r.ok) throw new Error(`seedProfile → ${r.status}: ${(await r.text()).slice(0, 200)}`);
   return r.json();
 }
+
+// AI parse (no persist): upload a PDF/DOCX/TXT File, or pass pasted text. Returns the parsed profile
+// for review; apply it with seedProfile(). Errors carry the server's message (422/502).
+export type ParsedResume = { profile: ProfileDocument; thin_spots: string[]; summary: Record<string, number> };
+export async function parseResume(input: File | string): Promise<ParsedResume> {
+  const isFile = typeof input !== "string";
+  const h = headers();
+  // filename goes in the query (the BFF proxy forwards the query string, not custom headers)
+  const url = isFile ? `${BASE}/v1/profile-agent/parse?filename=${encodeURIComponent(input.name)}`
+                     : `${BASE}/v1/profile-agent/parse`;
+  if (isFile) delete (h as Record<string, string>)["Content-Type"];   // let the File set its own type
+  const r = await fetch(url, {
+    method: "POST", headers: h,
+    body: isFile ? input : JSON.stringify({ text: input }),
+  });
+  if (!r.ok) {
+    let msg = `parse → ${r.status}`;
+    try { const j = await r.json(); if (j?.detail) msg = String(j.detail); } catch { /* keep default */ }
+    throw new Error(msg);
+  }
+  return r.json();
+}
 export const profileProposals = () =>
   get<{ have_but_unlisted: Proposal[]; recurring_gaps: Proposal[] }>("/v1/profile/proposals");
 

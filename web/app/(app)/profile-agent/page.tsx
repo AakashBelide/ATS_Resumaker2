@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 
 import AgentChat from "@/components/AgentChat";
+import ProfileIntake from "@/components/ProfileIntake";
 import ProfileSeed from "@/components/ProfileSeed";
 
 type Tab = "enhance" | "intake";
@@ -50,9 +51,9 @@ function ProfileAgentInner() {
           <>
             <div className="seg" style={{ marginBottom: 16 }}>
               <button className={`seg-btn ${onboardMode === "seed" ? "on" : ""}`} onClick={() => setOnboardMode("seed")}>First time · template</button>
-              <button className={`seg-btn ${onboardMode === "parse" ? "on" : ""}`} onClick={() => setOnboardMode("parse")}>Paste resume · AI parse</button>
+              <button className={`seg-btn ${onboardMode === "parse" ? "on" : ""}`} onClick={() => setOnboardMode("parse")}>Upload / paste · AI parse</button>
             </div>
-            {onboardMode === "seed" ? <ProfileSeed /> : <AgentChat mode="intake" title="Onboarding intake" />}
+            {onboardMode === "seed" ? <ProfileSeed /> : <ProfileIntake />}
           </>
         )}
       </div>

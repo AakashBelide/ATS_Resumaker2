@@ -91,19 +91,70 @@ def profile_template() -> dict:
     }
 
 
+def _coerce_bullets(bullets: object) -> list[dict]:
+    """Normalize a bullets list into [{text, metrics?, skills_used?}], tolerating plain strings and
+    dropping empties - so a malformed paste can't leave the pipeline reading b['text'] on a string."""
+    out: list[dict] = []
+    for b in bullets if isinstance(bullets, list) else []:
+        if isinstance(b, dict) and str(b.get("text", "")).strip():
+            item = {"text": str(b["text"]).strip()}
+            if isinstance(b.get("metrics"), list):
+                item["metrics"] = [str(m) for m in b["metrics"]]
+            if isinstance(b.get("skills_used"), list):
+                item["skills_used"] = [str(s) for s in b["skills_used"]]
+            out.append(item)
+        elif isinstance(b, str) and b.strip():
+            out.append({"text": b.strip()})
+    return out
+
+
+def _normalize_profile(doc: dict) -> dict:
+    """Coerce a (possibly messy) profile doc into the shape the pipeline relies on: experience/projects
+    are lists of dicts with the expected keys and clean bullets; skills is category -> list[str].
+    Non-dict entries are dropped rather than left to crash tailoring/rendering downstream."""
+    d = dict(doc)
+    if isinstance(d.get("experience"), list):
+        exp = []
+        for e in d["experience"]:
+            if not isinstance(e, dict):
+                continue
+            e = dict(e)
+            e["bullets"] = _coerce_bullets(e.get("bullets"))
+            for k in ("title", "organization", "location", "start_date", "end_date"):
+                e.setdefault(k, "")
+            exp.append(e)
+        d["experience"] = exp
+    if isinstance(d.get("projects"), list):
+        projs = []
+        for p in d["projects"]:
+            if not isinstance(p, dict):
+                continue
+            p = dict(p)
+            p["bullets"] = _coerce_bullets(p.get("bullets"))
+            for k in ("title", "organization", "date", "url"):
+                p.setdefault(k, "")
+            projs.append(p)
+        d["projects"] = projs
+    if isinstance(d.get("skills"), dict):
+        d["skills"] = {str(k): [str(x) for x in v if str(x).strip()]
+                       for k, v in d["skills"].items() if isinstance(v, list)}
+    return d
+
+
 def seed_profile(doc: dict) -> dict:
     """Deterministically load a full profile document (no LLM) into the canonical store. Validates the
-    shape minimally, stamps _meta, saves via save_profile (DB), and returns a small summary. Raises
-    ValueError if the doc isn't a usable profile."""
+    shape, normalizes messy/garbage entries, stamps _meta, saves via save_profile (DB), and returns a
+    small summary. Raises ValueError if the doc isn't a usable profile."""
     if not isinstance(doc, dict):
         raise ValueError("profile must be a JSON object")
     for key, typ, label in (("experience", list, "list"), ("projects", list, "list"),
                             ("skills", dict, "object")):
         if key in doc and not isinstance(doc[key], typ):
             raise ValueError(f"'{key}' must be a JSON {label}")
+    doc = {k: v for k, v in doc.items() if k != "_help"}     # drop template guidance if left in
+    doc = _normalize_profile(doc)
     if not (doc.get("experience") or doc.get("projects") or doc.get("skills")):
         raise ValueError("profile is empty - fill in at least experience, projects, or skills")
-    doc = {k: v for k, v in doc.items() if k != "_help"}     # drop template guidance if left in
     meta = dict(doc.get("_meta") or {})
     meta["seeded"] = datetime.datetime.now().isoformat(timespec="seconds")
     doc["_meta"] = meta
