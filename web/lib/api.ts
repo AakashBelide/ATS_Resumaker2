@@ -168,6 +168,16 @@ export type ProfileDocument = {
   [k: string]: unknown;
 };
 export const profileDocument = () => get<ProfileDocument>("/v1/profile/document");
+// deterministic first-time seed (no LLM): download a template, fill it, POST it back
+export const profileTemplate = () => get<{ template: ProfileDocument; seeded: boolean }>("/v1/profile/template");
+export async function seedProfile(doc: ProfileDocument, force = false): Promise<{ ok: boolean; summary: Record<string, number> }> {
+  const r = await fetch(`${BASE}/v1/profile/seed`, {
+    method: "POST", headers: headers(), body: JSON.stringify({ profile: doc, force }),
+  });
+  if (r.status === 409) throw new Error("EXISTS");
+  if (!r.ok) throw new Error(`seedProfile → ${r.status}: ${(await r.text()).slice(0, 200)}`);
+  return r.json();
+}
 export const profileProposals = () =>
   get<{ have_but_unlisted: Proposal[]; recurring_gaps: Proposal[] }>("/v1/profile/proposals");
 

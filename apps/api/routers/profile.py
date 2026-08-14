@@ -5,7 +5,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
 from apps.api.security import require_token
@@ -51,6 +51,31 @@ def document() -> dict:
     ...). Single-user and behind require_token, so the owner sees their own resume content - this is
     the source of truth the agent and matching read/write, exposed for the profile viewer/editor."""
     return profile.load_profile()
+
+
+class SeedIn(BaseModel):
+    profile: dict
+    force: bool = False        # overwrite an existing profile (first-time seed is otherwise gated)
+
+
+@router.get("/template")
+def template() -> dict:
+    """A blank profile document in the canonical schema for a deterministic first-time seed."""
+    return {"template": profile.profile_template(), "seeded": profile.is_seeded()}
+
+
+@router.post("/seed")
+def seed(body: SeedIn) -> dict:
+    """Deterministically load a filled-in template into the canonical profile (no LLM, lossless).
+    First-time gated: refuses to overwrite an existing profile unless force=true."""
+    if profile.is_seeded() and not body.force:
+        raise HTTPException(status_code=409,
+                            detail="a profile already exists; re-send with force=true to overwrite")
+    try:
+        summary = profile.seed_profile(body.profile)
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e)) from None
+    return {"ok": True, "summary": summary}
 
 
 @router.patch("/fact")

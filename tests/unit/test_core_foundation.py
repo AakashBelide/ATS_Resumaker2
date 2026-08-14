@@ -147,6 +147,29 @@ def test_update_profile_fact_writes_to_db(tmp_settings, monkeypatch):
     assert prof.load_profile()["skills"]["Frontend"] == ["React", "Next.js"]   # and it's visible via the cache
 
 
+def test_seed_profile_deterministic(tmp_settings, monkeypatch):
+    """The first-time deterministic seed loads a filled template straight into the DB (no LLM), and
+    the template it hands out must itself be a valid, seedable document once filled."""
+    from resumaker.persistence import profile as prof
+    # isolate the profile module too: without this its _load_doc falls back to the real profile file
+    monkeypatch.setattr("resumaker.persistence.profile.get_settings", lambda: tmp_settings)
+    db.init_db()
+    prof.invalidate()
+    assert prof.is_seeded() is False
+    doc = prof.profile_template()
+    summary = prof.seed_profile(doc)                    # the example template is a usable profile
+    assert summary["experience"] == 1 and summary["projects"] == 1
+    assert prof.is_seeded() is True
+    saved = prof.load_profile()
+    assert "_help" not in saved and saved["_meta"].get("seeded")     # guidance stripped, stamped
+    # a doc with no experience/projects/skills is rejected
+    with pytest.raises(ValueError, match="empty"):
+        prof.seed_profile({"contact": {"name": "x"}})
+    # wrong types are rejected
+    with pytest.raises(ValueError, match="list"):
+        prof.seed_profile({"experience": "not a list"})
+
+
 def test_db_run_record_serializes_datetimes(tmp_settings):
     """record_run must serialize datetime timestamps to ISO strings before binding: the
     libSQL/Turso driver rejects datetime params ("Unsupported parameter type"), which silently

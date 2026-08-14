@@ -5,13 +5,16 @@ import { useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 
 import AgentChat from "@/components/AgentChat";
+import ProfileSeed from "@/components/ProfileSeed";
 
 type Tab = "enhance" | "intake";
+type OnboardMode = "seed" | "parse";
 
 function ProfileAgentInner() {
   const params = useSearchParams();
   const gapRun = params.get("mode") === "gapchat" ? params.get("run") : null;
   const [tab, setTab] = useState<Tab>("enhance");
+  const [onboardMode, setOnboardMode] = useState<OnboardMode>("seed");
 
   if (gapRun) {
     return (
@@ -39,11 +42,19 @@ function ProfileAgentInner() {
         <p className="muted" style={{ maxWidth: 640, marginBottom: 16 }}>
           {tab === "enhance"
             ? "Tell me about projects, metrics, or skills that aren't captured yet — a Snowflake table you built, a latency you cut, who used it. I only record what you confirm, and everything is reversible with /undo."
-            : "Paste your resume (or LinkedIn export) text. I'll parse it into your profile with zero invention, then flag thin spots to fill in."}
+            : "Onboard a profile two ways: fill a structured template for an exact, lossless load, or paste your resume and let the agent parse it (then flag thin spots)."}
         </p>
-        {tab === "enhance"
-          ? <AgentChat mode="enhance" title="Enhancement chat" />
-          : <AgentChat mode="intake" title="Onboarding intake" />}
+        {tab === "enhance" ? (
+          <AgentChat mode="enhance" title="Enhancement chat" />
+        ) : (
+          <>
+            <div className="seg" style={{ marginBottom: 16 }}>
+              <button className={`seg-btn ${onboardMode === "seed" ? "on" : ""}`} onClick={() => setOnboardMode("seed")}>First time · template</button>
+              <button className={`seg-btn ${onboardMode === "parse" ? "on" : ""}`} onClick={() => setOnboardMode("parse")}>Paste resume · AI parse</button>
+            </div>
+            {onboardMode === "seed" ? <ProfileSeed /> : <AgentChat mode="intake" title="Onboarding intake" />}
+          </>
+        )}
       </div>
     </>
   );

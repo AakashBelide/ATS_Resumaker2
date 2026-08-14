@@ -52,6 +52,67 @@ def save_profile(data: dict) -> None:
     invalidate()
 
 
+# ---------------------------------------------------------------- first-time deterministic seed
+def is_seeded() -> bool:
+    """True if a real profile already exists, so a first-time seed knows to confirm before it would
+    overwrite one."""
+    d = load_profile()
+    return bool(d.get("experience") or d.get("projects") or d.get("skills")
+                or (d.get("contact") or {}).get("name"))
+
+
+def profile_template() -> dict:
+    """A blank profile document in the canonical schema, one example entry per section, for a
+    deterministic first-time seed (no LLM, lossless). Fill it in and POST to /v1/profile/seed. Unlike
+    the resume parser, this preserves hand-curated structure (equivalence_map, target_archetypes)."""
+    return {
+        "_help": ("Fill this in and seed it deterministically (no AI parsing). Delete this _help key. "
+                  "skills is grouped by category. dates are free text, e.g. 'Jan 2024 - Aug 2024'. "
+                  "Leave anything you don't have as an empty string / list."),
+        "contact": {"name": "", "email": "", "phone": "", "location": ""},
+        "links": {"portfolio": "", "linkedin": "", "github": ""},
+        "work_authorization": {"status": "", "needs_sponsorship": False},
+        "target_archetypes": ["AI/ML Engineer", "Software Engineer"],
+        "summary": "2-3 line professional summary.",
+        "experience": [{
+            "title": "Job Title", "organization": "Company", "location": "City, ST",
+            "start_date": "Jan 2024", "end_date": "Aug 2024", "is_current": False,
+            "bullets": [{"text": "What you did and the measurable outcome.",
+                         "metrics": ["40%"], "skills_used": ["Python"]}],
+        }],
+        "projects": [{"title": "Project Name", "organization": "", "date": "2025", "url": "",
+                      "bullets": [{"text": "What you built and its impact."}]}],
+        "education": [{"degree": "MS in ...", "institution": "University", "location": "City, ST",
+                       "dates": "2024 - 2026"}],
+        "skills": {"Languages": ["Python", "SQL"], "Frameworks": ["FastAPI"],
+                   "Cloud & Data": ["GCP", "Snowflake"]},
+        "certifications": [], "awards": [], "languages": [],
+        "equivalence_map": {"_note": "owned_tool -> [equivalent tools you can honestly bridge to]"},
+    }
+
+
+def seed_profile(doc: dict) -> dict:
+    """Deterministically load a full profile document (no LLM) into the canonical store. Validates the
+    shape minimally, stamps _meta, saves via save_profile (DB), and returns a small summary. Raises
+    ValueError if the doc isn't a usable profile."""
+    if not isinstance(doc, dict):
+        raise ValueError("profile must be a JSON object")
+    for key, typ, label in (("experience", list, "list"), ("projects", list, "list"),
+                            ("skills", dict, "object")):
+        if key in doc and not isinstance(doc[key], typ):
+            raise ValueError(f"'{key}' must be a JSON {label}")
+    if not (doc.get("experience") or doc.get("projects") or doc.get("skills")):
+        raise ValueError("profile is empty - fill in at least experience, projects, or skills")
+    doc = {k: v for k, v in doc.items() if k != "_help"}     # drop template guidance if left in
+    meta = dict(doc.get("_meta") or {})
+    meta["seeded"] = datetime.datetime.now().isoformat(timespec="seconds")
+    doc["_meta"] = meta
+    save_profile(doc)
+    n_skills = sum(len(v) for v in (doc.get("skills") or {}).values() if isinstance(v, list))
+    return {"experience": len(doc.get("experience") or []),
+            "projects": len(doc.get("projects") or []), "skills": n_skills}
+
+
 def save_preferences(data: dict) -> None:
     from resumaker.persistence import db
     db.put_document("preferences", data)
