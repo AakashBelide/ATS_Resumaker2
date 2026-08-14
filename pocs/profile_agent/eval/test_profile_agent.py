@@ -80,6 +80,69 @@ def test_apply_and_undo_skill(temp_profile):
     assert "Kafka" not in json.loads(temp_profile.read_text())["skills"]["Big Data & Data Engineering"]
 
 
+def test_add_project_then_bullet_by_title(temp_profile):
+    """A new project is appended to the (list) projects, then a bullet addressed by TITLE lands in
+    that project's bullets - the exact path that used to 500 (list indexed by a string)."""
+    st = store.new_run("enhance")
+    st.pending = [Proposal(kind="add_project", path=["projects"],
+                           value={"title": "ATS Resumaker 2.0", "date": "Jan 2026 - Aug 2026"},
+                           source_quote="ATS Resumaker 2.0", preview="add project").__dict__]
+    assert agent.apply_pending(st, profile_path=temp_profile) == 1
+    saved = json.loads(temp_profile.read_text())
+    assert [p["title"] for p in saved["projects"]] == ["ATS Resumaker 2.0"]
+
+    # add a bullet addressing the project by title (model drops the "2.0" suffix here on purpose)
+    st.pending = [Proposal(kind="add_bullet", path=["projects", "ATS Resumaker"],
+                           value="Cut median scrape latency from 8s to under 400ms",
+                           source_quote="under 400ms", preview="add latency bullet").__dict__]
+    assert agent.apply_pending(st, profile_path=temp_profile) == 1
+    saved = json.loads(temp_profile.read_text())
+    bullets = [b["text"] for b in saved["projects"][0]["bullets"]]
+    assert "Cut median scrape latency from 8s to under 400ms" in bullets
+
+    # /undo removes just that bullet
+    agent.undo_last(st, profile_path=temp_profile)
+    after = json.loads(temp_profile.read_text())["projects"][0]["bullets"]
+    assert all("400ms" not in b["text"] for b in after)
+
+
+def test_add_project_is_idempotent(temp_profile):
+    """The model re-proposes the same project every turn; re-adding must not duplicate it. A re-add
+    with no bullets is a no-op (uncounted); a re-add carrying bullets folds them into the existing
+    project."""
+    st = store.new_run("enhance")
+    def mk(val: dict) -> dict:
+        return Proposal(kind="add_project", path=["projects"], value=val,
+                        source_quote="ATS Resumaker", preview="add project").__dict__
+    st.pending = [mk({"title": "ATS Resumaker 2.0", "bullets": ["first bullet"]})]
+    assert agent.apply_pending(st, profile_path=temp_profile) == 1
+
+    # bare re-add of the same title -> no-op, not counted, no duplicate
+    st.pending = [mk({"title": "ATS Resumaker 2.0"})]
+    assert agent.apply_pending(st, profile_path=temp_profile) == 0
+    saved = json.loads(temp_profile.read_text())
+    assert [p["title"] for p in saved["projects"]].count("ATS Resumaker 2.0") == 1
+
+    # re-add carrying a new bullet -> folded into the existing project (still one project)
+    st.pending = [mk({"title": "ATS Resumaker 2.0", "bullets": ["second bullet"]})]
+    assert agent.apply_pending(st, profile_path=temp_profile) == 1
+    saved = json.loads(temp_profile.read_text())
+    proj = [p for p in saved["projects"] if p["title"] == "ATS Resumaker 2.0"]
+    assert len(proj) == 1
+    assert [b["text"] for b in proj[0]["bullets"]] == ["first bullet", "second bullet"]
+
+
+def test_apply_pending_skips_unresolvable_bullet(temp_profile):
+    """A bullet for a project that doesn't exist must be skipped (recorded), not 500 the whole turn."""
+    st = store.new_run("enhance")
+    st.pending = [Proposal(kind="add_bullet", path=["projects", "Nonexistent Project"],
+                           value="some bullet", source_quote="some bullet",
+                           preview="orphan bullet").__dict__]
+    n = agent.apply_pending(st, profile_path=temp_profile)   # must not raise
+    assert n == 0
+    assert st.meta.get("apply_errors") == ["orphan bullet"]
+
+
 # ---- intake thin-spot detector (deterministic) ---------------------------
 def test_detect_thin_spots():
     prof = {"summary": "", "skills": {"a": ["x"]},

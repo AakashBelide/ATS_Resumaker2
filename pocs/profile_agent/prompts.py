@@ -79,6 +79,15 @@ Decide two things and return JSON:
   "question": "the single follow-up question if you asked one, else empty"
 }}
 
+PATH CONVENTIONS:
+- Skills: kind "add_skill", path ["skills", "<Category>"], value the single skill string.
+- A NEW project: kind "add_project", path ["projects"], value an object
+  {{"title": "...", "organization": "", "date": "", "url": "", "bullets": ["bullet text", ...]}}.
+- A bullet/metric on an EXISTING or just-proposed project: kind "add_bullet" (or "add_metric"),
+  path ["projects", "<the project's title>"], value the bullet text string. Address the project by
+  its title, never by a numeric position.
+- Summary rewrite: kind "edit_summary", path ["summary"], value the full new summary text.
+
 Ask at most ONE follow-up question per turn. Only propose writes you can back with a `source_quote`.
 If the message contains no assertable fact, propose nothing and ask one clarifying question."""
 

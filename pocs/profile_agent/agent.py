@@ -33,6 +33,9 @@ SLASH = {"/help", "/skip", "/done", "/generate", "/stop", "/undo"}
 _AFFIRM = {"yes", "y", "yep", "yeah", "sure", "ok", "okay", "apply", "confirm",
            "do it", "sounds good", "go ahead", "approve", "approved"}
 APPEND_KINDS = {"add_skill", "add_metric", "add_bullet", "add_project"}
+# kinds whose write targets the `projects` LIST (addressed by title, not a dict key). These need
+# name->index resolution before they can be written; the plain append path can't index a list by str.
+PROJECT_BULLET_KINDS = {"add_bullet", "add_metric"}
 
 
 # -- message classification --------------------------------------------------
@@ -90,9 +93,49 @@ def _get_by_path(obj: Any, path: list) -> Any:
     return cur
 
 
-def apply_proposal(p: Proposal, *, profile_path: Path | None = None) -> Applied:
+def _slug(title: str) -> str:
+    return re.sub(r"[^a-z0-9]+", "-", (title or "").lower()).strip("-")[:48] or "project"
+
+
+def _coerce_project(value: Any) -> dict:
+    """Normalize a proposed project into the profile.json project shape (id/title/organization/
+    date/url/bullets[{text}]). Accepts a bare title string or a partial dict."""
+    proj = dict(value) if isinstance(value, dict) else {"title": str(value)}
+    for k in ("title", "organization", "date", "url"):
+        proj.setdefault(k, "")
+    proj["bullets"] = [b if isinstance(b, dict) else {"text": str(b)}
+                       for b in (proj.get("bullets") or [])]
+    proj.setdefault("id", _slug(proj["title"]))
+    return proj
+
+
+def _resolve_project_index(projects: list, ref: Any) -> int | None:
+    """Map a project reference (int index, int-like string, or a partial/whole title) to an index in
+    the projects list. Title match is whitespace/case-insensitive and tolerates the '2.0'-style
+    suffix the model sometimes drops."""
+    if isinstance(ref, bool):
+        return None
+    if isinstance(ref, int):
+        return ref if -len(projects) <= ref < len(projects) else None
+    s = str(ref).strip()
+    if s.lstrip("-").isdigit():
+        i = int(s)
+        return i if -len(projects) <= i < len(projects) else None
+    want = _norm(s)
+    titles = [_norm(p.get("title", "")) for p in projects]
+    for i, t in enumerate(titles):          # exact first
+        if t == want:
+            return i
+    for i, t in enumerate(titles):          # then containment either way
+        if want and (want in t or t in want):
+            return i
+    return None
+
+
+def apply_proposal(p: Proposal, *, profile_path: Path | None = None) -> Applied | None:
     """Route a confirmed proposal to the right audited writer. Append-kinds extend a list; scalar
-    kinds replace. Preferences and house rules go to their own docs."""
+    kinds replace. Preferences and house rules go to their own docs. Returns None when the proposal
+    is a no-op (e.g. re-adding a project that already exists with no new bullets)."""
     if p.kind == "set_pref":
         prefs = profile_store.load_preferences()
         key = p.path[0] if p.path else "note"
@@ -107,28 +150,89 @@ def apply_proposal(p: Proposal, *, profile_path: Path | None = None) -> Applied:
                                rule=str(p.value), rationale=p.source_quote)
         return Applied("add_house_rule", p.path, None, p.value, "house rule (not auto-undoable)")
 
-    # profile.json writes (append or replace) -> update_profile_fact (audited). Read the *target*
-    # file (profile_path when overridden, e.g. tests) so append extends the right list.
+    # profile.json writes (append or replace) -> update_profile_fact (audited). Read the profile
+    # FRESH from the same file update_profile_fact writes to (never the lru-cached load_profile),
+    # so chained writes in one confirmation batch see each other - otherwise a stale snapshot makes
+    # a whole-list overwrite drop the previous write and project lookups miss just-added projects.
     import json as _json
-    prof = _json.loads(profile_path.read_text()) if profile_path else profile_store.load_profile()
+    from pathlib import Path as _Path
+
+    from resumaker.config import get_settings as _get_settings
+    _pf = profile_path or _get_settings().profile_path
+    prof = _json.loads(_Path(_pf).read_text())
+    kw = {"profile_path": profile_path} if profile_path else {}
+
+    # `projects` is a LIST addressed by title. A new project is appended - but the model tends to
+    # re-propose the SAME project every turn, so make it idempotent: if the title already exists,
+    # fold any proposed bullets into that project instead of creating a duplicate.
+    if p.kind == "add_project":
+        proj = _coerce_project(p.value)
+        projects = list(prof.get("projects") or [])
+        existing = _resolve_project_index(projects, proj["title"]) if proj["title"] else None
+        if existing is not None:
+            add_bullets = proj.get("bullets") or []
+            if not add_bullets:
+                return None            # already present, nothing new to write -> skipped, not an error
+            old = list(projects[existing].get("bullets") or [])
+            new_value = old + add_bullets
+            write_path = ["projects", existing, "bullets"]
+            manager.update_profile_fact(write_path, new_value,
+                                        reason=f"profile-agent: bullets for {proj['title']!r}",
+                                        source="profile-agent", **kw)
+            return Applied("add_bullet", write_path, old, new_value,
+                           f"{len(add_bullets)} bullet(s) -> {proj['title']}")
+        new_value = projects + [proj]
+        manager.update_profile_fact(["projects"], new_value,
+                                    reason=f"profile-agent: add project {proj['title']!r}",
+                                    source="profile-agent", **kw)
+        return Applied("add_project", ["projects"], projects, new_value, p.preview or proj["title"])
+
+    if p.kind in PROJECT_BULLET_KINDS and p.path and p.path[0] == "projects":
+        projects = prof.get("projects") or []
+        ref = p.path[1] if len(p.path) > 1 else (p.preview or "")
+        idx = _resolve_project_index(projects, ref)
+        if idx is None:
+            raise ValueError(f"no project matching {ref!r} to add this to - add the project first")
+        bullet = p.value if isinstance(p.value, dict) else {"text": str(p.value)}
+        write_path = ["projects", idx, "bullets"]
+        old = list(projects[idx].get("bullets") or [])
+        new_value = old + [bullet]
+        manager.update_profile_fact(write_path, new_value,
+                                    reason=f"profile-agent: {p.preview or p.kind}",
+                                    source="profile-agent", **kw)
+        return Applied(p.kind, write_path, old, new_value,
+                       p.preview or bullet.get("text", p.kind)[:60])
+
     old = _get_by_path(prof, p.path)
     # append-kinds extend a list; scalar kinds (edit_summary, add_equivalence, ...) replace at path
     new_value = list(old or []) + [p.value] if p.kind in APPEND_KINDS else p.value
     manager.update_profile_fact(p.path, new_value, reason=f"profile-agent: {p.preview or p.kind}",
-                                source="profile-agent",
-                                **({"profile_path": profile_path} if profile_path else {}))
+                                source="profile-agent", **kw)
     return Applied(p.kind, p.path, old, new_value, p.preview or p.kind)
 
 
 def apply_pending(st: RunState, *, profile_path: Path | None = None) -> int:
-    """Apply every pending proposal, record each for /undo, clear the queue. Returns count."""
+    """Apply every pending proposal, record each for /undo, clear the queue. Returns the count that
+    succeeded. A proposal that fails to write is skipped (never 500s the turn); its label is recorded
+    in `st.meta['apply_errors']` so the caller can tell the user which ones didn't land."""
     n = 0
+    errors: list[str] = []
     for pd in list(st.pending):
-        applied = apply_proposal(Proposal(**pd), profile_path=profile_path)
+        try:
+            applied = apply_proposal(Proposal(**pd), profile_path=profile_path)
+        except Exception as e:  # noqa: BLE001 - one bad proposal must not lose the rest of the batch
+            label = pd.get("preview") or pd.get("kind", "change")
+            errors.append(label)
+            st.add_event("apply", "error", f"{label}: {e}")
+            continue
+        if applied is None:                     # no-op (e.g. project already present) - not counted
+            st.add_event("apply", "skip", pd.get("preview") or pd.get("kind", "change"))
+            continue
         st.applied.append(asdict(applied))
         st.add_event("apply", "ok", applied.detail)
         n += 1
     st.pending = []
+    st.meta["apply_errors"] = errors
     return n
 
 
@@ -202,7 +306,9 @@ def run_turn(st: RunState, message: str, *,
     elif cmd == "/generate":
         applied = apply_pending(st, profile_path=profile_path)
         if on_generate is None:
-            reply = f"Applied {applied} change(s). (/generate is only available in a match/gap chat.)"
+            errs = st.meta.get("apply_errors") or []
+            tail = f" Couldn't apply {len(errs)}: {'; '.join(errs)}." if errs else ""
+            reply = f"Applied {applied} change(s).{tail} (/generate is only available in a match/gap chat.)"
         else:
             reply = on_generate(st)
             st.state = "done"
@@ -211,7 +317,12 @@ def run_turn(st: RunState, message: str, *,
     # 2) affirmative -> apply pending proposals
     elif st.pending and is_affirmative(message):
         n = apply_pending(st, profile_path=profile_path)
-        reply = f"Applied {n} change(s)." + (" Anything else, or /done?" if n else "")
+        errs = st.meta.get("apply_errors") or []
+        reply = f"Applied {n} change(s)."
+        if errs:
+            reply += f" Couldn't apply {len(errs)}: {'; '.join(errs)}."
+        if n:
+            reply += " Anything else, or /done?"
         st.meta["no_progress"] = 0
     # 3) otherwise: a real message -> one LLM analysis turn
     else:
