@@ -235,6 +235,57 @@ function SiFlow() {
   );
 }
 
+// Landing walkthrough: autoplays muted + looped, with a scrubber that appears on hover and lets you
+// drag to seek. The file is already encoded at 2x (baked in during compression), so no playbackRate
+// override here. No native controls (kept minimal/branded); muted is required for autoplay.
+function HeroVideo() {
+  const vref = useRef<HTMLVideoElement>(null);
+  const barRef = useRef<HTMLDivElement>(null);
+  const [progress, setProgress] = useState(0); // 0..1
+  const [dragging, setDragging] = useState(false);
+
+  useEffect(() => {
+    const v = vref.current;
+    if (!v) return;
+    const onTime = () => { if (v.duration) setProgress(v.currentTime / v.duration); };
+    v.addEventListener("timeupdate", onTime);
+    // Play-on-scroll: don't eagerly download the whole file. Start playing only when the video is
+    // on screen, pause when it scrolls away (saves bandwidth/battery, and never plays off-screen).
+    const io = new IntersectionObserver(([e]) => {
+      if (e.isIntersecting) v.play().catch(() => { /* autoplay may be blocked; poster stays */ });
+      else v.pause();
+    }, { threshold: 0.25 });
+    io.observe(v);
+    return () => { v.removeEventListener("timeupdate", onTime); io.disconnect(); };
+  }, []);
+
+  const seekTo = (clientX: number) => {
+    const v = vref.current, bar = barRef.current;
+    if (!v || !bar || !v.duration) return;
+    const rect = bar.getBoundingClientRect();
+    const ratio = Math.min(1, Math.max(0, (clientX - rect.left) / rect.width));
+    v.currentTime = ratio * v.duration;
+    setProgress(ratio);
+  };
+
+  return (
+    <div className="lp-video">
+      <video ref={vref} className="lp-video-el" muted loop playsInline preload="metadata"
+             poster="/ats-resumaker-walkthrough-poster.jpg" aria-label="ATS Resumaker product walkthrough">
+        <source src="/ats-resumaker-walkthrough.mp4" type="video/mp4" />
+      </video>
+      <div ref={barRef} className={`lp-video-bar ${dragging ? "drag" : ""}`}
+           role="slider" aria-label="Seek video" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(progress * 100)}
+           onPointerDown={(e) => { e.currentTarget.setPointerCapture(e.pointerId); setDragging(true); seekTo(e.clientX); }}
+           onPointerMove={(e) => { if (dragging) seekTo(e.clientX); }}
+           onPointerUp={(e) => { e.currentTarget.releasePointerCapture(e.pointerId); setDragging(false); }}>
+        <span className="lp-video-fill" style={{ width: `${progress * 100}%` }} />
+        <span className="lp-video-knob" style={{ left: `${progress * 100}%` }} />
+      </div>
+    </div>
+  );
+}
+
 // looping mini visual inside each how-it-works box
 function FlowViz({ kind }: { kind: string }) {
   if (kind === "onboard") return (
@@ -408,16 +459,9 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* demo video slot */}
+      {/* demo video: autoplaying, muted, looped walkthrough, 2x, with a hover scrubber */}
       <Reveal className="lp-video-wrap">
-        <div className="lp-video" role="img" aria-label="Product demo (coming soon)">
-          <div className="lp-video-inner">
-            <span className="lp-play" aria-hidden>
-              <svg viewBox="0 0 24 24" fill="currentColor" width="26" height="26"><path d="M8 5v14l11-7z" /></svg>
-            </span>
-            <span className="mono muted">demo walkthrough coming soon</span>
-          </div>
-        </div>
+        <HeroVideo />
       </Reveal>
 
       {/* features */}

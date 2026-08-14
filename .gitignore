@@ -56,3 +56,6 @@ crash.log
 
 # personal metrics snapshot (do not commit)
 PROJECT_METRICS.md
+
+# Source video (only the optimized web/public copy is shipped)
+Videos/

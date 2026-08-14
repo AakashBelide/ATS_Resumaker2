@@ -738,8 +738,20 @@ button, input, select, textarea { font-family: inherit; }
 @media (max-width: 860px) { .lp-hero { grid-template-columns: 1fr; align-items: start; gap: 20px; } }
 
 .lp-video-wrap { max-width: 940px; margin: 46px auto 0; padding: 0 24px; }
-.lp-video { border: 1px solid var(--line-2); border-radius: 18px; background: linear-gradient(180deg, var(--surface), var(--bg-2));
-    aspect-ratio: 16 / 9; overflow: hidden; box-shadow: 0 40px 90px rgba(0,0,0,.5); }
+.lp-video { position: relative; border: 1px solid var(--line-2); border-radius: 18px; background: linear-gradient(180deg, var(--surface), var(--bg-2));
+    aspect-ratio: 8 / 5; overflow: hidden; box-shadow: 0 40px 90px rgba(0,0,0,.5); }
+.lp-video-el { display: block; width: 100%; height: 100%; object-fit: cover; }
+/* hover scrubber: hidden until you hover the video (or while dragging) */
+.lp-video-bar { position: absolute; left: 16px; right: 16px; bottom: 14px; height: 16px; z-index: 2; cursor: pointer;
+    opacity: 0; transform: translateY(4px); transition: opacity .2s ease, transform .2s ease; touch-action: none; }
+.lp-video:hover .lp-video-bar, .lp-video-bar.drag { opacity: 1; transform: none; }
+.lp-video-bar::before { content: ""; position: absolute; left: 0; right: 0; top: 50%; transform: translateY(-50%);
+    height: 4px; border-radius: 999px; background: rgba(255,255,255,.28); }
+.lp-video-fill { position: absolute; left: 0; top: 50%; transform: translateY(-50%); height: 4px; border-radius: 999px;
+    background: linear-gradient(90deg, var(--electric), var(--cyan)); box-shadow: 0 0 8px rgba(59,116,255,.6); }
+.lp-video-knob { position: absolute; top: 50%; width: 13px; height: 13px; border-radius: 50%; background: #fff;
+    transform: translate(-50%, -50%); box-shadow: 0 0 0 3px rgba(59,116,255,.4), 0 2px 6px rgba(0,0,0,.4); }
+@media (prefers-reduced-motion: reduce) { .lp-video-bar { transition: opacity .2s ease; transform: none; } }
 .lp-video-inner { width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center;
     justify-content: center; gap: 14px;
     background: radial-gradient(ellipse at center, rgba(59,116,255,.1), transparent 70%); }
