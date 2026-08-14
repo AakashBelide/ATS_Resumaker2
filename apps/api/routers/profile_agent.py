@@ -26,6 +26,9 @@ router = APIRouter(prefix="/v1/profile-agent", tags=["profile-agent"],
                    dependencies=[Depends(require_token)])
 
 _pool = ThreadPoolExecutor(max_workers=2, thread_name_prefix="profile-agent")
+# Cap the parse body: resumes are a few hundred KB. request.body() buffers into memory and the temp
+# file lands on Cloud Run's in-memory tmpfs, so an unbounded upload could OOM a small instance.
+_MAX_UPLOAD = 8 * 1024 * 1024      # 8 MB
 
 
 class StartIn(BaseModel):
@@ -76,11 +79,16 @@ async def parse(request: Request) -> dict:
     needed, and the filename survives the BFF proxy (which forwards the query string, not headers)."""
     from pocs.profile_agent import intake
     filename = request.query_params.get("filename", "")
+    clen = request.headers.get("content-length", "")
+    if clen.isdigit() and int(clen) > _MAX_UPLOAD:      # cheap reject before buffering the body
+        raise HTTPException(413, "file too large (max 8 MB) - paste the text instead")
     try:
         if filename:
             raw = await request.body()
             if not raw:
                 raise HTTPException(422, "empty file upload")
+            if len(raw) > _MAX_UPLOAD:                   # in case Content-Length was absent/wrong
+                raise HTTPException(413, "file too large (max 8 MB) - paste the text instead")
             text = intake.extract_upload(raw, filename)
         else:
             data = await request.json()
