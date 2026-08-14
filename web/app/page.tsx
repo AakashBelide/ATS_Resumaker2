@@ -142,6 +142,99 @@ const SI_STEPS = [
   { icon: icons.branch, t: "Opens a PR", d: "You review and approve the merge" },
 ];
 
+// tiny per-step viz that plays while a step is the active one in the loop
+function SiMini({ kind, on }: { kind: number; on: boolean }) {
+  if (kind === 0) return ( // typing a board name
+    <div className="lp-si-mini lp-si-type">{"greenhouse.io/acme".split("").map((c, i) => (
+      <motion.span key={i} initial={{ opacity: 0 }} animate={on ? { opacity: 1 } : { opacity: 0.2 }}
+        transition={{ delay: on ? i * 0.05 : 0, duration: 0.12 }}>{c}</motion.span>))}<i className="lp-si-caret" /></div>
+  );
+  if (kind === 1) return ( // code lines drawing in
+    <div className="lp-si-mini lp-si-code">{[0, 1, 2].map((i) => (
+      <motion.span key={i} animate={on ? { scaleX: [0, 1] } : { scaleX: 0.15 }}
+        transition={{ delay: on ? i * 0.18 : 0, duration: 0.4 }} style={{ width: `${70 - i * 16}%` }} />))}</div>
+  );
+  if (kind === 2) return ( // sandbox: a fixed enclosure with a ping radiating out and a core dot inside
+    <div className="lp-si-mini lp-si-box2">
+      <span className="lp-si-box2-frame" />
+      <motion.span className="lp-si-box2-ping" animate={on ? { scale: [0.6, 1.7], opacity: [0.6, 0] } : { opacity: 0 }}
+        transition={{ duration: 1.4, repeat: on ? Infinity : 0, ease: "easeOut" }} />
+      <i />
+    </div>
+  );
+  if (kind === 3) return ( // three checks ticking
+    <div className="lp-si-mini lp-si-checks">{[0, 1, 2].map((i) => (
+      <motion.span key={i} animate={on ? { opacity: [0.2, 1], scale: [0.6, 1] } : { opacity: 0.2 }}
+        transition={{ delay: on ? i * 0.22 : 0, duration: 0.3 }}>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M5 13l4 4L19 7" /></svg>
+      </motion.span>))}</div>
+  );
+  return ( // PR merge: branch dot travels into main
+    <div className="lp-si-mini lp-si-pr"><span className="lp-si-pr-line" /><motion.i
+      animate={on ? { left: ["6%", "88%"], opacity: [0, 1, 1, 0] } : { left: "6%", opacity: 0.2 }}
+      transition={{ duration: 1.3, repeat: on ? Infinity : 0 }} /><span className="lp-si-pr-node" /></div>
+  );
+}
+
+// the looping self-improving flow: a vertical timeline that visibly loops back to step 1.
+// deliberately not the horizontal card row used by "how it works" — the shape says "loop".
+function SiFlow() {
+  const [active, setActive] = useState(-1);
+  const ref = useRef<HTMLDivElement>(null);
+  const [live, setLive] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const io = new IntersectionObserver(([e]) => setLive(e.isIntersecting), { threshold: 0.25 });
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
+  useEffect(() => {
+    if (!live) return;
+    setActive(0);
+    const id = setInterval(() => setActive((a) => (a + 1) % SI_STEPS.length), 1600);
+    return () => clearInterval(id);
+  }, [live]);
+  const wrapping = active === 0; // just came back around to the top
+  return (
+    <div className="lp-si-rail" ref={ref}>
+      {/* return arc: the feedback loop from the last step back up to the first */}
+      <svg className="lp-si-arc" viewBox="0 0 60 100" preserveAspectRatio="none" aria-hidden>
+        <path d="M30 96 C 4 96, 4 4, 30 4" fill="none" stroke="var(--line-2)" strokeWidth="1" vectorEffect="non-scaling-stroke" />
+        <motion.path d="M30 96 C 4 96, 4 4, 30 4" fill="none" stroke="var(--cyan)" strokeWidth="1.5"
+          vectorEffect="non-scaling-stroke" strokeDasharray="6 10" strokeLinecap="round"
+          animate={{ strokeDashoffset: [0, -160], opacity: wrapping ? 1 : 0.35 }}
+          transition={{ strokeDashoffset: { duration: 2.4, repeat: Infinity, ease: "linear" }, opacity: { duration: 0.4 } }} />
+      </svg>
+      <ol className="lp-si-steps">
+        {SI_STEPS.map((s, i) => (
+          <li className={`lp-si-step ${active === i ? "on" : ""} ${active > i ? "done" : ""}`} key={s.t}>
+            <motion.span className="lp-si-node"
+              animate={active === i ? { scale: [1, 1.12, 1] } : { scale: 1 }}
+              transition={{ duration: 0.7, repeat: active === i ? Infinity : 0, repeatDelay: 0.4 }}>
+              {s.icon}
+              <span className="lp-si-num mono">{String(i + 1).padStart(2, "0")}</span>
+            </motion.span>
+            <div className="lp-si-body">
+              <div className="lp-si-t">{s.t}</div>
+              <div className="lp-si-d">{s.d}</div>
+              <AnimatePresence mode="wait">
+                {active === i && (
+                  <motion.div key={i} className="lp-si-mini-wrap"
+                    initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }}
+                    transition={{ duration: 0.25 }}>
+                    <SiMini kind={i} on />
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          </li>
+        ))}
+      </ol>
+    </div>
+  );
+}
+
 // looping mini visual inside each how-it-works box
 function FlowViz({ kind }: { kind: string }) {
   if (kind === "onboard") return (
@@ -396,32 +489,24 @@ export default function LandingPage() {
       <section className="lp-section" id="self-improving">
         <div className="lp-si-band">
           <div className="lp-si-orb" aria-hidden />
-          <Reveal className="lp-si-head">
-            <p className="lp-kicker mono">Self-improving</p>
-            <h2 className="lp-h2"><span className="lp-h2-dim">It teaches itself</span> new ATS boards.</h2>
-            <p className="lp-sub" style={{ margin: "12px 0 0" }}>
-              Name a company we don't cover yet and an agent writes a brand-new board adapter, runs it
-              in an isolated sandbox, validates it against live postings, and opens a pull request to
-              merge it. Coverage grows on its own, and you approve every merge. It runs on your Claude
-              subscription or your own API key.
-            </p>
-          </Reveal>
-          <div className="lp-si-flow">
-            {SI_STEPS.map((s, i) => (
-              <div className="lp-si-cell" key={s.t}>
-                <Reveal i={i} className="lp-si-box">
-                  <span className="lp-si-ico">{s.icon}</span>
-                  <div className="lp-si-t">{s.t}</div>
-                  <div className="lp-si-d">{s.d}</div>
-                </Reveal>
-                {i < SI_STEPS.length - 1 && (
-                  <span className="lp-si-arrow" aria-hidden>
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="18" height="18"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
-                    <motion.i className="lp-si-dot" animate={{ x: [-2, 20], opacity: [0, 1, 0] }} transition={{ duration: 1.5, repeat: Infinity, delay: i * 0.25 }} />
-                  </span>
-                )}
+          <div className="lp-si-grid">
+            <Reveal className="lp-si-head">
+              <p className="lp-kicker mono">Self-improving</p>
+              <h2 className="lp-h2"><span className="lp-h2-dim">It teaches itself</span> new ATS boards.</h2>
+              <p className="lp-sub" style={{ margin: "12px 0 0" }}>
+                Name a company we don't cover yet and an agent writes a brand-new board adapter, runs it
+                in an isolated sandbox, validates it against live postings, and opens a pull request to
+                merge it. Coverage grows on its own, and you approve every merge. It runs on your Claude
+                subscription or your own API key.
+              </p>
+              <div className="lp-si-loop" aria-hidden>
+                <motion.span className="lp-si-loop-ico" animate={{ rotate: 360 }} transition={{ duration: 3, repeat: Infinity, ease: "linear" }}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="15" height="15"><path d="M21 12a9 9 0 1 1-3-6.7M21 4v5h-5" /></svg>
+                </motion.span>
+                <span className="mono">runs on a loop — coverage grows on its own</span>
               </div>
-            ))}
+            </Reveal>
+            <SiFlow />
           </div>
         </div>
       </section>
