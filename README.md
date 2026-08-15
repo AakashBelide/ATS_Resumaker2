@@ -102,7 +102,7 @@ flowchart TB
 | Component | Runtime | Responsibility |
 |-----------|---------|----------------|
 | **Browser extension** | Chrome MV3 (`extension/`) | Captures visible posting text + full-page screenshot; POSTs to the token-gated capture endpoint (independent of the web login). |
-| **Web dashboard** | Next.js 15 on Vercel (`web/`) | Discovery / Tracker / Onboarding / Profile / Mailer / Dashboard / Metrics UI. A **BFF**: a server-only token proxies the API so the secret never reaches the browser. |
+| **Web dashboard** | Next.js 15 on Vercel (`web/`) | Discovery / Tracker / Onboarding / Profile / Assistant / Mailer / Dashboard / Metrics UI. A **BFF**: a server-only token proxies the API so the secret never reaches the browser. |
 | **api** | FastAPI on Cloud Run (`apps/api/`) | Runs, discovery, tracker, onboard, profile, mailer, dashboard, metrics; token auth; enqueues pipeline work. |
 | **ingestor** | Cloud Run (same image as api) | Isolated service for watchlist ingestion + email digest, driven by Cloud Scheduler — kept off the user-facing api. |
 | **worker** | Cloud Run (`apps/api/jobs/worker.py`) | Executes the CPU-bound pipeline (match / tailor / DOCX→PDF render), concurrency 1 per instance. |
@@ -204,10 +204,12 @@ Two ways to run: **Local (Docker)** on your machine, or **Self-hosting (cloud)**
 Turso + Vercel within free tiers. Start local to try it. Full step-by-step instructions live in
 [`SETUP.md`](SETUP.md) and are also rendered in-app at **`/setup`**.
 
-Your **`data/profile/profile.json`** is the source of truth for everything the system generates.
-Create it first — hand-write it from the schema in
-[`RESUME_SYSTEM_BLUEPRINT.md`](RESUME_SYSTEM_BLUEPRINT.md), or bootstrap it with the in-app Profile
-chat agent. `data/` is gitignored and holds PII; it never leaves your machine or your bucket.
+Your profile is the source of truth for everything the system generates. Create it first via the
+in-app **Assistant** page (three ways: fill a **first-time template** and seed it deterministically,
+**upload a PDF/DOCX** to AI-parse and review, or **enrich by chat**), or hand-write
+`data/profile/profile.json` from the schema in [`RESUME_SYSTEM_BLUEPRINT.md`](RESUME_SYSTEM_BLUEPRINT.md).
+The profile is stored in the app database (the JSON file is the initial seed, migrated in on first
+read). `data/` is gitignored and holds PII; it never leaves your machine or your bucket.
 
 **Local (Docker):**
 
@@ -216,7 +218,7 @@ git clone https://github.com/AakashBelide/ATS_Resumaker2.git ats-resumaker && cd
 cp .env.example .env
 #   set RESUMAKER_API_TOKEN=$(openssl rand -hex 24)
 #   leave Claude CLI as the default provider, or set RESUMAKER_DEFAULT_PROVIDER=anthropic + ANTHROPIC_API_KEY
-# put your profile at data/profile/profile.json
+# add your profile: in-app Assistant page (template / upload / chat), or data/profile/profile.json
 
 ./scripts/run-local.sh                 # api + worker via docker compose; API -> http://localhost:8000
 

@@ -27,14 +27,22 @@ extension and the email digest).
 
 ### 0.2 Your profile is the source of truth (required before onboarding)
 
-Everything the system generates traces to **`data/profile/profile.json`**, your real employers,
-titles, metrics, and skills. **Create it before you tail or generate anything.** Two ways:
+Everything the system generates traces to your profile, your real employers, titles, metrics, and
+skills. It's stored in the app **database** (local SQLite or cloud Turso); a `data/profile/profile.json`
+file is the initial **seed**, migrated into the DB on first read. **Create it before you tail or
+generate anything.** Easiest is the in-app **Assistant** page (`/profile-agent`), which onboards a
+profile three ways, all writing to the canonical store:
 
-- **Hand-write it** from the schema (see `RESUME_SYSTEM_BLUEPRINT.md`), or
-- **Use the in-app Profile chat agent** (Profile page), it interviews you and proposes structured
-  entries you approve. This is the easiest way for a new user to bootstrap a profile.
+- **First-time template** — download the schema, fill it in, and seed it deterministically. Lossless:
+  it keeps hand-curated fields (equivalence map, target archetypes) an AI parse can't infer.
+- **AI parse** — upload a resume **PDF/DOCX** (or paste text); it extracts a profile with zero
+  invention that you **review before applying** (first-time gated, so it won't clobber an existing one).
+- **Enhance chat** — a probe-and-confirm chat that fills gaps and adds metrics; every write is grounded
+  in your own words and reversible with `/undo`.
 
-`data/` is gitignored and holds PII, it never leaves your machine / your bucket.
+Or **hand-write** `data/profile/profile.json` from the schema (see `RESUME_SYSTEM_BLUEPRINT.md`). The
+same onboarding works on a fresh cloud deploy (the DB starts empty). `data/` is gitignored and holds
+PII, it never leaves your machine / your bucket.
 
 ### 0.3 Disclaimers (read these)
 

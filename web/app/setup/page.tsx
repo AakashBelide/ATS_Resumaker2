@@ -77,7 +77,7 @@ export default function SetupPage() {
                 <tr><td><b>API</b></td><td>FastAPI service, the core of the system</td><td>uvicorn / Docker</td><td>Cloud Run</td></tr>
                 <tr><td><b>Worker</b></td><td>runs the pipeline, builds documents</td><td>in-process</td><td>Cloud Run + Cloud Tasks</td></tr>
                 <tr><td><b>Scheduler</b></td><td>hourly ingest and the digest cron</td><td>in-process loop</td><td>Cloud Scheduler</td></tr>
-                <tr><td><b>Database</b></td><td>tracker, runs, profile-derived data</td><td>SQLite file</td><td>Turso (libSQL)</td></tr>
+                <tr><td><b>Database</b></td><td>tracker, runs, and the canonical profile + preferences</td><td>SQLite file</td><td>Turso (libSQL)</td></tr>
                 <tr><td><b>Artifacts</b></td><td>generated resume / cover / screenshots</td><td>local folder</td><td>GCS bucket</td></tr>
                 <tr><td><b>Web</b></td><td>Next.js dashboard, BFF proxy + login</td><td>next dev</td><td>Vercel</td></tr>
                 <tr><td><b>Extension</b></td><td>MV3 one-click capture</td><td colSpan={2}>talks to the API directly</td></tr>
@@ -105,11 +105,24 @@ export default function SetupPage() {
 
           <section id="profile">
             <h2 className="doc-h2">Your profile is the source of truth</h2>
-            <p>Everything generated traces to <code>data/profile/profile.json</code>, your real
-              employers, titles, metrics, and skills. <b>Create it before onboarding or generating.</b>{" "}
-              Hand-write it from the schema, or use the in-app <b>Profile chat agent</b>, which
-              interviews you and proposes entries you approve (the easiest bootstrap for a new user).{" "}
-              <code>data/</code> is gitignored PII, it never leaves your machine or your bucket.</p>
+            <p>Everything generated traces to your profile, your real employers, titles, metrics, and
+              skills. It lives in the app <b>database</b> (local SQLite or cloud Turso); a{" "}
+              <code>data/profile/profile.json</code> file is the initial <b>seed</b>, migrated in on
+              first read. <b>Create it before onboarding or generating.</b> Easiest is the in-app{" "}
+              <b>Assistant</b> page, which onboards a profile three ways, all writing to the canonical store:</p>
+            <ul className="doc-list">
+              <li><b>First-time template</b> — download the schema, fill it in, seed it
+                deterministically. Lossless: keeps hand-curated fields (equivalence map, target
+                archetypes) an AI parse can&apos;t infer.</li>
+              <li><b>AI parse</b> — upload a resume <b>PDF/DOCX</b> (or paste text); it extracts a
+                profile with zero invention that you <b>review before applying</b> (first-time gated,
+                so it won&apos;t overwrite an existing profile without confirming).</li>
+              <li><b>Enhance chat</b> — probe-and-confirm to fill gaps and add metrics; every write is
+                grounded in your own words and reversible with <code>/undo</code>.</li>
+            </ul>
+            <p>Or hand-write it from the schema. The same onboarding works on a fresh cloud deploy (the
+              DB starts empty). <code>data/</code> is gitignored PII, it never leaves your machine or
+              your bucket.</p>
           </section>
 
           <section id="disclaimers">
