@@ -80,7 +80,7 @@ def parse_resume(text: str, *, llm: Any = None) -> tuple[dict, list[str]]:
     thin_spots). Does NOT persist. Raises ValueError if the text is too short or yields no profile."""
     if len((text or "").strip()) < 40:
         raise ValueError("that doesn't look like resume text - too short to parse")
-    llm = llm or get_provider("claude", model="sonnet")
+    llm = llm or get_provider(model="sonnet")   # configured default (Claude CLI local, API in cloud)
     parsed = llm.complete_json(INTAKE_PARSE.format(guardrail=GUARDRAIL, resume_text=text[:20000]),
                                task="profile-intake")
     if not isinstance(parsed, dict) or not (
@@ -112,7 +112,7 @@ def run_intake_text(text: str, *, llm: Any = None) -> store.RunState:
 
 
 def _parse_into_run(st: store.RunState, text: str, llm: Any) -> store.RunState:
-    llm = llm or get_provider("claude", model="sonnet")
+    llm = llm or get_provider(model="sonnet")   # configured default (Claude CLI local, API in cloud)
     st.add_event("extract", "ok", f"{len(text)} chars of source text")
 
     parsed = llm.complete_json(INTAKE_PARSE.format(guardrail=GUARDRAIL, resume_text=text[:20000]),

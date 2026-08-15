@@ -27,6 +27,9 @@ RUN uv sync --frozen --no-dev --extra api --extra cloud --no-install-project
 COPY README.md ./
 COPY src ./src
 COPY apps ./apps
+# the profile-agent API router lazily imports pocs.profile_agent, so the package must ship in the
+# image (otherwise every /v1/profile-agent call 500s with ModuleNotFoundError).
+COPY pocs ./pocs
 RUN uv sync --frozen --no-dev --extra api --extra cloud
 
 RUN mkdir -p /data /outputs

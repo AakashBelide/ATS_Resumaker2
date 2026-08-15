@@ -97,6 +97,6 @@ def _regenerate(st: store.RunState) -> str:
 
 
 def say(st: store.RunState, message: str, *, llm: Any = None, profile_path: Path | None = None) -> str:
-    llm = llm or get_provider("claude", model="sonnet")
+    llm = llm or get_provider(model="sonnet")   # configured default (Claude CLI local, API in cloud)
     return agent.run_turn(st, message, build_prompt=_build_prompt, llm=llm,
                           on_generate=_regenerate, profile_path=profile_path)

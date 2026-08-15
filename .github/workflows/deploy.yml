@@ -13,6 +13,7 @@ on:
     paths:
       - 'src/**'
       - 'apps/**'
+      - 'pocs/**'
       - 'pyproject.toml'
       - 'uv.lock'
       - 'deploy/Dockerfile.api'
